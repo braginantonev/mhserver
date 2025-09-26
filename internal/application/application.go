@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"slices"
 
@@ -53,12 +54,20 @@ func NewApplication() *Application {
 }
 
 func (app *Application) Run() error {
-	//ctx, cancel := context.WithCancel(context.Background())
-	//defer cancel()
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/api/users/login", LoginHandler)
+	mux.HandleFunc("/api/users/register", RegisterHandler)
+	mux.HandleFunc("/files/data", DataHandler(GetDataHandler, SaveDataHandler))
+	mux.HandleFunc("/files/data/hash", GetHashHandler)
+
+	err := http.ListenAndServe(fmt.Sprintf("%s:%s", app.Address, app.Port), mux)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to start server: %s", err.Error()))
+		return err
+	}
 
 	//Todo: создание БД пользователей
-
-	//Todo: запуск сервера и его хендлеров
 
 	return nil
 }
