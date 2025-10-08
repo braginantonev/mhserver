@@ -94,3 +94,19 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+#* --- IP:Port --- *#
+echo # Skip the line
+
+ip=""
+while [ -z $ip ]; do
+    read -p "Enter server IP: " ip
+done
+echo "IP = $ip" >> $confPath
+
+port=""
+while [ -z $port ]; do
+    read -p "Enter server port: " port
+done
+echo "Port = $port" >> $confPath
+
+echo "JWTSignature = $(openssl rand -base64 32)" >> $confPath
