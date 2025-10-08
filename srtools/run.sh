@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#! ****************************** !#
+#! Use -R to re setup server conf !#
+#! ****************************** !#
+
 if [[ !(-f "setup.conf") ]]; then
     echo "setup conf file not found"
     exit 1

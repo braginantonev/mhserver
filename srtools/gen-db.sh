@@ -45,3 +45,21 @@ if [ $? -ne 0 ]; then
     echo -e "\aError in generating server databases"
     exit 1
 fi
+
+#* ---- Table - Users ---- *#
+
+echo -e "\nDatabase has been generated"
+echo "Generating users table..."
+
+echo -e "\nNOTE: Use your new password"
+$sql_driver -u mhserver -p -e "USE $ServerName;
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user VARCHAR(30) NOT NULL,
+    password VARCHAR(256) NOT NULL
+);"
+
+if [ $? -ne 0 ]; then
+    echo -e "\aError in creating database tables"
+    exit 1
+fi

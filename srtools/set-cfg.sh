@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#! ****************************** !#
-#! Use -R to recreate server conf !#
-#! ****************************** !#
+#! *********************************** !#
+#! Use -R to recreate server conf file !#
+#! *********************************** !#
 
 if [[ !(-f "setup.conf") ]]; then
     echo "setup conf file not found"
