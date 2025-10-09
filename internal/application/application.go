@@ -4,30 +4,33 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/BurntSushi/toml"
 )
 
 const (
-	CONFIGURATION_FILE_NAME       string = "mhserver.conf"
-	DEBUG_CONFIGURATION_FILE_NAME string = "mhserver-debug.conf"
-
-	DEFAULT_WORKSPACE_PATH string = "~/.mhserver/"
+	CONFIGURATION_FILE_NAME string = "mhserver.conf"
 )
 
 type Config struct {
-	WorkspacePath string
-	IP            string
-	Port          string
-	JWTSignature  string
+	IP           string
+	Port         string
+	JWTSignature string
 }
 
 func NewConfig() Config {
 	var cfg Config
-	conf_file_path := DEBUG_CONFIGURATION_FILE_NAME
 
-	if _, err := toml.DecodeFile(conf_file_path, &cfg); err != nil {
-		panic(ERR_CONF_NF)
+	workspacePath, loaded := os.LookupEnv("WORKSPACE_PATH")
+	if !loaded {
+		panic(fmt.Sprintf("WORKSPACE_PATH %s", ERR_ENV_NF))
+	}
+
+	confFilePath := workspacePath + CONFIGURATION_FILE_NAME
+
+	if _, err := toml.DecodeFile(confFilePath, &cfg); err != nil {
+		panic(fmt.Sprintf("%s\n%s", err.Error(), ERR_CONF_NF))
 	}
 
 	slog.Info("Configuration loaded.")
