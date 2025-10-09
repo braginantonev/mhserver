@@ -1,18 +1,42 @@
 #!/bin/bash
 
-workspacePath=~/.mhserver/
+workspacePath=""
 confFileName=mhserver.conf
+
+echo "Hello! Let's setup your home server"
+
+read -p "Do you wan't set uniq server workspace path? (y/n): " workspacePath
+if [[ $workspacePath != 'y' ]]; then
+    workspacePath=~/.mhserver/
+else
+    workspacePath=""
+    while [ -z $workspacePath ]; do
+        read -p "Enter your new path (use full path): " workspacePath
+    done
+fi
+echo "Server workspace path is set to $workspacePath"
 
 if [[ !(-e $workspacePath) ]]; then
     mkdir $workspacePath
 fi
 
+#* --- Create .env for go app --- *#
+
+if [[ -f ".env" ]]; then
+    rm .env
+fi
+
+touch .env
+echo -e "WORKSPACE_PATH=\"$workspacePath\"" >> .env
+
 cd $workspacePath
+
+#* --- Create configuration file --- *#
 
 if [[ !(-f $confFileName) ]]; then
     touch $confFileName
 else
-    echo "Server configuration is already exist"
+    echo -e "\nServer configuration is already exist"
     read -p "Do you want setup mhserver again? (y/n): " user_input
 
     if [ $user_input != 'y' ]; then
@@ -26,8 +50,6 @@ fi
 
 confPath=$workspacePath$confFileName
 
-echo "Hello! Let's setup your home server"
-
 #* ---  Setup server name --- *#
 
 server_name=""
@@ -38,7 +60,7 @@ done
 
 db_server_user_name=mhserver_$server_name
 server_name=mhserver-$server_name
-echo "ServerName = $server_name" >> $confPath
+echo -e "ServerName = \"$server_name\"" >> $confPath
 
 #* --- Set new password for server database --- *#
 
@@ -101,12 +123,12 @@ ip=""
 while [ -z $ip ]; do
     read -p "Enter server IP: " ip
 done
-echo "IP = $ip" >> $confPath
+echo -e "IP = \"$ip\"" >> $confPath
 
 port=""
 while [ -z $port ]; do
     read -p "Enter server port: " port
 done
-echo "Port = $port" >> $confPath
+echo -e "Port = \"$port\"" >> $confPath
 
-echo "JWTSignature = $(openssl rand -base64 32)" >> $confPath
+echo -e "JWTSignature = \"$(openssl rand -base64 32)\"" >> $confPath
