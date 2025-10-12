@@ -10,19 +10,26 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-const (
-	CONFIGURATION_FILE_NAME string = "mhserver.conf"
-)
-
 var (
 	AuthDB *sql.DB
 )
 
-type Config struct {
-	IP           string
-	Port         string
-	JWTSignature string
-}
+type (
+	Config struct {
+		ServerName    string `toml:"server_name"`
+		WorkspacePath string
+		JWTSignature  string `toml:"jwt_signature"`
+		DB_Pass       string `toml:"db_pass"`
+		SubServers    map[string]SubServer
+	}
+
+	SubServer struct {
+		Enabled  bool
+		HostName string
+		IP       string
+		Port     string
+	}
+)
 
 func NewConfig() Config {
 	var cfg Config
@@ -31,15 +38,19 @@ func NewConfig() Config {
 	if !loaded {
 		panic(fmt.Sprintf("WORKSPACE_PATH %s", ERR_ENV_NF.Error()))
 	}
+	cfg.WorkspacePath = workspacePath
 
-	confFilePath := workspacePath + CONFIGURATION_FILE_NAME
+	config_path, loaded := os.LookupEnv("CONFIG_PATH")
+	if !loaded {
+		panic(fmt.Sprintf("CONFIG_PATH %s", ERR_ENV_NF.Error()))
+	}
 
-	if _, err := toml.DecodeFile(confFilePath, &cfg); err != nil {
+	if _, err := toml.DecodeFile(config_path, &cfg); err != nil {
 		panic(fmt.Sprintf("%s\n%s", err.Error(), ERR_CONF_NF.Error()))
 	}
 
 	slog.Info("Configuration loaded.")
-	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.IP, cfg.Port))
+	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
 
 	return cfg
 }
@@ -55,6 +66,12 @@ func NewApplication() *Application {
 }
 
 func (app *Application) Run() error {
+	var err error
+	/*AuthDB, err = sql.Open("mysql", fmt.Sprintf("tcp://%s:%s", app.IP, app.Port))
+	if err != nil {
+		return err
+	}*/
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/api/users/login", LoginHandler)
@@ -62,8 +79,7 @@ func (app *Application) Run() error {
 	mux.HandleFunc("/files/data", DataHandler(GetDataHandler, SaveDataHandler))
 	mux.HandleFunc("/files/data/hash", GetHashHandler)
 
-	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", app.IP, app.Port), mux); err != nil {
-		slog.Error(err.Error())
+	if err = http.ListenAndServe(fmt.Sprintf("%s:%s", app.SubServers["main"].IP, app.SubServers["main"].Port), mux); err != nil {
 		return ERR_BAD_START_SERVER
 	}
 
