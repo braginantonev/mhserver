@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/joho/godotenv"
@@ -14,5 +15,7 @@ func main() {
 	}
 
 	app := application.NewApplication()
-	app.Run()
+	if err = app.Run(); err != nil {
+		slog.Error(err.Error())
+	}
 }
