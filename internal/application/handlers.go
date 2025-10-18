@@ -1,20 +1,50 @@
 package application
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
+
+	"github.com/braginantonev/mhserver/pkg/auth"
+	types "github.com/braginantonev/mhserver/pkg/handler_types"
 )
 
 //* --- LogReg --- *//
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("LoginHandler mentioned")
-	//Todo
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("RegisterHandler mentioned")
-	//Todo
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(body) == 0 {
+		w.Write([]byte(MESSAGE_REQUEST_BODY_EMPTY))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user := auth.User{}
+	if err = json.Unmarshal(body, &user); err != nil {
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := auth.Register(user, DB); err.Type != types.EMPTY {
+		w.WriteHeader(err.Code)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 //* --- Files --- *//
