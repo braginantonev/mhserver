@@ -37,17 +37,17 @@ func NewConfig() Config {
 
 	workspacePath, loaded := os.LookupEnv("WORKSPACE_PATH")
 	if !loaded {
-		panic(fmt.Sprintf("WORKSPACE_PATH %s", ERR_ENV_NF.Error()))
+		panic(fmt.Sprintf("WORKSPACE_PATH %s", ErrEnvironmentNotFound.Error()))
 	}
 	cfg.WorkspacePath = workspacePath
 
 	config_path, loaded := os.LookupEnv("CONFIG_PATH")
 	if !loaded {
-		panic(fmt.Sprintf("CONFIG_PATH %s", ERR_ENV_NF.Error()))
+		panic(fmt.Sprintf("CONFIG_PATH %s", ErrEnvironmentNotFound.Error()))
 	}
 
 	if _, err := toml.DecodeFile(config_path, &cfg); err != nil {
-		panic(fmt.Sprintf("%s\n%s", err.Error(), ERR_CONF_NF.Error()))
+		panic(fmt.Sprintf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
 	}
 
 	slog.Info("Configuration loaded.")
@@ -70,8 +70,13 @@ func NewApplication() *Application {
 
 func (app *Application) Run() error {
 	var err error
+
 	DB, err = sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
 	if err != nil {
+		return err
+	}
+
+	if err = DB.Ping(); err != nil {
 		return err
 	}
 
@@ -83,7 +88,7 @@ func (app *Application) Run() error {
 	mux.HandleFunc("/files/data/hash", GetHashHandler)
 
 	if err = http.ListenAndServe(fmt.Sprintf("%s:%s", app.SubServers["main"].IP, app.SubServers["main"].Port), mux); err != nil {
-		return ERR_BAD_START_SERVER
+		return ErrFailedStartServer
 	}
 
 	return nil
