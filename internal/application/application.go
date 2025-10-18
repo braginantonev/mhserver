@@ -8,10 +8,11 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var (
-	AuthDB *sql.DB
+	DB *sql.DB
 )
 
 type (
@@ -51,6 +52,8 @@ func NewConfig() Config {
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
+	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", cfg.ServerName))
+	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
 
 	return cfg
 }
@@ -67,10 +70,10 @@ func NewApplication() *Application {
 
 func (app *Application) Run() error {
 	var err error
-	/*AuthDB, err = sql.Open("mysql", fmt.Sprintf("tcp://%s:%s", app.IP, app.Port))
+	DB, err = sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
 	if err != nil {
 		return err
-	}*/
+	}
 
 	mux := http.NewServeMux()
 
