@@ -29,6 +29,8 @@ else
     fi
 fi
 
+sudo chmod 600 $CONFIG_NAME
+
 echo "Hello! Let's setup your home server"
 workspacePath=""
 
@@ -127,6 +129,7 @@ CREATE TABLE IF NOT EXISTS users (
     user VARCHAR(30) NOT NULL,
     password VARCHAR(256) NOT NULL
 );"
+
 #Todo: Добавить создание остальных таблиц
 
 if [ $? -ne 0 ]; then
@@ -168,5 +171,4 @@ do
 
 done
 
-sudo chmod 600 $CONFIG_NAME
 echo "MHServer has been configured"
