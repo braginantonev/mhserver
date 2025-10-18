@@ -53,7 +53,7 @@ func compare_errors(herr types.HandlerError, test_herr types.HandlerError) strin
 }
 
 func TestRegister(t *testing.T) {
-	err := godotenv.Load("../.env")
+	err := godotenv.Load("../../.env")
 	if err != nil {
 		fmt.Println(err)
 	}
