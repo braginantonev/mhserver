@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	DB *sql.DB
+	DB           *sql.DB
+	JWTSignature string
 )
 
 type (
@@ -49,6 +50,8 @@ func NewConfig() Config {
 	if _, err := toml.DecodeFile(config_path, &cfg); err != nil {
 		panic(fmt.Sprintf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
 	}
+
+	JWTSignature = cfg.JWTSignature
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
