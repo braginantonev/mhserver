@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"time"
 
 	types "github.com/braginantonev/mhserver/pkg/handler_types"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,8 +22,42 @@ type User struct {
 	Password string `json:"pass"`
 }
 
-func Login(user User, db *sql.DB) (string, error) {
-	return "", nil
+func Login(user User, db *sql.DB, jwt_signature string) (string, types.HandlerError) {
+	if user.Name == "" {
+		return "", types.NewExternalHandlerError(ErrNameIsEmpty, http.StatusBadRequest)
+	}
+
+	db_user := User{}
+	row := db.QueryRow(SELECT_USER, user.Name)
+	if err := row.Scan(&db_user.Name, &db_user.Password); err != nil {
+		if err == sql.ErrNoRows {
+			return "", types.NewExternalHandlerError(ErrUserNotExist, http.StatusNotFound)
+		}
+
+		slog.Error(err.Error())
+		return "", types.NewInternalHandlerError()
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(user.Password)); err != nil {
+		slog.Info(err.Error())
+		return "", types.NewExternalHandlerError(ErrWrongPassword, http.StatusBadRequest)
+	}
+
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"name": user.Name,
+		"nbf":  now.Unix(),
+		"exp":  now.Add(24 * time.Hour).Unix(),
+		"iat":  now.Unix(),
+	})
+
+	token_str, err := token.SignedString([]byte(jwt_signature))
+	if err != nil {
+		slog.Error("In Login(): " + err.Error())
+		return "", types.NewInternalHandlerError()
+	}
+
+	return token_str, types.NewEmptyHandlerError()
 }
 
 func Register(user User, db *sql.DB) types.HandlerError {
@@ -36,12 +72,12 @@ func Register(user User, db *sql.DB) types.HandlerError {
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		slog.Error(err.Error())
+		slog.Error("In Register(): " + err.Error())
 		return types.NewInternalHandlerError()
 	}
 
 	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
-		slog.Error(err.Error())
+		slog.Error("In Register(): " + err.Error())
 		return types.NewInternalHandlerError()
 	}
 

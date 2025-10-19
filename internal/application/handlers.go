@@ -14,7 +14,35 @@ import (
 //* --- LogReg --- *//
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("LoginHandler mentioned")
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(body) == 0 {
+		w.Write([]byte(MESSAGE_REQUEST_BODY_EMPTY))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user := auth.User{}
+	if err = json.Unmarshal(body, &user); err != nil {
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	token, herr := auth.Login(user, DB, JWTSignature)
+	if herr.Type != types.EMPTY {
+		w.WriteHeader(herr.Code)
+		w.Write([]byte(herr.Error()))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(token))
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
