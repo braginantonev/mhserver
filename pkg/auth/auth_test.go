@@ -32,26 +32,7 @@ func open_db(pass string, server_name string) (*sql.DB, error) {
 	return DB, nil
 }
 
-func compare_errors(herr types.HandlerError, test_herr types.HandlerError) string {
-	if herr.Code != test_herr.Code {
-		return fmt.Sprintf("expected code %d, but got %d", test_herr.Code, herr.Code)
-	}
-
-	if herr.Type != test_herr.Type {
-		return fmt.Sprintf("expected type %v, but got %v", test_herr.Type, herr.Type)
-	}
-
-	if herr.Type == types.EMPTY {
-		return ""
-	}
-
-	if herr.Error() != test_herr.Error() {
-		return fmt.Sprintf("expected error %s, but got %s", test_herr.Error(), herr.Error())
-	}
-
-	return ""
-}
-
+// Todo: Добавить тесты для Login
 func TestRegister(t *testing.T) {
 	err := godotenv.Load("../../.env")
 	if err != nil {
@@ -114,7 +95,7 @@ func TestRegister(t *testing.T) {
 				Password: test.password,
 			}, db)
 
-			if err := compare_errors(herr, test.expected_err); err != "" {
+			if err := test.expected_err.CompareWith(herr); err != nil {
 				t.Error(err)
 			}
 
@@ -144,4 +125,8 @@ func TestRegister(t *testing.T) {
 			fmt.Println(err)
 		}
 	}
+}
+
+func TestLogin(t *testing.T) {
+
 }
