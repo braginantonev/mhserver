@@ -8,10 +8,27 @@ import (
 	"net/http"
 
 	"github.com/braginantonev/mhserver/pkg/auth"
-	types "github.com/braginantonev/mhserver/pkg/handler_types"
+	htypes "github.com/braginantonev/mhserver/pkg/handler_types"
 )
 
 //* --- LogReg --- *//
+
+// If error is empty, return true
+func log_error(w http.ResponseWriter, herr htypes.HandlerError, handler_name string) bool {
+	switch herr.Type {
+	case htypes.INTERNAL:
+		slog.Error(herr.Error(), slog.String("handler", handler_name))
+		w.WriteHeader(http.StatusInternalServerError)
+		return false
+
+	case htypes.EXTERNAL:
+		w.WriteHeader(herr.Code)
+		w.Write([]byte(fmt.Sprintf("error: %s", herr.Error())))
+		return false
+	}
+
+	return true
+}
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
@@ -34,10 +51,10 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Info("Login request.", slog.String("username", user.Name))
+
 	token, herr := auth.Login(user, DB, JWTSignature)
-	if herr.Type != types.EMPTY {
-		w.WriteHeader(herr.Code)
-		w.Write([]byte(herr.Error()))
+	if cont := log_error(w, herr, "login"); !cont {
 		return
 	}
 
@@ -66,9 +83,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := auth.Register(user, DB); err.Type != types.EMPTY {
-		w.WriteHeader(err.Code)
-		w.Write([]byte(err.Error()))
+	slog.Info("Register request.", slog.String("username", user.Name))
+
+	herr := auth.Register(user, DB)
+	if cont := log_error(w, herr, "register"); !cont {
 		return
 	}
 
