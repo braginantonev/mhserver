@@ -15,6 +15,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	types "github.com/braginantonev/mhserver/pkg/handler_types"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -128,5 +129,98 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		fmt.Println(err)
+	}
 
+	app := application.NewApplication()
+
+	db, err := open_db(app.DB_Pass, app.ServerName)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	cases := []struct {
+		name          string
+		user          auth.User
+		expected_herr types.HandlerError
+		check_jwt     bool
+	}{
+		{
+			name:          "Empty username",
+			user:          auth.NewUser("", ""),
+			expected_herr: types.NewExternalHandlerError(auth.ErrNameIsEmpty, http.StatusBadRequest),
+		},
+		{
+			name:          "Not registered",
+			user:          auth.NewUser("unregistered user", "123"),
+			expected_herr: types.NewExternalHandlerError(auth.ErrUserNotExist, http.StatusNotFound),
+		},
+		{
+			name:          "Wrong password",
+			user:          auth.NewUser("login_test1", "123"),
+			expected_herr: types.NewExternalHandlerError(auth.ErrWrongPassword, http.StatusBadRequest),
+		},
+		{
+			name:          "Normal login",
+			user:          auth.NewUser("login_test2", "123"),
+			expected_herr: types.NewEmptyHandlerError(),
+			check_jwt:     true,
+		},
+	}
+
+	wrong_password_user := auth.NewUser("login_test1", "321")
+	if herr := auth.Register(wrong_password_user, db); herr.Type != types.EMPTY {
+		t.Error(herr.Error())
+	}
+
+	if herr := auth.Register(cases[3].user, db); herr.Type != types.EMPTY {
+		t.Error(herr.Error())
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			token, herr := auth.Login(test.user, db, app.JWTSignature)
+			if err := test.expected_herr.CompareWith(herr); err != nil {
+				t.Error(err)
+			}
+
+			if !test.check_jwt {
+				return
+			}
+
+			tokenFromString, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+
+				return []byte(app.JWTSignature), nil
+			})
+
+			if err != nil {
+				t.Errorf("failed parse jwt: %s", err.Error())
+				return
+			}
+
+			if claims, ok := tokenFromString.Claims.(jwt.MapClaims); ok {
+				if claims["name"] != test.user.Name {
+					t.Errorf("expected user name: `%s`, but got `%s`", test.user.Name, claims["name"])
+				}
+			} else {
+				t.Error("failed get claims from jwt")
+			}
+		})
+
+		_, err := db.Exec("DELETE FROM users WHERE user = ?", test.user.Name)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	_, err = db.Exec("DELETE FROM users WHERE user = ?", wrong_password_user.Name)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
