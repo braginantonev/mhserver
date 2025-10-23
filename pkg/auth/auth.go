@@ -22,6 +22,13 @@ type User struct {
 	Password string `json:"pass"`
 }
 
+func NewUser(name string, password string) User {
+	return User{
+		Name:     name,
+		Password: password,
+	}
+}
+
 func Login(user User, db *sql.DB, jwt_signature string) (string, types.HandlerError) {
 	if user.Name == "" {
 		return "", types.NewExternalHandlerError(ErrNameIsEmpty, http.StatusBadRequest)
@@ -34,12 +41,10 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, types.HandlerEr
 			return "", types.NewExternalHandlerError(ErrUserNotExist, http.StatusNotFound)
 		}
 
-		slog.Error(err.Error())
 		return "", types.NewInternalHandlerError()
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(user.Password)); err != nil {
-		slog.Info(err.Error())
 		return "", types.NewExternalHandlerError(ErrWrongPassword, http.StatusBadRequest)
 	}
 
