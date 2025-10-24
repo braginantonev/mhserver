@@ -5,12 +5,6 @@ import (
 	"net/http"
 )
 
-type DataService interface {
-	GetData(http.ResponseWriter, *http.Request)
-	SaveData(http.ResponseWriter, *http.Request)
-	GetHash(http.ResponseWriter, *http.Request)
-}
-
 func GetData(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetDataHandler mentioned")
 	//Todo
