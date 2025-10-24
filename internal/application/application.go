@@ -4,16 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 
 	"github.com/BurntSushi/toml"
 	_ "github.com/go-sql-driver/mysql"
-)
-
-var (
-	DB           *sql.DB
-	JWTSignature string
 )
 
 type (
@@ -51,8 +45,6 @@ func NewConfig() Config {
 		panic(fmt.Sprintf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
 	}
 
-	JWTSignature = cfg.JWTSignature
-
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
 	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", cfg.ServerName))
@@ -63,6 +55,7 @@ func NewConfig() Config {
 
 type Application struct {
 	Config
+	DB *sql.DB
 }
 
 func NewApplication() *Application {
@@ -71,10 +64,8 @@ func NewApplication() *Application {
 	}
 }
 
-func (app *Application) Run() error {
-	var err error
-
-	DB, err = sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
+func (app *Application) InitDB() error {
+	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
 	if err != nil {
 		return err
 	}
@@ -83,16 +74,6 @@ func (app *Application) Run() error {
 		return err
 	}
 
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/api/users/login", LoginHandler)
-	mux.HandleFunc("/api/users/register", RegisterHandler)
-	mux.HandleFunc("/files/data", DataHandler(GetDataHandler, SaveDataHandler))
-	mux.HandleFunc("/files/data/hash", GetHashHandler)
-
-	if err = http.ListenAndServe(fmt.Sprintf("%s:%s", app.SubServers["main"].IP, app.SubServers["main"].Port), mux); err != nil {
-		return ErrFailedStartServer
-	}
-
+	app.DB = DB
 	return nil
 }
