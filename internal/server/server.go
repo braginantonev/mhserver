@@ -4,13 +4,15 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/internal/server/handlers/auth"
+	auth_hand "github.com/braginantonev/mhserver/internal/server/handlers/auth"
 	"github.com/braginantonev/mhserver/internal/server/handlers/data"
+	auth_mid "github.com/braginantonev/mhserver/internal/server/middlewares/auth"
 )
 
 type Services struct {
-	AuthService auth.AuthService
-	DataService data.DataService
+	AuthHandleService auth_hand.AuthHandleService
+	AuthMiddleService auth_mid.AuthMiddleService
+	DataService       data.DataService
 }
 
 type Server struct {
@@ -18,13 +20,15 @@ type Server struct {
 }
 
 func NewServer(
-	auth_service auth.AuthService,
+	auth_handlers_service auth_hand.AuthHandleService,
+	auth_middlewares_service auth_mid.AuthMiddleService,
 	data_service data.DataService,
 ) Server {
 	return Server{
 		Services: Services{
-			AuthService: auth_service,
-			DataService: data_service,
+			AuthHandleService: auth_handlers_service,
+			AuthMiddleService: auth_middlewares_service,
+			DataService:       data_service,
 		},
 	}
 }
@@ -32,8 +36,8 @@ func NewServer(
 func (s Server) Run(addr string) error {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/api/users/login", s.AuthService.Login)
-	mux.HandleFunc("/api/users/register", s.AuthService.Register)
+	mux.HandleFunc("/api/users/login", s.AuthHandleService.Login)
+	mux.HandleFunc("/api/users/register", s.AuthHandleService.Register)
 
 	//Todo: mux.HandleFunc("/files/data", DataHandler(GetDataHandler, SaveDataHandler))
 	//Todo: mux.HandleFunc("/files/data/hash", GetHashHandler)

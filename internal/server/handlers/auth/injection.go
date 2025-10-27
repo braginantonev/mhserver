@@ -7,7 +7,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/server/handlers"
 )
 
-type AuthService interface {
+type AuthHandleService interface {
 	Login(w http.ResponseWriter, r *http.Request)
 	Register(w http.ResponseWriter, r *http.Request)
 }
