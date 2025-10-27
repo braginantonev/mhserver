@@ -3,6 +3,7 @@ package handlertypes
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 )
 
@@ -40,6 +41,22 @@ func (herr HandlerError) CompareWith(handler_error HandlerError) error {
 	}
 
 	return nil
+}
+
+// If error is empty, return true
+func (herr HandlerError) Write(w http.ResponseWriter, handler_name string) bool {
+	switch herr.Type {
+	case INTERNAL:
+		slog.Error(herr.Error(), slog.String("handler", handler_name))
+		w.WriteHeader(http.StatusInternalServerError)
+		return false
+
+	case EXTERNAL:
+		http.Error(w, fmt.Sprintf("error: %s", herr.Error()), herr.Code)
+		return false
+	}
+
+	return true
 }
 
 func NewInternalHandlerError() HandlerError {
