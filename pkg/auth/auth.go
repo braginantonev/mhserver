@@ -2,7 +2,6 @@ package auth
 
 import (
 	"database/sql"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -41,7 +40,7 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, types.HandlerEr
 			return "", types.NewExternalHandlerError(ErrUserNotExist, http.StatusNotFound)
 		}
 
-		return "", types.NewInternalHandlerError()
+		return "", types.NewInternalHandlerError(err, "Login")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(user.Password)); err != nil {
@@ -58,8 +57,7 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, types.HandlerEr
 
 	token_str, err := token.SignedString([]byte(jwt_signature))
 	if err != nil {
-		slog.Error("In Login(): " + err.Error())
-		return "", types.NewInternalHandlerError()
+		return "", types.NewInternalHandlerError(err, "Login")
 	}
 
 	return token_str, types.NewEmptyHandlerError()
@@ -77,13 +75,11 @@ func Register(user User, db *sql.DB) types.HandlerError {
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		slog.Error("In Register(): " + err.Error())
-		return types.NewInternalHandlerError()
+		return types.NewInternalHandlerError(err, "Register")
 	}
 
 	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
-		slog.Error("In Register(): " + err.Error())
-		return types.NewInternalHandlerError()
+		return types.NewInternalHandlerError(err, "Register")
 	}
 
 	return types.NewEmptyHandlerError()

@@ -24,6 +24,8 @@ type HandlerError struct {
 	error
 	Type HandlerErrorType
 	Code int
+
+	funcName string // for internal errors only
 }
 
 // Return nil, if errors not different
@@ -44,10 +46,10 @@ func (herr HandlerError) CompareWith(handler_error HandlerError) error {
 }
 
 // If error is empty, return true
-func (herr HandlerError) Write(w http.ResponseWriter, handler_name string) bool {
+func (herr HandlerError) Write(w http.ResponseWriter) bool {
 	switch herr.Type {
 	case INTERNAL:
-		slog.Error(herr.Error(), slog.String("handler", handler_name))
+		slog.Error(herr.Error(), slog.String("handler", herr.funcName))
 		w.WriteHeader(http.StatusInternalServerError)
 		return false
 
@@ -59,11 +61,12 @@ func (herr HandlerError) Write(w http.ResponseWriter, handler_name string) bool 
 	return true
 }
 
-func NewInternalHandlerError() HandlerError {
+func NewInternalHandlerError(err error, func_name string) HandlerError {
 	return HandlerError{
-		error: errors.New(""),
-		Type:  INTERNAL,
-		Code:  http.StatusInternalServerError,
+		error:    err,
+		Type:     INTERNAL,
+		Code:     http.StatusInternalServerError,
+		funcName: func_name,
 	}
 }
 
