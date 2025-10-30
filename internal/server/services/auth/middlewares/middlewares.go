@@ -1,4 +1,4 @@
-package auth
+package middlewares
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 // Extract username from jwt and put him in request context
-func (middleware AuthMiddleWare) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
+func (mid AuthMiddleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
 		if token == "" {
@@ -29,7 +29,7 @@ func (middleware AuthMiddleWare) WithAuth(handler http.HandlerFunc) http.Handler
 				return nil, HErrBadJWTToken
 			}
 
-			return []byte(middleware.Cfg.JWTSignature), nil
+			return []byte(mid.cfg.JWTSignature), nil
 		})
 		if err != nil {
 			HErrBadJWTToken.Write(w)
