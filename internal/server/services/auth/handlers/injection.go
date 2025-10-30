@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-type IAuthHandler interface {
+type AuthHandler interface {
 	Login(w http.ResponseWriter, r *http.Request)
 	Register(w http.ResponseWriter, r *http.Request)
 }
@@ -15,12 +15,12 @@ type Config struct {
 	JWTSignature string
 }
 
-type AuthHandler struct {
+type Handler struct {
 	cfg Config
 }
 
-func NewAuthHandler(cfg Config) AuthHandler {
-	return AuthHandler{
+func NewAuthHandler(cfg Config) Handler {
+	return Handler{
 		cfg: cfg,
 	}
 }

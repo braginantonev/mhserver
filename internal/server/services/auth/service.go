@@ -6,11 +6,11 @@ import (
 )
 
 type AuthService struct {
-	Handlers    auth_handlers.IAuthHandler
+	Handlers    auth_handlers.AuthHandler
 	Middlewares auth_middlewares.IAuthMiddleware
 }
 
-func NewAuthService(hand auth_handlers.IAuthHandler, mid auth_middlewares.IAuthMiddleware) *AuthService {
+func NewAuthService(hand auth_handlers.AuthHandler, mid auth_middlewares.IAuthMiddleware) *AuthService {
 	return &AuthService{
 		Handlers:    hand,
 		Middlewares: mid,

@@ -10,7 +10,7 @@ import (
 	"github.com/braginantonev/mhserver/pkg/auth"
 )
 
-func (handler AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
@@ -43,7 +43,7 @@ func (handler AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (handler AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
