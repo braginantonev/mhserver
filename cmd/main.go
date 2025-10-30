@@ -7,9 +7,8 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/internal/server"
-	"github.com/braginantonev/mhserver/internal/server/handlers/auth"
-	auth_hand "github.com/braginantonev/mhserver/internal/server/handlers/auth"
-	auth_mid "github.com/braginantonev/mhserver/internal/server/middlewares/auth"
+	"github.com/braginantonev/mhserver/internal/server/services/auth"
+	amid "github.com/braginantonev/mhserver/internal/server/services/auth/middlewares"
 	"github.com/joho/godotenv"
 )
 
@@ -24,22 +23,18 @@ func main() {
 		slog.Error(err.Error())
 	}
 
-	auth_handler, err := auth_hand.NewAuthHandler(auth.Config{
+	auth_service, err := auth.NewAuthService(auth.Config{
 		DB:           app.DB,
 		JWTSignature: app.JWTSignature,
-	})
+	}, amid.NewAuthMiddleware(amid.Config{JWTSignature: app.JWTSignature}))
+
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
 
-	auth_middlewares := auth_mid.NewAuthMiddleware(auth_mid.Config{
-		JWTSignature: app.JWTSignature,
-	})
-
 	srv := server.NewServer(
-		auth_handler,
-		auth_middlewares,
+		auth_service,
 		nil,
 	)
 
