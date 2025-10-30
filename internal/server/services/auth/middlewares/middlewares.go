@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	contextkeys "github.com/braginantonev/mhserver/internal/server/context_keys"
+	contextkeys "github.com/braginantonev/mhserver/internal/server/http_context_key"
 	"github.com/golang-jwt/jwt/v5"
 )
 
