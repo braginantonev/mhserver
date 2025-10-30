@@ -1,4 +1,4 @@
-package auth
+package auth_handlers
 
 import (
 	"encoding/json"
@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/internal/server/handlers"
+	"github.com/braginantonev/mhserver/internal/server/services"
 	"github.com/braginantonev/mhserver/pkg/auth"
 )
 
-func (handler AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
@@ -19,7 +19,7 @@ func (handler AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body) == 0 {
-		w.Write([]byte(handlers.MESSAGE_REQUEST_BODY_EMPTY))
+		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -33,7 +33,7 @@ func (handler AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("Login request.", slog.String("username", user.Name))
 
-	token, herr := auth.Login(user, handler.Cfg.DB, handler.Cfg.JWTSignature)
+	token, herr := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
 	if cont := herr.Write(w); !cont {
 		return
 	}
@@ -43,7 +43,7 @@ func (handler AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (handler AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
@@ -52,7 +52,7 @@ func (handler AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body) == 0 {
-		w.Write([]byte(handlers.MESSAGE_REQUEST_BODY_EMPTY))
+		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -66,7 +66,7 @@ func (handler AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("Register request.", slog.String("username", user.Name))
 
-	herr := auth.Register(user, handler.Cfg.DB)
+	herr := auth.Register(user, handler.cfg.DB)
 	if cont := herr.Write(w); !cont {
 		return
 	}
