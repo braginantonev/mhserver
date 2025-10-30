@@ -11,7 +11,7 @@ import (
 )
 
 // Extract username from jwt and put him in request context
-func (mid AuthMiddleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
+func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
 		if token == "" {

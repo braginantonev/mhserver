@@ -2,7 +2,7 @@ package auth_middlewares
 
 import "net/http"
 
-type IAuthMiddleware interface {
+type AuthMiddleware interface {
 	WithAuth(handler http.HandlerFunc) http.HandlerFunc
 }
 
@@ -10,12 +10,12 @@ type Config struct {
 	JWTSignature string
 }
 
-type AuthMiddleware struct {
+type Middleware struct {
 	cfg Config
 }
 
-func NewAuthMiddleware(cfg Config) AuthMiddleware {
-	return AuthMiddleware{
+func NewAuthMiddleware(cfg Config) Middleware {
+	return Middleware{
 		cfg: cfg,
 	}
 }
