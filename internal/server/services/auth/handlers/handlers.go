@@ -1,4 +1,4 @@
-package auth
+package auth_handlers
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"github.com/braginantonev/mhserver/pkg/auth"
 )
 
-func (handler AuthService) Login(w http.ResponseWriter, r *http.Request) {
+func (handler AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
@@ -43,7 +43,7 @@ func (handler AuthService) Login(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (handler AuthService) Register(w http.ResponseWriter, r *http.Request) {
+func (handler AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
