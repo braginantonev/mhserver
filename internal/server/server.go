@@ -9,8 +9,8 @@ import (
 )
 
 type Services struct {
-	AuthService auth.AuthService
-	DataService data.DataService
+	AuthService *auth.AuthService
+	DataService *data.DataService
 }
 
 type Server struct {
@@ -18,8 +18,8 @@ type Server struct {
 }
 
 func NewServer(
-	auth_service auth.AuthService,
-	data_service data.DataService,
+	auth_service *auth.AuthService,
+	data_service *data.DataService,
 ) Server {
 	return Server{
 		Services: Services{
@@ -32,8 +32,8 @@ func NewServer(
 func (s Server) Run(addr string) error {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/api/users/login", s.AuthService.Login)
-	mux.HandleFunc("/api/users/register", s.AuthService.Register)
+	mux.HandleFunc("/api/users/login", s.AuthService.Handlers.Login)
+	mux.HandleFunc("/api/users/register", s.AuthService.Handlers.Register)
 
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		slog.Error(err.Error())
