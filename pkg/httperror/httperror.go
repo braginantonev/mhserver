@@ -30,12 +30,12 @@ type HttpError struct {
 
 // Return nil, if errors not different
 func (herr HttpError) CompareWith(http_error HttpError) error {
-	if herr.Code != http_error.Code {
-		return fmt.Errorf(BAD_CODE, herr.Code, http_error.Code)
-	}
-
 	if herr.Type != http_error.Type {
 		return fmt.Errorf(BAD_TYPE, herr.Type, http_error.Type)
+	}
+
+	if herr.Code != http_error.Code {
+		return fmt.Errorf(BAD_CODE, herr.Code, http_error.Code)
 	}
 
 	if http_error.Type != EMPTY && herr.Type != EMPTY && !errors.Is(http_error, herr) {
