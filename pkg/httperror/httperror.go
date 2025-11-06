@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-type HandlerErrorType int
+type HttpErrorType int
 
 const (
 	// Errors messages
@@ -15,38 +15,38 @@ const (
 	BAD_CODE  string = "error code don't match. Won't `%d`, but got `%d`"
 	BAD_TYPE  string = "error type don't match. Won't `%v`, but got `%v`"
 
-	INTERNAL HandlerErrorType = iota
+	INTERNAL HttpErrorType = iota
 	EXTERNAL
 	EMPTY
 )
 
-type HandlerError struct {
+type HttpError struct {
 	error
-	Type HandlerErrorType
+	Type HttpErrorType
 	Code int
 
 	funcName string // for internal errors only
 }
 
 // Return nil, if errors not different
-func (herr HandlerError) CompareWith(handler_error HandlerError) error {
-	if herr.Code != handler_error.Code {
-		return fmt.Errorf(BAD_CODE, herr.Code, handler_error.Code)
+func (herr HttpError) CompareWith(http_error HttpError) error {
+	if herr.Code != http_error.Code {
+		return fmt.Errorf(BAD_CODE, herr.Code, http_error.Code)
 	}
 
-	if herr.Type != handler_error.Type {
-		return fmt.Errorf(BAD_TYPE, herr.Type, handler_error.Type)
+	if herr.Type != http_error.Type {
+		return fmt.Errorf(BAD_TYPE, herr.Type, http_error.Type)
 	}
 
-	if handler_error.Type != EMPTY && herr.Type != EMPTY && !errors.Is(handler_error, herr) {
-		return fmt.Errorf(BAD_ERROR, herr.Error(), handler_error.Error())
+	if http_error.Type != EMPTY && herr.Type != EMPTY && !errors.Is(http_error, herr) {
+		return fmt.Errorf(BAD_ERROR, herr.Error(), http_error.Error())
 	}
 
 	return nil
 }
 
 // If error is empty, return true
-func (herr HandlerError) Write(w http.ResponseWriter) bool {
+func (herr HttpError) Write(w http.ResponseWriter) bool {
 	switch herr.Type {
 	case INTERNAL:
 		slog.Error(herr.Error(), slog.String("handler", herr.funcName))
@@ -61,8 +61,8 @@ func (herr HandlerError) Write(w http.ResponseWriter) bool {
 	return true
 }
 
-func NewInternalHandlerError(err error, func_name string) HandlerError {
-	return HandlerError{
+func NewInternalHttpError(err error, func_name string) HttpError {
+	return HttpError{
 		error:    err,
 		Type:     INTERNAL,
 		Code:     http.StatusInternalServerError,
@@ -70,16 +70,16 @@ func NewInternalHandlerError(err error, func_name string) HandlerError {
 	}
 }
 
-func NewExternalHandlerError(err error, http_code int) HandlerError {
-	return HandlerError{
+func NewExternalHttpError(err error, http_code int) HttpError {
+	return HttpError{
 		error: err,
 		Type:  EXTERNAL,
 		Code:  http_code,
 	}
 }
 
-func NewEmptyHandlerError() HandlerError {
-	return HandlerError{
+func NewEmptyHttpError() HttpError {
+	return HttpError{
 		Type: EMPTY,
 	}
 }

@@ -46,28 +46,28 @@ func TestRegister(t *testing.T) {
 		name         string
 		username     string
 		password     string
-		expected_err httperror.HandlerError
+		expected_err httperror.HttpError
 		get_from_db  bool
 	}{
 		{
 			name:         "Base register",
 			username:     "register_test1",
 			password:     "123",
-			expected_err: httperror.NewEmptyHandlerError(),
+			expected_err: httperror.NewEmptyHttpError(),
 			get_from_db:  true,
 		},
 		{
 			name:         "Empty name",
 			username:     "",
 			password:     "123",
-			expected_err: httperror.NewExternalHandlerError(auth.ErrNameIsEmpty, http.StatusBadRequest),
+			expected_err: httperror.NewExternalHttpError(auth.ErrNameIsEmpty, http.StatusBadRequest),
 			get_from_db:  false,
 		},
 		{
 			name:         "Already register",
 			username:     "register_test2",
 			password:     "123",
-			expected_err: httperror.NewExternalHandlerError(auth.ErrUserAlreadyExists, http.StatusContinue),
+			expected_err: httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusContinue),
 			get_from_db:  true,
 		},
 	}
@@ -145,28 +145,28 @@ func TestLogin(t *testing.T) {
 	cases := []struct {
 		name          string
 		user          auth.User
-		expected_herr httperror.HandlerError
+		expected_herr httperror.HttpError
 		check_jwt     bool
 	}{
 		{
 			name:          "Empty username",
 			user:          auth.NewUser("", ""),
-			expected_herr: httperror.NewExternalHandlerError(auth.ErrNameIsEmpty, http.StatusBadRequest),
+			expected_herr: httperror.NewExternalHttpError(auth.ErrNameIsEmpty, http.StatusBadRequest),
 		},
 		{
 			name:          "Not registered",
 			user:          auth.NewUser("unregistered user", "123"),
-			expected_herr: httperror.NewExternalHandlerError(auth.ErrUserNotExist, http.StatusNotFound),
+			expected_herr: httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusNotFound),
 		},
 		{
 			name:          "Wrong password",
 			user:          auth.NewUser("login_test1", "123"),
-			expected_herr: httperror.NewExternalHandlerError(auth.ErrWrongPassword, http.StatusBadRequest),
+			expected_herr: httperror.NewExternalHttpError(auth.ErrWrongPassword, http.StatusBadRequest),
 		},
 		{
 			name:          "Normal login",
 			user:          auth.NewUser("login_test2", "123"),
-			expected_herr: httperror.NewEmptyHandlerError(),
+			expected_herr: httperror.NewEmptyHttpError(),
 			check_jwt:     true,
 		},
 	}
