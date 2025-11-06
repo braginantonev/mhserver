@@ -4,14 +4,14 @@ import (
 	"errors"
 	"net/http"
 
-	htypes "github.com/braginantonev/mhserver/pkg/handler_types"
+	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 
 var (
-	HErrGetJWTClaims htypes.HandlerError = htypes.NewInternalHandlerError(errors.New("failed get jwt claims"), "WithAuth")
+	HErrGetJWTClaims httperror.HandlerError = httperror.NewInternalHandlerError(errors.New("failed get jwt claims"), "WithAuth")
 
-	HErrUserNotRegistered htypes.HandlerError = htypes.NewExternalHandlerError(errors.New("user not registered"), http.StatusUnauthorized)
-	HErrUserNotAuthorized htypes.HandlerError = htypes.NewExternalHandlerError(errors.New("user not authorized"), http.StatusUnauthorized)
-	HErrBadJWTToken       htypes.HandlerError = htypes.NewExternalHandlerError(errors.New("bad jwt token"), http.StatusBadRequest)
-	HErrBadJWTSignature   htypes.HandlerError = htypes.NewExternalHandlerError(errors.New("bad jwt token signature"), http.StatusBadRequest)
+	HErrUserNotRegistered httperror.HandlerError = httperror.NewExternalHandlerError(errors.New("user not registered"), http.StatusUnauthorized)
+	HErrUserNotAuthorized httperror.HandlerError = httperror.NewExternalHandlerError(errors.New("user not authorized"), http.StatusUnauthorized)
+	HErrBadJWTToken       httperror.HandlerError = httperror.NewExternalHandlerError(errors.New("bad jwt token"), http.StatusBadRequest)
+	HErrBadJWTSignature   httperror.HandlerError = httperror.NewExternalHandlerError(errors.New("bad jwt token signature"), http.StatusBadRequest)
 )

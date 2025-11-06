@@ -1,4 +1,4 @@
-package handlertypes
+package httperror
 
 import (
 	"errors"

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	types "github.com/braginantonev/mhserver/pkg/handler_types"
+	"github.com/braginantonev/mhserver/pkg/httperror"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,23 +28,23 @@ func NewUser(name string, password string) User {
 	}
 }
 
-func Login(user User, db *sql.DB, jwt_signature string) (string, types.HandlerError) {
+func Login(user User, db *sql.DB, jwt_signature string) (string, httperror.HandlerError) {
 	if user.Name == "" {
-		return "", types.NewExternalHandlerError(ErrNameIsEmpty, http.StatusBadRequest)
+		return "", httperror.NewExternalHandlerError(ErrNameIsEmpty, http.StatusBadRequest)
 	}
 
 	db_user := User{}
 	row := db.QueryRow(SELECT_USER, user.Name)
 	if err := row.Scan(&db_user.Name, &db_user.Password); err != nil {
 		if err == sql.ErrNoRows {
-			return "", types.NewExternalHandlerError(ErrUserNotExist, http.StatusNotFound)
+			return "", httperror.NewExternalHandlerError(ErrUserNotExist, http.StatusNotFound)
 		}
 
-		return "", types.NewInternalHandlerError(err, "Login")
+		return "", httperror.NewInternalHandlerError(err, "Login")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(user.Password)); err != nil {
-		return "", types.NewExternalHandlerError(ErrWrongPassword, http.StatusBadRequest)
+		return "", httperror.NewExternalHandlerError(ErrWrongPassword, http.StatusBadRequest)
 	}
 
 	now := time.Now()
@@ -57,30 +57,30 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, types.HandlerEr
 
 	token_str, err := token.SignedString([]byte(jwt_signature))
 	if err != nil {
-		return "", types.NewInternalHandlerError(err, "Login")
+		return "", httperror.NewInternalHandlerError(err, "Login")
 	}
 
-	return token_str, types.NewEmptyHandlerError()
+	return token_str, httperror.NewEmptyHandlerError()
 }
 
-func Register(user User, db *sql.DB) types.HandlerError {
+func Register(user User, db *sql.DB) httperror.HandlerError {
 	if user.Name == "" {
-		return types.NewExternalHandlerError(ErrNameIsEmpty, http.StatusBadRequest)
+		return httperror.NewExternalHandlerError(ErrNameIsEmpty, http.StatusBadRequest)
 	}
 
 	row := db.QueryRow(SELECT_USERID, user.Name)
 	if err := row.Scan(); err != sql.ErrNoRows {
-		return types.NewExternalHandlerError(ErrUserAlreadyExists, http.StatusContinue)
+		return httperror.NewExternalHandlerError(ErrUserAlreadyExists, http.StatusContinue)
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return types.NewInternalHandlerError(err, "Register")
+		return httperror.NewInternalHandlerError(err, "Register")
 	}
 
 	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
-		return types.NewInternalHandlerError(err, "Register")
+		return httperror.NewInternalHandlerError(err, "Register")
 	}
 
-	return types.NewEmptyHandlerError()
+	return httperror.NewEmptyHandlerError()
 }
