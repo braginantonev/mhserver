@@ -16,12 +16,12 @@ import (
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httperror"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func open_db(pass string, server_name string) (*sql.DB, error) {
-	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", pass, server_name))
+func open_db() (*sql.DB, error) {
+	app := application.NewApplication()
+	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
 	if err != nil {
 		return nil, err
 	}
@@ -35,13 +35,6 @@ func open_db(pass string, server_name string) (*sql.DB, error) {
 
 // Todo: Добавить тесты для Login
 func TestRegister(t *testing.T) {
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	app := application.NewApplication()
-
 	cases := []struct {
 		name         string
 		username     string
@@ -72,7 +65,7 @@ func TestRegister(t *testing.T) {
 		},
 	}
 
-	db, err := open_db(app.DB_Pass, app.ServerName)
+	db, err := open_db()
 	if err != nil {
 		t.Error(err)
 		return
@@ -129,18 +122,13 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	app := application.NewApplication()
-
-	db, err := open_db(app.DB_Pass, app.ServerName)
+	db, err := open_db()
 	if err != nil {
 		t.Error(err)
 		return
 	}
+
+	jwt_signature := "test"
 
 	cases := []struct {
 		name          string
@@ -182,7 +170,7 @@ func TestLogin(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			token, herr := auth.Login(test.user, db, app.JWTSignature)
+			token, herr := auth.Login(test.user, db, jwt_signature)
 			if err := test.expected_herr.CompareWith(herr); err != nil {
 				t.Error(err)
 			}
@@ -196,7 +184,7 @@ func TestLogin(t *testing.T) {
 					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 				}
 
-				return []byte(app.JWTSignature), nil
+				return []byte(jwt_signature), nil
 			})
 
 			if err != nil {
