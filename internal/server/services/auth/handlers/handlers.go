@@ -11,6 +11,11 @@ import (
 )
 
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
@@ -40,10 +45,14 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(token))
-
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
