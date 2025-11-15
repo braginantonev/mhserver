@@ -4,16 +4,17 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/BurntSushi/toml"
 	_ "github.com/go-sql-driver/mysql"
 )
 
+const CONFIG_PATH string = "/usr/share/mhserver/mhserver.conf"
+
 type (
 	Config struct {
 		ServerName    string `toml:"server_name"`
-		WorkspacePath string
+		WorkspacePath string `toml:"workspace_path"`
 		JWTSignature  string `toml:"jwt_signature"`
 		DB_Pass       string `toml:"db_pass"`
 		SubServers    map[string]SubServer
@@ -30,18 +31,7 @@ type (
 func NewConfig() Config {
 	var cfg Config
 
-	workspacePath, loaded := os.LookupEnv("WORKSPACE_PATH")
-	if !loaded {
-		panic(fmt.Sprintf("WORKSPACE_PATH %s", ErrEnvironmentNotFound.Error()))
-	}
-	cfg.WorkspacePath = workspacePath
-
-	config_path, loaded := os.LookupEnv("CONFIG_PATH")
-	if !loaded {
-		panic(fmt.Sprintf("CONFIG_PATH %s", ErrEnvironmentNotFound.Error()))
-	}
-
-	if _, err := toml.DecodeFile(config_path, &cfg); err != nil {
+	if _, err := toml.DecodeFile(CONFIG_PATH, &cfg); err != nil {
 		panic(fmt.Sprintf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
 	}
 

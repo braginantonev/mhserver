@@ -10,17 +10,11 @@ import (
 	"github.com/braginantonev/mhserver/internal/server/services/auth"
 	auth_handlers "github.com/braginantonev/mhserver/internal/server/services/auth/handlers"
 	auth_middlewares "github.com/braginantonev/mhserver/internal/server/services/auth/middlewares"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("Error loading .env file", err)
-	}
-
 	app := application.NewApplication()
-	if err = app.InitDB(); err != nil {
+	if err := app.InitDB(); err != nil {
 		slog.Error(err.Error())
 	}
 
@@ -41,7 +35,7 @@ func main() {
 		nil,
 	)
 
-	if err = srv.Run(fmt.Sprintf("%s:%s", app.SubServers["main"].IP, app.SubServers["main"].Port)); err != nil {
+	if err := srv.Run(fmt.Sprintf("%s:%s", app.SubServers["main"].IP, app.SubServers["main"].Port)); err != nil {
 		os.Exit(1)
 	}
 
