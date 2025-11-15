@@ -15,7 +15,6 @@ import (
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httperror"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -33,7 +32,6 @@ func open_db() (*sql.DB, error) {
 	return DB, nil
 }
 
-// Todo: Добавить тесты для Login
 func TestRegister(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -179,25 +177,8 @@ func TestLogin(t *testing.T) {
 				return
 			}
 
-			tokenFromString, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-				}
-
-				return []byte(jwt_signature), nil
-			})
-
-			if err != nil {
-				t.Errorf("failed parse jwt: %s", err.Error())
-				return
-			}
-
-			if claims, ok := tokenFromString.Claims.(jwt.MapClaims); ok {
-				if claims["name"] != test.user.Name {
-					t.Errorf("expected user name: `%s`, but got `%s`", test.user.Name, claims["name"])
-				}
-			} else {
-				t.Error("failed get claims from jwt")
+			if err := auth.CheckJWTUserMatch(test.user.Name, token, jwt_signature); err != nil {
+				t.Error(err)
 			}
 		})
 
