@@ -21,11 +21,11 @@ const (
 )
 
 type HttpError struct {
-	error
 	Type       HttpErrorType
 	StatusCode int
 
-	funcName string // for internal errors only
+	description string
+	funcName    string // for internal errors only
 }
 
 // Return nil, if errors not different
@@ -54,27 +54,31 @@ func (herr HttpError) Write(w http.ResponseWriter) bool {
 		return false
 
 	case EXTERNAL:
-		http.Error(w, fmt.Sprintf("error: %s", herr.Error()), herr.StatusCode)
+		http.Error(w, herr.Error(), herr.StatusCode)
 		return false
 	}
 
 	return true
 }
 
+func (herr HttpError) Error() string {
+	return fmt.Sprintf("%s (code: %d)", herr.description, herr.StatusCode)
+}
+
 func NewInternalHttpError(err error, func_name string) HttpError {
 	return HttpError{
-		error:      err,
-		Type:       INTERNAL,
-		StatusCode: http.StatusInternalServerError,
-		funcName:   func_name,
+		Type:        INTERNAL,
+		StatusCode:  http.StatusInternalServerError,
+		description: err.Error(),
+		funcName:    func_name,
 	}
 }
 
 func NewExternalHttpError(err error, status_code int) HttpError {
 	return HttpError{
-		error:      err,
-		Type:       EXTERNAL,
-		StatusCode: status_code,
+		Type:        EXTERNAL,
+		StatusCode:  status_code,
+		description: err.Error(),
 	}
 }
 
