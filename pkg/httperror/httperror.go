@@ -22,8 +22,8 @@ const (
 
 type HttpError struct {
 	error
-	Type HttpErrorType
-	Code int
+	Type       HttpErrorType
+	StatusCode int
 
 	funcName string // for internal errors only
 }
@@ -34,8 +34,8 @@ func (herr HttpError) CompareWith(http_error HttpError) error {
 		return fmt.Errorf(BAD_TYPE, herr.Type, http_error.Type)
 	}
 
-	if herr.Code != http_error.Code {
-		return fmt.Errorf(BAD_CODE, herr.Code, http_error.Code)
+	if herr.StatusCode != http_error.StatusCode {
+		return fmt.Errorf(BAD_CODE, herr.StatusCode, http_error.StatusCode)
 	}
 
 	if http_error.Type != EMPTY && herr.Type != EMPTY && !errors.Is(http_error, herr) {
@@ -54,7 +54,7 @@ func (herr HttpError) Write(w http.ResponseWriter) bool {
 		return false
 
 	case EXTERNAL:
-		http.Error(w, fmt.Sprintf("error: %s", herr.Error()), herr.Code)
+		http.Error(w, fmt.Sprintf("error: %s", herr.Error()), herr.StatusCode)
 		return false
 	}
 
@@ -63,18 +63,18 @@ func (herr HttpError) Write(w http.ResponseWriter) bool {
 
 func NewInternalHttpError(err error, func_name string) HttpError {
 	return HttpError{
-		error:    err,
-		Type:     INTERNAL,
-		Code:     http.StatusInternalServerError,
-		funcName: func_name,
+		error:      err,
+		Type:       INTERNAL,
+		StatusCode: http.StatusInternalServerError,
+		funcName:   func_name,
 	}
 }
 
-func NewExternalHttpError(err error, http_code int) HttpError {
+func NewExternalHttpError(err error, status_code int) HttpError {
 	return HttpError{
-		error: err,
-		Type:  EXTERNAL,
-		Code:  http_code,
+		error:      err,
+		Type:       EXTERNAL,
+		StatusCode: status_code,
 	}
 }
 
