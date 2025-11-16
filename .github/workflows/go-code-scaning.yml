@@ -2,14 +2,34 @@ name: Go Code Scanning
 
 on: [push, pull_request]
 
-permissions:
-  contents: read
-  pull-requests: read
-
 jobs:
+  analyze:
+    name: CodeQL Analyze
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      security-events: write
+
+    strategy:
+        fail-fast: false
+        matrix:
+          language: ['go']
+    
+    steps:
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+
   scan:
     name: Scan Go Code
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: read
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -17,7 +37,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.25'
 
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v8
