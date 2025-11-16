@@ -39,7 +39,7 @@ func (herr HttpError) CompareWith(http_error HttpError) error {
 	}
 
 	if http_error.Type != EMPTY && herr.Type != EMPTY && !errors.Is(http_error, herr) {
-		return fmt.Errorf(BAD_ERROR, herr.Error(), http_error.Error())
+		return fmt.Errorf(BAD_ERROR, herr.description, http_error.description)
 	}
 
 	return nil
@@ -49,12 +49,13 @@ func (herr HttpError) CompareWith(http_error HttpError) error {
 func (herr HttpError) Write(w http.ResponseWriter) bool {
 	switch herr.Type {
 	case INTERNAL:
-		slog.Error(herr.Error(), slog.String("handler", herr.funcName))
+		slog.Error(herr.description, slog.String("handler", herr.funcName))
 		w.WriteHeader(http.StatusInternalServerError)
 		return false
 
 	case EXTERNAL:
-		http.Error(w, herr.Error(), herr.StatusCode)
+		w.WriteHeader(herr.StatusCode)
+		w.Write([]byte(herr.description))
 		return false
 	}
 
@@ -62,7 +63,7 @@ func (herr HttpError) Write(w http.ResponseWriter) bool {
 }
 
 func (herr HttpError) Error() string {
-	return fmt.Sprintf("%s (code: %d)", herr.description, herr.StatusCode)
+	return herr.description
 }
 
 func NewInternalHttpError(err error, func_name string) HttpError {

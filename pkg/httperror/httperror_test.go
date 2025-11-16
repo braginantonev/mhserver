@@ -52,7 +52,7 @@ func TestCompareWith(t *testing.T) {
 			name:          "Bad errors",
 			http_err:      httperror.NewInternalHttpError(errTest, ""),
 			test_http_err: httperror.NewInternalHttpError(fmt.Errorf("t"), ""),
-			expected_err:  fmt.Errorf(httperror.BAD_ERROR, fmt.Sprint(errTest.Error(), " (code: 500)"), "t (code: 500)"),
+			expected_err:  fmt.Errorf(httperror.BAD_ERROR, errTest, "t"),
 		},
 	}
 
