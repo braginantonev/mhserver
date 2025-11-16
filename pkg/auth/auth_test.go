@@ -139,7 +139,7 @@ func TestLogin(t *testing.T) {
 		{
 			name:          "Not registered",
 			user:          auth.NewUser("unregistered user", "123"),
-			expected_herr: httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusNotFound),
+			expected_herr: httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusBadRequest),
 		},
 		{
 			name:          "Wrong password",

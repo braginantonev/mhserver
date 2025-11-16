@@ -38,7 +38,7 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, httperror.HttpE
 	row := db.QueryRow(SELECT_USER, user.Name)
 	if err := row.Scan(&db_user.Name, &db_user.Password); err != nil {
 		if err == sql.ErrNoRows {
-			return "", httperror.NewExternalHttpError(ErrUserNotExist, http.StatusNotFound)
+			return "", httperror.NewExternalHttpError(ErrUserNotExist, http.StatusBadRequest)
 		}
 
 		return "", httperror.NewInternalHttpError(err, "Login")
