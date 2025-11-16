@@ -24,15 +24,15 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body) == 0 {
-		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -61,8 +61,8 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body) == 0 {
-		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
 		return
 	}
 
