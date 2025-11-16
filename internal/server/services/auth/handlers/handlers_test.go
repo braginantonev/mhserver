@@ -146,18 +146,18 @@ func TestLogin(t *testing.T) {
 				t.Errorf("expected status code %d, but got %d", test.expected_code, res.StatusCode)
 			}
 
-			goted_body, err := io.ReadAll(w.Body)
+			received_body, err := io.ReadAll(w.Body)
 			if err != nil {
 				t.Error(err)
 			}
 
 			if test.expected_code == http.StatusOK {
-				if err := auth.CheckJWTUserMatch(test.user.Name, string(goted_body), TEST_JWT_SIG); err != nil {
+				if err := auth.CheckJWTUserMatch(test.user.Name, string(received_body), TEST_JWT_SIG); err != nil {
 					t.Error(err)
 				}
 			} else {
-				if string(goted_body) != test.expected_body {
-					t.Errorf("expected body: \"%s\"\nbut got: \"%s\"", test.expected_body, string(goted_body))
+				if string(received_body) != test.expected_body {
+					t.Errorf("expected body: \"%s\"\nbut got: \"%s\"", test.expected_body, string(received_body))
 				}
 			}
 		})
