@@ -1,3 +1,5 @@
+//! Run this test with sudo
+
 package auth_handlers_test
 
 import (

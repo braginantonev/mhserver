@@ -24,15 +24,13 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
+		services.WriteResponse(w, []byte(services.MESSAGE_REQUEST_BODY_EMPTY), http.StatusBadRequest)
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		services.WriteResponse(w, []byte(err.Error()), http.StatusBadRequest)
 		return
 	}
 
@@ -61,8 +59,7 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
+		services.WriteResponse(w, []byte(services.MESSAGE_REQUEST_BODY_EMPTY), http.StatusBadRequest)
 		return
 	}
 
