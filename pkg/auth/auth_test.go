@@ -64,7 +64,6 @@ func TestRegister(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defer db.Close()
 
 	hash, err := bcrypt.GenerateFromPassword([]byte("123"), bcrypt.DefaultCost)
 	if err != nil {
@@ -117,12 +116,6 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	db, err := open_db()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
 	jwt_signature := "test"
 
 	cases := []struct {
@@ -152,6 +145,12 @@ func TestLogin(t *testing.T) {
 			expected_herr: httperror.NewEmptyHttpError(),
 			check_jwt:     true,
 		},
+	}
+
+	db, err := open_db()
+	if err != nil {
+		t.Error(err)
+		return
 	}
 
 	wrong_password_user := auth.NewUser("login_test1", "321")

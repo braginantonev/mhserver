@@ -55,7 +55,12 @@ func (herr HttpError) Write(w http.ResponseWriter) bool {
 
 	case EXTERNAL:
 		w.WriteHeader(herr.StatusCode)
-		w.Write([]byte(herr.description))
+
+		_, err := w.Write([]byte(herr.description))
+		if err != nil {
+			slog.Error("error write response", slog.String("error", err.Error()))
+		}
+
 		return false
 	}
 

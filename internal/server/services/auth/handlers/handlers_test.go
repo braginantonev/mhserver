@@ -115,7 +115,6 @@ func TestLogin(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer db.Close()
 
 	handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
 		JWTSignature: TEST_JWT_SIG,

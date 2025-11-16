@@ -41,8 +41,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(token))
+	services.WriteResponse(w, []byte(token), http.StatusOK)
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
