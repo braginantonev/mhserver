@@ -1,8 +1,4 @@
-//! *************************
-//!
-//! Run this test with sudo!
-//!
-//! *************************
+//! Run this test with sudo
 
 package auth_test
 
@@ -68,6 +64,7 @@ func TestRegister(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	defer db.Close()
 
 	hash, err := bcrypt.GenerateFromPassword([]byte("123"), bcrypt.DefaultCost)
 	if err != nil {
