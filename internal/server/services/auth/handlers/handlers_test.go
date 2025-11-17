@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +17,7 @@ import (
 	auth_handlers "github.com/braginantonev/mhserver/internal/server/services/auth/handlers"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httperror"
+	"github.com/braginantonev/mhserver/pkg/httptestutils"
 )
 
 const TEST_JWT_SIG string = "test123"
@@ -36,21 +36,13 @@ func (user TestUser) ToJSON() ([]byte, error) {
 	return json.Marshal(user)
 }
 
-func open_db() (*sql.DB, error) {
-	app := application.NewApplication()
-	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
-	if err != nil {
-		return nil, err
-	}
-
-	if err = DB.Ping(); err != nil {
-		return nil, err
-	}
-
-	return DB, nil
-}
-
 func TestLogin(t *testing.T) {
+	app := application.NewApplication()
+	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cases := []struct {
 		name          string
 		method        string
@@ -111,11 +103,6 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	db, err := open_db()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
 		JWTSignature: TEST_JWT_SIG,
 		DB:           db,
@@ -172,7 +159,8 @@ func TestLogin(t *testing.T) {
 }
 
 func TestRegister(t *testing.T) {
-	db, err := open_db()
+	app := application.NewApplication()
+	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
 	if err != nil {
 		t.Fatal(err)
 	}
