@@ -1,7 +1,6 @@
 #!/bin/bash
 
 CONFIG_PATH=/usr/share/mhserver/
-ENV_PATH=$(pwd)/.env
 CONFIG_NAME=mhserver.conf
 
 SUB_SERVERS=(main files music images llm)
@@ -32,34 +31,6 @@ fi
 sudo chmod 600 $CONFIG_NAME
 
 echo "Hello! Let's setup your home server"
-workspacePath=""
-
-echo # Skip the line
-
-read -p "Do you wan't set uniq server workspace path? (y/n): " workspacePath
-if [[ $workspacePath != 'y' ]]; then
-    workspacePath=~/.mhserver/
-else
-    workspacePath=""
-    while [ -z $workspacePath ]; do
-        read -p "Enter your new path (use full path): " workspacePath
-    done
-fi
-echo "Server workspace path is set to $workspacePath"
-
-if [[ !(-e $workspacePath) ]]; then
-    sudo mkdir $workspacePath
-fi
-
-#* --- Create .env for go app --- *#
-
-if [[ -f $ENV_PATH ]]; then
-    rm $ENV_PATH
-fi
-
-touch $ENV_PATH
-echo -e "CONFIG_PATH=\"$CONFIG_PATH$CONFIG_NAME\"" >> $ENV_PATH
-echo -e "WORKSPACE_PATH=\"$workspacePath\"" >> $ENV_PATH
 
 #* ---  Setup server name --- *#
 echo # Skip the line
@@ -75,6 +46,28 @@ echo -e "server_name = \"$server_name\"" | sudo tee -a $CONFIG_NAME > /dev/null
 if [ $? -ne 0 ]; then
     echo -e "\aInternal error. Please tell me about this in Github Issues."
     exit 1
+fi
+
+#* --- Create server workspace folder --- *#
+workspacePath=""
+
+echo # Skip the line
+read -p "Do you wan't set uniq server workspace path? (y/n): " workspacePath
+if [[ $workspacePath != 'y' ]]; then
+    workspacePath=~/.mhserver/
+else
+    workspacePath=""
+    while [ -z $workspacePath ]; do
+        read -p "Enter your new path (use full path): " workspacePath
+    done
+fi
+
+echo -e "workspace_path = \"$workspacePath\"" | sudo tee -a $CONFIG_NAME > /dev/null
+
+echo "Server workspace path is set to $workspacePath"
+
+if [[ !(-e $workspacePath) ]]; then
+    sudo mkdir $workspacePath
 fi
 
 #* Generate jwt secrete signature
@@ -106,11 +99,11 @@ while [ -z $sql_driver ]; do
     read -p "What sql-driver you use? (mysql or mariadb): " sql_driver
 done
 
-echo "Generating database..."
+echo "Generating server database..."
+
 sudo $sql_driver -u root -e "CREATE DATABASE IF NOT EXISTS $server_name;
 CREATE USER IF NOT EXISTS 'mhserver'@'localhost' IDENTIFIED BY '$db_pass';
-GRANT ALL PRIVILEGES ON $server_name.* TO 'mhserver'@'localhost';
-"
+GRANT ALL PRIVILEGES ON $server_name.* TO 'mhserver'@'localhost';"
 
 if [ $? -ne 0 ]; then
     echo -e "\aError in generating server databases"
@@ -120,7 +113,7 @@ fi
 #* ---- Create table: Users ---- *#
 
 echo "Database has been generated"
-echo -e "\nGenerating users table..."
+echo -e "\nGenerating user tables..."
 
 echo "NOTE: Use your new password"
 $sql_driver -u mhserver -p -e "USE $server_name;

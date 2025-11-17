@@ -1,8 +1,4 @@
-//! *************************
-//!
-//! Run this test with sudo!
-//!
-//! *************************
+//! Run this test with sudo
 
 package auth_test
 
@@ -15,13 +11,12 @@ import (
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httperror"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func open_db(pass string, server_name string) (*sql.DB, error) {
-	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", pass, server_name))
+func open_db() (*sql.DB, error) {
+	app := application.NewApplication()
+	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
 	if err != nil {
 		return nil, err
 	}
@@ -33,15 +28,7 @@ func open_db(pass string, server_name string) (*sql.DB, error) {
 	return DB, nil
 }
 
-// Todo: Добавить тесты для Login
 func TestRegister(t *testing.T) {
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	app := application.NewApplication()
-
 	cases := []struct {
 		name         string
 		username     string
@@ -72,7 +59,7 @@ func TestRegister(t *testing.T) {
 		},
 	}
 
-	db, err := open_db(app.DB_Pass, app.ServerName)
+	db, err := open_db()
 	if err != nil {
 		t.Error(err)
 		return
@@ -129,18 +116,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	app := application.NewApplication()
-
-	db, err := open_db(app.DB_Pass, app.ServerName)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	jwt_signature := "test"
 
 	cases := []struct {
 		name          string
@@ -156,7 +132,7 @@ func TestLogin(t *testing.T) {
 		{
 			name:          "Not registered",
 			user:          auth.NewUser("unregistered user", "123"),
-			expected_herr: httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusNotFound),
+			expected_herr: httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusBadRequest),
 		},
 		{
 			name:          "Wrong password",
@@ -171,6 +147,12 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
+	db, err := open_db()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	wrong_password_user := auth.NewUser("login_test1", "321")
 	if herr := auth.Register(wrong_password_user, db); herr.Type != httperror.EMPTY {
 		t.Error(herr.Error())
@@ -182,7 +164,7 @@ func TestLogin(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			token, herr := auth.Login(test.user, db, app.JWTSignature)
+			token, herr := auth.Login(test.user, db, jwt_signature)
 			if err := test.expected_herr.CompareWith(herr); err != nil {
 				t.Error(err)
 			}
@@ -191,25 +173,8 @@ func TestLogin(t *testing.T) {
 				return
 			}
 
-			tokenFromString, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-				}
-
-				return []byte(app.JWTSignature), nil
-			})
-
-			if err != nil {
-				t.Errorf("failed parse jwt: %s", err.Error())
-				return
-			}
-
-			if claims, ok := tokenFromString.Claims.(jwt.MapClaims); ok {
-				if claims["name"] != test.user.Name {
-					t.Errorf("expected user name: `%s`, but got `%s`", test.user.Name, claims["name"])
-				}
-			} else {
-				t.Error("failed get claims from jwt")
+			if err := auth.CheckJWTUserMatch(test.user.Name, token, jwt_signature); err != nil {
+				t.Error(err)
 			}
 		})
 

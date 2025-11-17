@@ -8,6 +8,11 @@ import (
 	"github.com/braginantonev/mhserver/internal/server/services/data"
 )
 
+const (
+	LOGIN_ENDPOINT    string = "/api/users/login"
+	REGISTER_ENDPOINT string = "/api/users/register"
+)
+
 type Services struct {
 	AuthService *auth.AuthService
 	DataService *data.DataService
@@ -32,8 +37,8 @@ func NewServer(
 func (s Server) Run(addr string) error {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/api/users/login", s.AuthService.Handlers.Login)
-	mux.HandleFunc("/api/users/register", s.AuthService.Handlers.Register)
+	mux.HandleFunc(LOGIN_ENDPOINT, s.AuthService.Handlers.Login)
+	mux.HandleFunc(REGISTER_ENDPOINT, s.AuthService.Handlers.Register)
 
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		slog.Error(err.Error())

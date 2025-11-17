@@ -11,6 +11,11 @@ import (
 )
 
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
@@ -19,15 +24,13 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body) == 0 {
-		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
-		w.WriteHeader(http.StatusBadRequest)
+		services.WriteResponse(w, []byte(services.MESSAGE_REQUEST_BODY_EMPTY), http.StatusBadRequest)
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		services.WriteResponse(w, []byte(err.Error()), http.StatusBadRequest)
 		return
 	}
 
@@ -38,12 +41,15 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(token))
-
+	services.WriteResponse(w, []byte(token), http.StatusOK)
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
@@ -52,8 +58,7 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body) == 0 {
-		w.Write([]byte(services.MESSAGE_REQUEST_BODY_EMPTY))
-		w.WriteHeader(http.StatusBadRequest)
+		services.WriteResponse(w, []byte(services.MESSAGE_REQUEST_BODY_EMPTY), http.StatusBadRequest)
 		return
 	}
 

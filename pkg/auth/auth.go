@@ -2,6 +2,7 @@ package auth
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -37,7 +38,7 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, httperror.HttpE
 	row := db.QueryRow(SELECT_USER, user.Name)
 	if err := row.Scan(&db_user.Name, &db_user.Password); err != nil {
 		if err == sql.ErrNoRows {
-			return "", httperror.NewExternalHttpError(ErrUserNotExist, http.StatusNotFound)
+			return "", httperror.NewExternalHttpError(ErrUserNotExist, http.StatusBadRequest)
 		}
 
 		return "", httperror.NewInternalHttpError(err, "Login")
@@ -83,4 +84,28 @@ func Register(user User, db *sql.DB) httperror.HttpError {
 	}
 
 	return httperror.NewEmptyHttpError()
+}
+
+func CheckJWTUserMatch(username string, token string, signature string) error {
+	tokenFromString, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(signature), nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed parse jwt: %s", err.Error())
+	}
+
+	if claims, ok := tokenFromString.Claims.(jwt.MapClaims); ok {
+		if claims["name"] != username {
+			return fmt.Errorf("expected user name: `%s`, but got `%s`", username, claims["name"])
+		}
+	} else {
+		return fmt.Errorf("failed get claims from jwt")
+	}
+
+	return nil
 }

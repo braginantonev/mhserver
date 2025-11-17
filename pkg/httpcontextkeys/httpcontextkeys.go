@@ -1,4 +1,4 @@
-package httpctxkey
+package httpcontextkeys
 
 type HTTPContextKey int
 

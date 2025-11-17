@@ -50,9 +50,9 @@ func TestCompareWith(t *testing.T) {
 		},
 		{
 			name:          "Bad errors",
-			http_err:      httperror.NewInternalHttpError(errTest, "GoodWorld"),
-			test_http_err: httperror.NewInternalHttpError(fmt.Errorf("t"), "BadWorld"),
-			expected_err:  fmt.Errorf(httperror.BAD_ERROR, errTest.Error(), "t"),
+			http_err:      httperror.NewInternalHttpError(errTest, ""),
+			test_http_err: httperror.NewInternalHttpError(fmt.Errorf("t"), ""),
+			expected_err:  fmt.Errorf(httperror.BAD_ERROR, errTest, "t"),
 		},
 	}
 
@@ -65,7 +65,7 @@ func TestCompareWith(t *testing.T) {
 			}
 
 			if err != nil && test.expected_err != nil && err.Error() != test.expected_err.Error() {
-				t.Errorf("expected `%s`, but got `%s`", test.expected_err.Error(), err.Error())
+				t.Errorf("expected: \"%s\",\nbut got: \"%s\"", test.expected_err.Error(), err.Error())
 			}
 		})
 	}
