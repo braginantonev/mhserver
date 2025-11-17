@@ -2,11 +2,9 @@ package auth_middlewares
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"net/http"
 
-	contextkeys "github.com/braginantonev/mhserver/pkg/http_context_key"
+	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -25,7 +23,6 @@ func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 
 		parsed_token, err := jwt.Parse(token, func(t *jwt.Token) (any, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				slog.Error(fmt.Sprintf("In WithAuth mid, expected alg: %s", t.Header["alg"]))
 				return nil, HErrBadJWTToken
 			}
 
@@ -37,7 +34,7 @@ func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if claims, ok := parsed_token.Claims.(jwt.MapClaims); ok {
-			r = r.WithContext(context.WithValue(context.Background(), contextkeys.USERNAME, claims["name"].(string)))
+			r = r.WithContext(context.WithValue(context.Background(), httpcontextkeys.USERNAME, claims["name"].(string)))
 		} else {
 			//Todo: Internal error
 			return

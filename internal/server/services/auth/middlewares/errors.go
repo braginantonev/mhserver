@@ -13,5 +13,4 @@ var (
 	HErrUserNotRegistered httperror.HttpError = httperror.NewExternalHttpError(errors.New("user not registered"), http.StatusUnauthorized)
 	HErrUserNotAuthorized httperror.HttpError = httperror.NewExternalHttpError(errors.New("user not authorized"), http.StatusUnauthorized)
 	HErrBadJWTToken       httperror.HttpError = httperror.NewExternalHttpError(errors.New("bad jwt token"), http.StatusBadRequest)
-	HErrBadJWTSignature   httperror.HttpError = httperror.NewExternalHttpError(errors.New("bad jwt token signature"), http.StatusBadRequest)
 )
