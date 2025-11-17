@@ -59,7 +59,7 @@ func TestLogin(t *testing.T) {
 		expected_body string
 	}{
 		{
-			name:   "bad method",
+			name:   "wrong method",
 			method: http.MethodPost,
 			user: TestUser{
 				User:                auth.NewUser("not registered", "123"),
@@ -113,7 +113,7 @@ func TestLogin(t *testing.T) {
 
 	db, err := open_db()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
@@ -124,17 +124,15 @@ func TestLogin(t *testing.T) {
 	for _, test := range cases {
 		if test.user.Register {
 			reg_err := auth.Register(test.user.User, db)
-			if reg_err.Type != httperror.EMPTY && reg_err.StatusCode != http.StatusContinue {
-				t.Error(reg_err)
-				return
+			if reg_err.Type == httperror.INTERNAL {
+				t.Fatal(reg_err)
 			}
 		}
 
 		t.Run(test.name, func(t *testing.T) {
 			body, err := test.user.ToJSON()
 			if err != nil {
-				t.Error(err)
-				return
+				t.Fatal(err)
 			}
 
 			req := httptest.NewRequest(test.method, server.LOGIN_ENDPOINT, bytes.NewReader(body))
@@ -142,6 +140,7 @@ func TestLogin(t *testing.T) {
 
 			handler.Login(w, req)
 			res := w.Result()
+			defer res.Body.Close()
 
 			if res.StatusCode != test.expected_code {
 				t.Errorf("expected status code %d, but got %d", test.expected_code, res.StatusCode)
@@ -164,6 +163,109 @@ func TestLogin(t *testing.T) {
 		})
 	}
 
+	// Clear registered users
+	for _, test := range cases {
+		if _, err := db.Exec("delete from users where user=?", test.user.Name); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestRegister(t *testing.T) {
+	db, err := open_db()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name          string
+		method        string
+		user          TestUser
+		expected_code int
+		expected_body string
+	}{
+		{
+			name:   "wrong method",
+			method: http.MethodGet,
+			user: TestUser{
+				User:                auth.NewUser("not registered", "123"),
+				IsConvertibleToJSON: true,
+			},
+			expected_code: http.StatusMethodNotAllowed,
+			expected_body: "",
+		},
+		{
+			name:   "normal register",
+			method: http.MethodPost,
+			user: TestUser{
+				User:                auth.NewUser("register_handler_test1", "123"),
+				IsConvertibleToJSON: true,
+			},
+			expected_code: http.StatusOK,
+			expected_body: "",
+		},
+		{
+			name:   "empty username",
+			method: http.MethodPost,
+			user: TestUser{
+				User:                auth.NewUser("", "123"),
+				IsConvertibleToJSON: true,
+			},
+			expected_code: http.StatusBadRequest,
+			expected_body: auth.ErrNameIsEmpty.Error(),
+		},
+		{
+			name:   "empty request",
+			method: http.MethodPost,
+			user: TestUser{
+				User:                auth.NewUser("register_handler_test1", "123"),
+				IsConvertibleToJSON: false,
+			},
+			expected_code: http.StatusBadRequest,
+			expected_body: services.MESSAGE_REQUEST_BODY_EMPTY,
+		},
+	}
+
+	handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
+		DB:           db,
+		JWTSignature: TEST_JWT_SIG,
+	})
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			req_body, err := test.user.ToJSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			req := httptest.NewRequest(test.method, server.REGISTER_ENDPOINT, bytes.NewReader(req_body))
+			w := httptest.NewRecorder()
+
+			handler.Register(w, req)
+			res := w.Result()
+			defer res.Body.Close()
+
+			if res.StatusCode != test.expected_code {
+				t.Errorf("expected status code %d, but got %d", test.expected_code, res.StatusCode)
+			}
+
+			resp_body, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(resp_body) != test.expected_body {
+				t.Errorf("expected body: \"%s\"\nbut got \"%s\"", test.expected_body, string(resp_body))
+			}
+
+			row := db.QueryRow("select id from users where name=?", test.user.Name)
+			if err := row.Scan(); err == sql.ErrNoRows {
+				t.Error("user not found in db")
+			}
+		})
+	}
+
+	// Clear registered users
 	for _, test := range cases {
 		if _, err := db.Exec("delete from users where user=?", test.user.Name); err != nil {
 			t.Fatal(err)
