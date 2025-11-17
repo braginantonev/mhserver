@@ -8,9 +8,11 @@ import (
 )
 
 var (
-	HErrGetJWTClaims httperror.HttpError = httperror.NewInternalHttpError(errors.New("failed get jwt claims"), "WithAuth")
+	ErrGetJWTClaims httperror.HttpError = httperror.NewInternalHttpError(errors.New("failed get jwt claims"), "WithAuth")
 
-	HErrUserNotRegistered httperror.HttpError = httperror.NewExternalHttpError(errors.New("user not registered"), http.StatusUnauthorized)
-	HErrUserNotAuthorized httperror.HttpError = httperror.NewExternalHttpError(errors.New("user not authorized"), http.StatusUnauthorized)
-	HErrBadJWTToken       httperror.HttpError = httperror.NewExternalHttpError(errors.New("bad jwt token"), http.StatusBadRequest)
+	ErrUserNotAuthorized   httperror.HttpError = httperror.NewExternalHttpError(errors.New("user not authorized"), http.StatusUnauthorized)
+	ErrBadJWTToken         httperror.HttpError = httperror.NewExternalHttpError(errors.New("bad jwt token"), http.StatusBadRequest)
+	ErrJwtSignatureInvalid httperror.HttpError = httperror.NewExternalHttpError(errors.New("jwt signature is invalid"), http.StatusBadRequest)
+
+	ErrAuthorizationExpired httperror.HttpError = httperror.NewExternalHttpError(errors.New("authorization expired"), http.StatusUnauthorized)
 )
