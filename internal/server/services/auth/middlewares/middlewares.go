@@ -2,6 +2,7 @@ package auth_middlewares
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
@@ -13,7 +14,7 @@ func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
 		if token == "" {
-			HErrUserNotAuthorized.Write(w)
+			ErrUserNotAuthorized.Write(w)
 			return
 		}
 
@@ -23,13 +24,20 @@ func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 
 		parsed_token, err := jwt.Parse(token, func(t *jwt.Token) (any, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, HErrBadJWTToken
+				return nil, ErrBadJWTToken
 			}
 
 			return []byte(mid.cfg.JWTSignature), nil
 		})
 		if err != nil {
-			HErrBadJWTToken.Write(w)
+			switch {
+			case errors.Is(err, jwt.ErrTokenExpired):
+				ErrAuthorizationExpired.Write(w)
+			case errors.Is(err, jwt.ErrSignatureInvalid):
+				ErrJwtSignatureInvalid.Write(w)
+			default:
+				ErrBadJWTToken.Write(w)
+			}
 			return
 		}
 
