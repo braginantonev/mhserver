@@ -60,6 +60,28 @@ func (herr HttpError) Write(w http.ResponseWriter) {
 	}
 }
 
+// Change func name, which will be logged
+func (herr HttpError) WithFuncName(func_name string) HttpError {
+	herr.funcName = func_name
+	return herr
+}
+
+/*
+Add new info to error description.
+For example:
+
+	error "internal error" + error "fatal error" = error "internal error;\nfatal error"
+*/
+func (herr HttpError) Append(new_err error) HttpError {
+	if herr.description == "" {
+		herr.description = new_err.Error()
+	} else {
+		herr.description += ";\n" + new_err.Error()
+	}
+
+	return herr
+}
+
 func (herr HttpError) Error() string {
 	return herr.description
 }
