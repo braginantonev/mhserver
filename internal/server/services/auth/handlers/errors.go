@@ -15,6 +15,10 @@ var (
 		auth.ErrWrongPassword.Error():     httperror.NewExternalHttpError(auth.ErrWrongPassword, http.StatusBadRequest),
 		auth.ErrUserAlreadyExists.Error(): httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusContinue),
 	}
+
+	ErrRequestBodyEmpty = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)
+	ErrBadJsonBody      = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
+	ErrFailedReadBody      = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
 )
 
 /*

@@ -6,9 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/internal/server/services"
 	"github.com/braginantonev/mhserver/pkg/auth"
-	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -19,18 +17,18 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		httperror.NewInternalHttpError(err, "LoginHandler.io.ReadAll").Write(w)
+		ErrFailedReadBody.Append(err).WithFuncName("LoginHandler.io.ReadAll").Write(w)
 		return
 	}
 
 	if len(body) == 0 {
-		httperror.NewExternalHttpError(services.ErrRequestBodyEmpty, http.StatusBadRequest).Write(w)
+		ErrRequestBodyEmpty.Write(w)
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		httperror.NewExternalHttpError(err, http.StatusBadRequest).Write(w)
+		ErrBadJsonBody.Append(err).Write(w)
 		return
 	}
 
@@ -40,7 +38,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, err, "auth.Login")
 	} else {
-		services.WriteResponse(w, []byte(token), http.StatusOK)
+		w.Write([]byte(token))
 	}
 }
 
@@ -52,22 +50,22 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		httperror.NewInternalHttpError(err, "RegisterHandler.io.ReadAll").Write(w)
+		ErrFailedReadBody.Append(err).WithFuncName("RegisterHandler.io.ReadAll").Write(w)
 		return
 	}
 
 	if len(body) == 0 {
-		httperror.NewExternalHttpError(services.ErrRequestBodyEmpty, http.StatusBadRequest).Write(w)
+		ErrRequestBodyEmpty.Write(w)
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		httperror.NewInternalHttpError(err, "RegisterHandler.json.Unmarshal").Write(w)
+		ErrBadJsonBody.Append(err).Write(w)
 		return
 	}
 
-	slog.Info("Register request.", slog.String("username", user.Name))
+	slog.Info("Registration request", slog.String("username", user.Name))
 
 	if err := auth.Register(user, handler.cfg.DB); err != nil {
 		writeError(w, err, "auth.Register")

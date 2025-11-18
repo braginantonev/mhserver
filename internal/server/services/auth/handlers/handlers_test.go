@@ -13,7 +13,6 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/internal/server"
-	"github.com/braginantonev/mhserver/internal/server/services"
 	auth_handlers "github.com/braginantonev/mhserver/internal/server/services/auth/handlers"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httptestutils"
@@ -64,7 +63,7 @@ func TestLogin(t *testing.T) {
 				IsConvertibleToJSON: false, // Empty json request
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: services.ErrRequestBodyEmpty.Error(),
+			expected_body: auth_handlers.ErrRequestBodyEmpty.Error(),
 		},
 		{
 			name:   "bad password",
@@ -195,7 +194,7 @@ func TestRegister(t *testing.T) {
 				IsConvertibleToJSON: false,
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: services.ErrRequestBodyEmpty.Error(),
+			expected_body: auth_handlers.ErrRequestBodyEmpty.Error(),
 		},
 	}
 
