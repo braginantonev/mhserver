@@ -18,6 +18,8 @@ var (
 )
 
 /*
+Wrapper for "github.com/braginantonev/mhserver/pkg/auth" errors. Also that is a shit
+
 args values:
 
 	0 - function name (for internal errors)

@@ -64,7 +64,7 @@ func TestLogin(t *testing.T) {
 				IsConvertibleToJSON: false, // Empty json request
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: services.MESSAGE_REQUEST_BODY_EMPTY,
+			expected_body: services.ErrRequestBodyEmpty.Error(),
 		},
 		{
 			name:   "bad password",
@@ -195,7 +195,7 @@ func TestRegister(t *testing.T) {
 				IsConvertibleToJSON: false,
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: services.MESSAGE_REQUEST_BODY_EMPTY,
+			expected_body: services.ErrRequestBodyEmpty.Error(),
 		},
 	}
 

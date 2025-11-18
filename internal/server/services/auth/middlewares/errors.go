@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrGetJWTClaims httperror.HttpError = httperror.NewInternalHttpError(errors.New("failed get jwt claims"), "WithAuth")
+	ErrGetJWTClaims httperror.HttpError = httperror.NewInternalHttpError(errors.New("failed get jwt claims"), "AuthMiddleware.WithAuth")
 
 	ErrUserNotAuthorized   httperror.HttpError = httperror.NewExternalHttpError(errors.New("user not authorized"), http.StatusUnauthorized)
 	ErrBadJWTToken         httperror.HttpError = httperror.NewExternalHttpError(errors.New("bad jwt token"), http.StatusBadRequest)

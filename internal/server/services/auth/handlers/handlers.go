@@ -19,19 +19,18 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		httperror.NewInternalHttpError(err, "LoginHandler.io.ReadAll").Write(w)
 		return
 	}
 
 	if len(body) == 0 {
-		services.WriteResponse(w, []byte(services.MESSAGE_REQUEST_BODY_EMPTY), http.StatusBadRequest)
+		httperror.NewExternalHttpError(services.ErrRequestBodyEmpty, http.StatusBadRequest).Write(w)
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		services.WriteResponse(w, []byte(err.Error()), http.StatusBadRequest)
+		httperror.NewExternalHttpError(err, http.StatusBadRequest).Write(w)
 		return
 	}
 
@@ -39,7 +38,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
 	if err != nil {
-		writeError(w, err, "Login")
+		writeError(w, err, "auth.Login")
 	} else {
 		services.WriteResponse(w, []byte(token), http.StatusOK)
 	}
@@ -53,19 +52,18 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		httperror.NewInternalHttpError(err, "RegisterHandler.io.ReadAll").Write(w)
 		return
 	}
 
 	if len(body) == 0 {
-		services.WriteResponse(w, []byte(services.MESSAGE_REQUEST_BODY_EMPTY), http.StatusBadRequest)
+		httperror.NewExternalHttpError(services.ErrRequestBodyEmpty, http.StatusBadRequest).Write(w)
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		httperror.NewInternalHttpError(err, "json.Unmarshal").Write(w)
+		httperror.NewInternalHttpError(err, "RegisterHandler.json.Unmarshal").Write(w)
 		return
 	}
 
