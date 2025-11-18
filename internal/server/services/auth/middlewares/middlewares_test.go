@@ -1,6 +1,7 @@
 package auth_middlewares_test
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	auth_middlewares "github.com/braginantonev/mhserver/internal/server/services/auth/middlewares"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
-	"github.com/braginantonev/mhserver/pkg/httperror"
 	"github.com/braginantonev/mhserver/pkg/httptestutils"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -118,18 +118,18 @@ func TestWithAuth(t *testing.T) {
 
 	for _, test := range cases {
 		if test.user.Register {
-			reg_err := auth.Register(test.user.User, db)
-			if reg_err.Type == httperror.INTERNAL {
-				t.Fatal(reg_err)
+			err := auth.Register(test.user.User, db)
+			if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
+				t.Fatal(err)
 			}
 		}
 
 		t.Run(test.name, func(t *testing.T) {
 			if !test.token.IsWrong {
-				var login_err httperror.HttpError
-				test.token.string, login_err = auth.Login(test.user.User, db, app.JWTSignature)
-				if login_err.Type == httperror.INTERNAL {
-					t.Fatal(login_err)
+				var err error
+				test.token.string, err = auth.Login(test.user.User, db, app.JWTSignature)
+				if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
+					t.Fatal(err)
 				}
 			}
 
@@ -149,8 +149,7 @@ func TestWithAuth(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			mid_fn := middleware.WithAuth(check_fn)
-			mid_fn.ServeHTTP(w, req)
+			middleware.WithAuth(check_fn).ServeHTTP(w, req)
 
 			res := w.Result()
 			defer res.Body.Close()

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/internal/server/services"
 	"github.com/braginantonev/mhserver/pkg/auth"
 )
 
@@ -18,30 +17,29 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrFailedReadBody.Append(err).WithFuncName("LoginHandler.io.ReadAll").Write(w)
 		return
 	}
 
 	if len(body) == 0 {
-		services.WriteResponse(w, []byte(services.MESSAGE_REQUEST_BODY_EMPTY), http.StatusBadRequest)
+		ErrRequestBodyEmpty.Write(w)
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		services.WriteResponse(w, []byte(err.Error()), http.StatusBadRequest)
+		ErrBadJsonBody.Append(err).Write(w)
 		return
 	}
 
-	slog.Info("Login request.", slog.String("username", user.Name))
+	slog.Info("Login request", slog.String("username", user.Name))
 
-	token, herr := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
-	if cont := herr.Write(w); !cont {
-		return
+	token, err := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
+	if err != nil {
+		writeError(w, err, "auth.Login")
+	} else {
+		w.Write([]byte(token))
 	}
-
-	services.WriteResponse(w, []byte(token), http.StatusOK)
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -52,29 +50,24 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrFailedReadBody.Append(err).WithFuncName("RegisterHandler.io.ReadAll").Write(w)
 		return
 	}
 
 	if len(body) == 0 {
-		services.WriteResponse(w, []byte(services.MESSAGE_REQUEST_BODY_EMPTY), http.StatusBadRequest)
+		ErrRequestBodyEmpty.Write(w)
 		return
 	}
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrBadJsonBody.Append(err).Write(w)
 		return
 	}
 
-	slog.Info("Register request.", slog.String("username", user.Name))
+	slog.Info("Registration request", slog.String("username", user.Name))
 
-	herr := auth.Register(user, handler.cfg.DB)
-	if cont := herr.Write(w); !cont {
-		return
+	if err := auth.Register(user, handler.cfg.DB); err != nil {
+		writeError(w, err, "auth.Register")
 	}
-
-	w.WriteHeader(http.StatusOK)
 }

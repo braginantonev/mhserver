@@ -17,7 +17,6 @@ const (
 
 	INTERNAL HttpErrorType = iota
 	EXTERNAL
-	EMPTY
 )
 
 type HttpError struct {
@@ -38,20 +37,18 @@ func (herr HttpError) CompareWith(http_error HttpError) error {
 		return fmt.Errorf(BAD_CODE, herr.StatusCode, http_error.StatusCode)
 	}
 
-	if http_error.Type != EMPTY && herr.Type != EMPTY && !errors.Is(http_error, herr) {
+	if !errors.Is(http_error, herr) {
 		return fmt.Errorf(BAD_ERROR, herr.description, http_error.description)
 	}
 
 	return nil
 }
 
-// If error is empty, return true
-func (herr HttpError) Write(w http.ResponseWriter) bool {
+func (herr HttpError) Write(w http.ResponseWriter) {
 	switch herr.Type {
 	case INTERNAL:
 		slog.Error(herr.description, slog.String("handler", herr.funcName))
 		w.WriteHeader(http.StatusInternalServerError)
-		return false
 
 	case EXTERNAL:
 		w.WriteHeader(herr.StatusCode)
@@ -60,11 +57,29 @@ func (herr HttpError) Write(w http.ResponseWriter) bool {
 		if err != nil {
 			slog.Error("error write response", slog.String("error", err.Error()))
 		}
+	}
+}
 
-		return false
+// Change func name, which will be logged
+func (herr HttpError) WithFuncName(func_name string) HttpError {
+	herr.funcName = func_name
+	return herr
+}
+
+/*
+Add new info to error description.
+For example:
+
+	error "internal error" + error "fatal error" = error "internal error;\nfatal error"
+*/
+func (herr HttpError) Append(new_err error) HttpError {
+	if herr.description == "" {
+		herr.description = new_err.Error()
+	} else {
+		herr.description += ";\n" + new_err.Error()
 	}
 
-	return true
+	return herr
 }
 
 func (herr HttpError) Error() string {
@@ -85,11 +100,5 @@ func NewExternalHttpError(err error, status_code int) HttpError {
 		Type:        EXTERNAL,
 		StatusCode:  status_code,
 		description: err.Error(),
-	}
-}
-
-func NewEmptyHttpError() HttpError {
-	return HttpError{
-		Type: EMPTY,
 	}
 }
