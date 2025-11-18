@@ -9,16 +9,16 @@ import (
 )
 
 var (
-	authErrors = map[string]httperror.HttpError{
-		auth.ErrNameIsEmpty.Error():       httperror.NewExternalHttpError(auth.ErrNameIsEmpty, http.StatusBadRequest),
-		auth.ErrUserNotExist.Error():      httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusBadRequest),
-		auth.ErrWrongPassword.Error():     httperror.NewExternalHttpError(auth.ErrWrongPassword, http.StatusBadRequest),
-		auth.ErrUserAlreadyExists.Error(): httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusContinue),
+	authErrors = map[error]httperror.HttpError{
+		auth.ErrNameIsEmpty:       httperror.NewExternalHttpError(auth.ErrNameIsEmpty, http.StatusBadRequest),
+		auth.ErrUserNotExist:      httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusBadRequest),
+		auth.ErrWrongPassword:     httperror.NewExternalHttpError(auth.ErrWrongPassword, http.StatusBadRequest),
+		auth.ErrUserAlreadyExists: httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusContinue),
 	}
 
 	ErrRequestBodyEmpty = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)
 	ErrBadJsonBody      = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
-	ErrFailedReadBody      = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
+	ErrFailedReadBody   = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
 )
 
 /*
@@ -32,6 +32,6 @@ func writeError(w http.ResponseWriter, err error, args ...string) {
 	if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
 		httperror.NewInternalHttpError(err, args[0]).Write(w)
 	} else {
-		authErrors[err.Error()].Write(w)
+		authErrors[err].Write(w)
 	}
 }
