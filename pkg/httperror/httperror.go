@@ -17,7 +17,6 @@ const (
 
 	INTERNAL HttpErrorType = iota
 	EXTERNAL
-	EMPTY
 )
 
 type HttpError struct {
@@ -38,7 +37,7 @@ func (herr HttpError) CompareWith(http_error HttpError) error {
 		return fmt.Errorf(BAD_CODE, herr.StatusCode, http_error.StatusCode)
 	}
 
-	if http_error.Type != EMPTY && herr.Type != EMPTY && !errors.Is(http_error, herr) {
+	if !errors.Is(http_error, herr) {
 		return fmt.Errorf(BAD_ERROR, herr.description, http_error.description)
 	}
 
@@ -85,11 +84,5 @@ func NewExternalHttpError(err error, status_code int) HttpError {
 		Type:        EXTERNAL,
 		StatusCode:  status_code,
 		description: err.Error(),
-	}
-}
-
-func NewEmptyHttpError() HttpError {
-	return HttpError{
-		Type: EMPTY,
 	}
 }

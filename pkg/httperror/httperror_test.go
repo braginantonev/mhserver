@@ -19,12 +19,6 @@ func TestCompareWith(t *testing.T) {
 		expected_err  error
 	}{
 		{
-			name:          "Good empty http error",
-			http_err:      httperror.NewEmptyHttpError(),
-			test_http_err: httperror.NewEmptyHttpError(),
-			expected_err:  nil,
-		},
-		{
 			name:          "Good external http error",
 			http_err:      httperror.NewExternalHttpError(errTest, http.StatusNotFound),
 			test_http_err: httperror.NewExternalHttpError(errTest, http.StatusNotFound),
@@ -35,12 +29,6 @@ func TestCompareWith(t *testing.T) {
 			http_err:      httperror.NewInternalHttpError(errTest, "TestCompareWith"),
 			test_http_err: httperror.NewInternalHttpError(errTest, "TestCompareWith"),
 			expected_err:  nil,
-		},
-		{
-			name:          "Bad types",
-			http_err:      httperror.NewEmptyHttpError(),
-			test_http_err: httperror.NewInternalHttpError(errTest, "TestCompareWith"),
-			expected_err:  fmt.Errorf(httperror.BAD_TYPE, httperror.EMPTY, httperror.INTERNAL),
 		},
 		{
 			name:          "Bad http codes",
