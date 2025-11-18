@@ -3,10 +3,8 @@ package auth
 import (
 	"database/sql"
 	"fmt"
-	"net/http"
 	"time"
 
-	"github.com/braginantonev/mhserver/pkg/httperror"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -29,23 +27,23 @@ func NewUser(name string, password string) User {
 	}
 }
 
-func Login(user User, db *sql.DB, jwt_signature string) (string, httperror.HttpError) {
+func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 	if user.Name == "" {
-		return "", httperror.NewExternalHttpError(ErrNameIsEmpty, http.StatusBadRequest)
+		return "", ErrNameIsEmpty
 	}
 
 	db_user := User{}
 	row := db.QueryRow(SELECT_USER, user.Name)
 	if err := row.Scan(&db_user.Name, &db_user.Password); err != nil {
 		if err == sql.ErrNoRows {
-			return "", httperror.NewExternalHttpError(ErrUserNotExist, http.StatusBadRequest)
+			return "", ErrUserNotExist
 		}
 
-		return "", httperror.NewInternalHttpError(err, "Login")
+		return "", err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(user.Password)); err != nil {
-		return "", httperror.NewExternalHttpError(ErrWrongPassword, http.StatusBadRequest)
+		return "", ErrWrongPassword
 	}
 
 	now := time.Now()
@@ -58,53 +56,53 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, httperror.HttpE
 
 	token_str, err := token.SignedString([]byte(jwt_signature))
 	if err != nil {
-		return "", httperror.NewInternalHttpError(err, "Login")
+		return "", err
 	}
 
-	return token_str, httperror.NewEmptyHttpError()
+	return token_str, nil
 }
 
-func Register(user User, db *sql.DB) httperror.HttpError {
+func Register(user User, db *sql.DB) error {
 	if user.Name == "" {
-		return httperror.NewExternalHttpError(ErrNameIsEmpty, http.StatusBadRequest)
+		return ErrNameIsEmpty
 	}
 
 	row := db.QueryRow(SELECT_USERID, user.Name)
 	if err := row.Scan(); err != sql.ErrNoRows {
-		return httperror.NewExternalHttpError(ErrUserAlreadyExists, http.StatusContinue)
+		return ErrUserAlreadyExists
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return httperror.NewInternalHttpError(err, "Register")
+		return err
 	}
 
 	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
-		return httperror.NewInternalHttpError(err, "Register")
+		return err
 	}
 
-	return httperror.NewEmptyHttpError()
+	return nil
 }
 
 func CheckJWTUserMatch(username string, token string, signature string) error {
 	tokenFromString, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("%w: %s", ErrJwtSignatureInvalid, token.Header["alg"])
 		}
 
 		return []byte(signature), nil
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed parse jwt: %s", err.Error())
+		return err
 	}
 
 	if claims, ok := tokenFromString.Claims.(jwt.MapClaims); ok {
 		if claims["name"] != username {
-			return fmt.Errorf("expected user name: `%s`, but got `%s`", username, claims["name"])
+			return fmt.Errorf("%w\n\texpected user name: `%s`, but got `%s`", ErrWrongJWTName, username, claims["name"])
 		}
 	} else {
-		return fmt.Errorf("failed get claims from jwt")
+		return ErrBadClaims
 	}
 
 	return nil

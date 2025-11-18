@@ -4,13 +4,12 @@ package auth_test
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/pkg/auth"
-	"github.com/braginantonev/mhserver/pkg/httperror"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -33,28 +32,28 @@ func TestRegister(t *testing.T) {
 		name         string
 		username     string
 		password     string
-		expected_err httperror.HttpError
+		expected_err error
 		get_from_db  bool
 	}{
 		{
 			name:         "Base register",
 			username:     "register_test1",
 			password:     "123",
-			expected_err: httperror.NewEmptyHttpError(),
+			expected_err: nil,
 			get_from_db:  true,
 		},
 		{
 			name:         "Empty name",
 			username:     "",
 			password:     "123",
-			expected_err: httperror.NewExternalHttpError(auth.ErrNameIsEmpty, http.StatusBadRequest),
+			expected_err: auth.ErrNameIsEmpty,
 			get_from_db:  false,
 		},
 		{
 			name:         "Already register",
 			username:     "register_test2",
 			password:     "123",
-			expected_err: httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusContinue),
+			expected_err: auth.ErrUserAlreadyExists,
 			get_from_db:  true,
 		},
 	}
@@ -78,13 +77,13 @@ func TestRegister(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			herr := auth.Register(auth.User{
+			err := auth.Register(auth.User{
 				Name:     test.username,
 				Password: test.password,
 			}, db)
 
-			if err := test.expected_err.CompareWith(herr); err != nil {
-				t.Error(err)
+			if !errors.Is(err, test.expected_err) {
+				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
 			}
 
 			if !test.get_from_db {
@@ -119,31 +118,31 @@ func TestLogin(t *testing.T) {
 	jwt_signature := "test"
 
 	cases := []struct {
-		name          string
-		user          auth.User
-		expected_herr httperror.HttpError
-		check_jwt     bool
+		name         string
+		user         auth.User
+		expected_err error
+		check_jwt    bool
 	}{
 		{
-			name:          "Empty username",
-			user:          auth.NewUser("", ""),
-			expected_herr: httperror.NewExternalHttpError(auth.ErrNameIsEmpty, http.StatusBadRequest),
+			name:         "Empty username",
+			user:         auth.NewUser("", ""),
+			expected_err: auth.ErrNameIsEmpty,
 		},
 		{
-			name:          "Not registered",
-			user:          auth.NewUser("unregistered user", "123"),
-			expected_herr: httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusBadRequest),
+			name:         "Not registered",
+			user:         auth.NewUser("unregistered user", "123"),
+			expected_err: auth.ErrUserNotExist,
 		},
 		{
-			name:          "Wrong password",
-			user:          auth.NewUser("login_test1", "123"),
-			expected_herr: httperror.NewExternalHttpError(auth.ErrWrongPassword, http.StatusBadRequest),
+			name:         "Wrong password",
+			user:         auth.NewUser("login_test1", "123"),
+			expected_err: auth.ErrWrongPassword,
 		},
 		{
-			name:          "Normal login",
-			user:          auth.NewUser("login_test2", "123"),
-			expected_herr: httperror.NewEmptyHttpError(),
-			check_jwt:     true,
+			name:         "Normal login",
+			user:         auth.NewUser("login_test2", "123"),
+			expected_err: nil,
+			check_jwt:    true,
 		},
 	}
 
@@ -154,19 +153,19 @@ func TestLogin(t *testing.T) {
 	}
 
 	wrong_password_user := auth.NewUser("login_test1", "321")
-	if herr := auth.Register(wrong_password_user, db); herr.Type != httperror.EMPTY {
-		t.Error(herr.Error())
+	if err := auth.Register(wrong_password_user, db); err != nil {
+		t.Fatal(err)
 	}
 
-	if herr := auth.Register(cases[3].user, db); herr.Type != httperror.EMPTY {
-		t.Error(herr.Error())
+	if err := auth.Register(cases[3].user, db); err != nil {
+		t.Fatal(err)
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			token, herr := auth.Login(test.user, db, jwt_signature)
-			if err := test.expected_herr.CompareWith(herr); err != nil {
-				t.Error(err)
+			token, err := auth.Login(test.user, db, jwt_signature)
+			if !errors.Is(err, test.expected_err) {
+				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
 			}
 
 			if !test.check_jwt {
