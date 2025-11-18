@@ -5,6 +5,7 @@ package auth_handlers_test
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +16,6 @@ import (
 	"github.com/braginantonev/mhserver/internal/server/services"
 	auth_handlers "github.com/braginantonev/mhserver/internal/server/services/auth/handlers"
 	"github.com/braginantonev/mhserver/pkg/auth"
-	"github.com/braginantonev/mhserver/pkg/httperror"
 	"github.com/braginantonev/mhserver/pkg/httptestutils"
 )
 
@@ -95,9 +95,9 @@ func TestLogin(t *testing.T) {
 
 	for _, test := range cases {
 		if test.user.Register {
-			reg_err := auth.Register(test.user.User, db)
-			if reg_err.Type == httperror.INTERNAL {
-				t.Fatal(reg_err)
+			err := auth.Register(test.user.User, db)
+			if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
+				t.Fatal(err)
 			}
 		}
 
