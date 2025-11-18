@@ -44,13 +44,11 @@ func (herr HttpError) CompareWith(http_error HttpError) error {
 	return nil
 }
 
-// If error is empty, return true
-func (herr HttpError) Write(w http.ResponseWriter) bool {
+func (herr HttpError) Write(w http.ResponseWriter) {
 	switch herr.Type {
 	case INTERNAL:
 		slog.Error(herr.description, slog.String("handler", herr.funcName))
 		w.WriteHeader(http.StatusInternalServerError)
-		return false
 
 	case EXTERNAL:
 		w.WriteHeader(herr.StatusCode)
@@ -59,11 +57,7 @@ func (herr HttpError) Write(w http.ResponseWriter) bool {
 		if err != nil {
 			slog.Error("error write response", slog.String("error", err.Error()))
 		}
-
-		return false
 	}
-
-	return true
 }
 
 func (herr HttpError) Error() string {
