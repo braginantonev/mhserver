@@ -8,6 +8,7 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/server/services"
 	"github.com/braginantonev/mhserver/pkg/auth"
+	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -34,14 +35,14 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Login request.", slog.String("username", user.Name))
+	slog.Info("Login request", slog.String("username", user.Name))
 
-	token, herr := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
-	if cont := herr.Write(w); !cont {
-		return
+	token, err := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
+	if err != nil {
+		writeError(w, err, "Login")
+	} else {
+		services.WriteResponse(w, []byte(token), http.StatusOK)
 	}
-
-	services.WriteResponse(w, []byte(token), http.StatusOK)
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -64,17 +65,13 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user := auth.User{}
 	if err = json.Unmarshal(body, &user); err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		httperror.NewInternalHttpError(err, "json.Unmarshal").Write(w)
 		return
 	}
 
 	slog.Info("Register request.", slog.String("username", user.Name))
 
-	herr := auth.Register(user, handler.cfg.DB)
-	if cont := herr.Write(w); !cont {
-		return
+	if err := auth.Register(user, handler.cfg.DB); err != nil {
+		writeError(w, err, "auth.Register")
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
