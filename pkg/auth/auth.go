@@ -27,6 +27,7 @@ func NewUser(name string, password string) User {
 	}
 }
 
+// If user exist in database, return personal jwt token
 func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 	if user.Name == "" {
 		return "", ErrNameIsEmpty
@@ -39,7 +40,7 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 			return "", ErrUserNotExist
 		}
 
-		return "", err
+		return "", fmt.Errorf("%w: %s", ErrInternal, err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(user.Password)); err != nil {
@@ -56,12 +57,13 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 
 	token_str, err := token.SignedString([]byte(jwt_signature))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %s", ErrInternal, err)
 	}
 
 	return token_str, nil
 }
 
+// Crypt user password and put them to database
 func Register(user User, db *sql.DB) error {
 	if user.Name == "" {
 		return ErrNameIsEmpty
@@ -74,11 +76,11 @@ func Register(user User, db *sql.DB) error {
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %s", ErrInternal, err)
 	}
 
 	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
-		return err
+		return fmt.Errorf("%w: %s", ErrInternal, err)
 	}
 
 	return nil
