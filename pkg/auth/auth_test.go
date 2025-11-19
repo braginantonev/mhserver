@@ -60,19 +60,16 @@ func TestRegister(t *testing.T) {
 
 	db, err := open_db()
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte("123"), bcrypt.DefaultCost)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	_, err = db.Exec(auth.INSERT_USER, "register_test2", string(hash))
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	for _, test := range cases {
@@ -148,8 +145,7 @@ func TestLogin(t *testing.T) {
 
 	db, err := open_db()
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	wrong_password_user := auth.NewUser("login_test1", "321")
