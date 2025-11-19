@@ -38,7 +38,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, err, "auth.Login")
 	} else {
-		w.Write([]byte(token))
+		_, _ = w.Write([]byte(token))
 	}
 }
 

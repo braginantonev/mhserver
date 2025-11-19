@@ -152,7 +152,7 @@ func TestWithAuth(t *testing.T) {
 			middleware.WithAuth(check_fn).ServeHTTP(w, req)
 
 			res := w.Result()
-			defer res.Body.Close()
+			defer func() { _ = res.Body.Close() }()
 
 			if res.StatusCode != test.expected_code {
 				t.Errorf("expected status code %d, but got %d", test.expected_code, res.StatusCode)
