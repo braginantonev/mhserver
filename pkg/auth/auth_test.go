@@ -3,29 +3,15 @@
 package auth_test
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/pkg/auth"
+	"github.com/braginantonev/mhserver/pkg/httptestutils"
 	"golang.org/x/crypto/bcrypt"
 )
-
-func open_db() (*sql.DB, error) {
-	app := application.NewApplication()
-	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
-	if err != nil {
-		return nil, err
-	}
-
-	if err = DB.Ping(); err != nil {
-		return nil, err
-	}
-
-	return DB, nil
-}
 
 func TestRegister(t *testing.T) {
 	cases := []struct {
@@ -58,7 +44,8 @@ func TestRegister(t *testing.T) {
 		},
 	}
 
-	db, err := open_db()
+	app := application.NewApplication()
+	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +130,8 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	db, err := open_db()
+	app := application.NewApplication()
+	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
 	if err != nil {
 		t.Fatal(err)
 	}
