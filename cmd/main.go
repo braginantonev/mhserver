@@ -21,9 +21,10 @@ func main() {
 	//* Setup auth service
 	subservers_names := make([]string, 0, 5)
 	for name := range app.SubServers {
-		subservers_names = append(subservers_names, name)
+		if name != "main" {
+			subservers_names = append(subservers_names, name)
+		}
 	}
-	subservers_names = subservers_names[1:] //del main subserver name
 
 	auth_handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
 		DB:              app.DB,

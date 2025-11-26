@@ -1,11 +1,14 @@
 package data
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
-func GenerateUserFolders(workspace_path string, folders ...string) error {
+func GenerateUserFolders(path string, folders ...string) error {
 	var err error
 	for _, folder := range folders {
-		err = os.Mkdir(workspace_path+folder, 0660)
+		err = os.MkdirAll(fmt.Sprintf("%s/%s", path, folder), 0660)
 		if err != nil {
 			return err
 		}

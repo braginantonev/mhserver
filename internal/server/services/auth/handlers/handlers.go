@@ -40,7 +40,6 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, err, "auth.Login")
 	} else {
-
 		_, _ = w.Write([]byte(token))
 	}
 }
@@ -72,6 +71,7 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err := auth.Register(user, handler.cfg.DB); err != nil {
 		writeError(w, err, "auth.Register")
+		return
 	}
 
 	err = data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Name, handler.cfg.SubServersNames...)
