@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"github.com/braginantonev/mhserver/pkg/auth"
+	"github.com/braginantonev/mhserver/pkg/data"
+	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +40,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, err, "auth.Login")
 	} else {
+
 		_, _ = w.Write([]byte(token))
 	}
 }
@@ -69,5 +72,10 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err := auth.Register(user, handler.cfg.DB); err != nil {
 		writeError(w, err, "auth.Register")
+	}
+
+	err = data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Name, handler.cfg.SubServersNames...)
+	if err != nil {
+		httperror.NewInternalHttpError(err, "RegisterHandler.data.GenerateUserFolders").Write(w)
 	}
 }
