@@ -17,11 +17,15 @@ type CachedFile struct {
 	creation_time time.Time
 }
 
-func (c *CachedFile) Close() {
+func (c *CachedFile) close() {
 	_ = c.file.Close()
 }
 
-func (c *CachedFile) IsAlive() bool {
+func (c *CachedFile) restore() {
+	c.creation_time = time.Now()
+}
+
+func (c *CachedFile) isAlive() bool {
 	return time.Since(c.creation_time) < c.lifetime
 }
 
@@ -50,8 +54,8 @@ func (c *Cache) clean() {
 	defer c.mux.Unlock()
 
 	for key, file := range c.files {
-		if !file.IsAlive() {
-			file.Close()
+		if !file.isAlive() {
+			file.close()
 			delete(c.files, key)
 		}
 	}
@@ -66,11 +70,14 @@ func (c *Cache) Push(key string, file *os.File) {
 // Return true if file exist
 func (c *Cache) Get(key string) (*os.File, bool) {
 	c.mux.RLock()
-	file, ok := c.files[key]
+	cc_file, ok := c.files[key]
 	c.mux.RUnlock()
 
-	if ok && file.IsAlive() {
-		return file.file, true
+	if ok {
+		if !cc_file.isAlive() {
+			cc_file.restore()
+		}
+		return cc_file.file, true
 	} else {
 		c.clean()
 		return nil, false
