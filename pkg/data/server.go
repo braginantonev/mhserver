@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	pb "github.com/braginantonev/mhserver/proto/data"
@@ -42,9 +43,10 @@ type DataServer struct {
 	cache *Cache
 }
 
-func NewDataServer(cfg Config) *DataServer {
+func NewDataServer(ctx context.Context, cfg Config) *DataServer {
 	return &DataServer{
-		cfg: cfg,
+		cfg:   cfg,
+		cache: NewCache(ctx),
 	}
 }
 
@@ -53,8 +55,8 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 		return nil, ErrWrongAction
 	}
 
-	// "%s%s/%s" -> "/home/srv/.mhserver/" + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s", s.cfg.WorkspacePath, data.Info.Type.String(), data.Info.File)
+	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
+	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, data.Info.User, dataFolders[data.Info.Type], data.Info.File)
 
 	file, ok := s.cache.Get(file_path)
 	if !ok {
@@ -85,16 +87,17 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 }
 
 func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empty, error) {
-	// "%s%s/%s" -> "/home/srv/.mhserver/" + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s.part", s.cfg.WorkspacePath, data.Info.Type.String(), data.Info.File)
+	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
+	file_path := fmt.Sprintf("%s%s/%s/%s.part", s.cfg.WorkspacePath, data.Info.User, dataFolders[data.Info.Type], data.Info.File)
 
 	switch data.Action {
 	case pb.Action_Create:
-		file, err := os.OpenFile(file_path, os.O_CREATE, 0660)
+		file, err := os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
 		if err != nil && !errors.Is(err, os.ErrExist) {
 			return nil, fmt.Errorf("%w: %v", ErrInternal, err)
 		}
 		s.cache.Push(file_path, file)
+		slog.InfoContext(ctx, "Create file - "+file_path)
 
 	case pb.Action_Patch:
 		var err error
@@ -120,6 +123,7 @@ func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empt
 		if err != nil {
 			return nil, ErrFileNotExist
 		}
+		slog.InfoContext(ctx, "Rename - "+file_path)
 
 	default:
 		return nil, ErrWrongAction
