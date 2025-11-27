@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/braginantonev/mhserver/pkg/data"
 	pb "github.com/braginantonev/mhserver/proto/data"
@@ -40,7 +39,7 @@ func TestSaveData(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	defer lis.Close()
+	defer func() { _ = lis.Close() }()
 
 	go func() {
 		if err := grpc_server.Serve(lis); err != nil {
@@ -114,8 +113,6 @@ func TestSaveData(t *testing.T) {
 				t.Error(err)
 			}
 		}(i, send_data[:n])
-
-		<-time.After(150 * time.Millisecond)
 	}
 
 	wg.Wait()
