@@ -129,7 +129,7 @@ func (Action) EnumDescriptor() ([]byte, []int) {
 type FilePart struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Body          []byte                 `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
-	Offset        uint32                 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	Offset        int64                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -171,7 +171,7 @@ func (x *FilePart) GetBody() []byte {
 	return nil
 }
 
-func (x *FilePart) GetOffset() uint32 {
+func (x *FilePart) GetOffset() int64 {
 	if x != nil {
 		return x.Offset
 	}
@@ -305,7 +305,7 @@ const file_data_data_proto_rawDesc = "" +
 	"\x0fdata/data.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"6\n" +
 	"\bFilePart\x12\x12\n" +
 	"\x04body\x18\x01 \x01(\fR\x04body\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\rR\x06offset\"V\n" +
+	"\x06offset\x18\x02 \x01(\x03R\x06offset\"V\n" +
 	"\bDataInfo\x12\"\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x0e.data.DataTypeR\x04type\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
@@ -326,10 +326,9 @@ const file_data_data_proto_rawDesc = "" +
 	"\x06Finish\x10\x02\x12\n" +
 	"\n" +
 	"\x06Delete\x10\x03\x12\a\n" +
-	"\x03Get\x10\x042f\n" +
-	"\vDataService\x120\n" +
-	"\n" +
-	"UploadData\x12\n" +
+	"\x03Get\x10\x042d\n" +
+	"\vDataService\x12.\n" +
+	"\bSaveData\x12\n" +
 	".data.Data\x1a\x16.google.protobuf.Empty\x12%\n" +
 	"\aGetData\x12\n" +
 	".data.Data\x1a\x0e.data.FilePartB.Z,github.com/braginantonev/mhserver/proto/datab\x06proto3"
@@ -361,9 +360,9 @@ var file_data_data_proto_depIdxs = []int32{
 	3, // 1: data.Data.info:type_name -> data.DataInfo
 	1, // 2: data.Data.action:type_name -> data.Action
 	2, // 3: data.Data.part:type_name -> data.FilePart
-	4, // 4: data.DataService.UploadData:input_type -> data.Data
+	4, // 4: data.DataService.SaveData:input_type -> data.Data
 	4, // 5: data.DataService.GetData:input_type -> data.Data
-	5, // 6: data.DataService.UploadData:output_type -> google.protobuf.Empty
+	5, // 6: data.DataService.SaveData:output_type -> google.protobuf.Empty
 	2, // 7: data.DataService.GetData:output_type -> data.FilePart
 	6, // [6:8] is the sub-list for method output_type
 	4, // [4:6] is the sub-list for method input_type

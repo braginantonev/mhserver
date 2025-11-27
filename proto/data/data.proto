@@ -21,7 +21,7 @@ enum Action {
 
 message FilePart {
     bytes body = 1;
-    uint32 offset = 2;
+    int64 offset = 2;
 }
 
 message DataInfo {
@@ -37,6 +37,6 @@ message Data {
 }
 
 service DataService {
-    rpc UploadData (Data) returns (google.protobuf.Empty);
+    rpc SaveData (Data) returns (google.protobuf.Empty);
     rpc GetData (Data) returns (FilePart);
 }

@@ -20,15 +20,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DataService_UploadData_FullMethodName = "/data.DataService/UploadData"
-	DataService_GetData_FullMethodName    = "/data.DataService/GetData"
+	DataService_SaveData_FullMethodName = "/data.DataService/SaveData"
+	DataService_GetData_FullMethodName  = "/data.DataService/GetData"
 )
 
 // DataServiceClient is the client API for DataService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DataServiceClient interface {
-	UploadData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SaveData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*FilePart, error)
 }
 
@@ -40,10 +40,10 @@ func NewDataServiceClient(cc grpc.ClientConnInterface) DataServiceClient {
 	return &dataServiceClient{cc}
 }
 
-func (c *dataServiceClient) UploadData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *dataServiceClient) SaveData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, DataService_UploadData_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, DataService_SaveData_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (c *dataServiceClient) GetData(ctx context.Context, in *Data, opts ...grpc.
 // All implementations must embed UnimplementedDataServiceServer
 // for forward compatibility.
 type DataServiceServer interface {
-	UploadData(context.Context, *Data) (*emptypb.Empty, error)
+	SaveData(context.Context, *Data) (*emptypb.Empty, error)
 	GetData(context.Context, *Data) (*FilePart, error)
 	mustEmbedUnimplementedDataServiceServer()
 }
@@ -76,8 +76,8 @@ type DataServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedDataServiceServer struct{}
 
-func (UnimplementedDataServiceServer) UploadData(context.Context, *Data) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UploadData not implemented")
+func (UnimplementedDataServiceServer) SaveData(context.Context, *Data) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SaveData not implemented")
 }
 func (UnimplementedDataServiceServer) GetData(context.Context, *Data) (*FilePart, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetData not implemented")
@@ -103,20 +103,20 @@ func RegisterDataServiceServer(s grpc.ServiceRegistrar, srv DataServiceServer) {
 	s.RegisterService(&DataService_ServiceDesc, srv)
 }
 
-func _DataService_UploadData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DataService_SaveData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Data)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DataServiceServer).UploadData(ctx, in)
+		return srv.(DataServiceServer).SaveData(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DataService_UploadData_FullMethodName,
+		FullMethod: DataService_SaveData_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).UploadData(ctx, req.(*Data))
+		return srv.(DataServiceServer).SaveData(ctx, req.(*Data))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -147,8 +147,8 @@ var DataService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*DataServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UploadData",
-			Handler:    _DataService_UploadData_Handler,
+			MethodName: "SaveData",
+			Handler:    _DataService_SaveData_Handler,
 		},
 		{
 			MethodName: "GetData",

@@ -70,7 +70,7 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 	}
 
 	send_data := make([]byte, s.cfg.ChunkSize)
-	n, err := file.ReadAt(send_data, int64(data.Part.Offset))
+	n, err := file.ReadAt(send_data, data.Part.Offset)
 	if err != nil {
 		if err == io.EOF {
 			return nil, EOF
@@ -84,7 +84,7 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 	}, nil
 }
 
-func (s *DataServer) UploadData(ctx context.Context, data *pb.Data) (*emptypb.Empty, error) {
+func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empty, error) {
 	// "%s%s/%s" -> "/home/srv/.mhserver/" + file type (File, Image, Music etc) + file path (with filename)
 	file_path := fmt.Sprintf("%s%s/%s.part", s.cfg.WorkspacePath, data.Info.Type.String(), data.Info.File)
 
@@ -110,7 +110,7 @@ func (s *DataServer) UploadData(ctx context.Context, data *pb.Data) (*emptypb.Em
 			s.cache.Push(file_path, file)
 		}
 
-		_, err = file.WriteAt(data.Part.Body, int64(data.Part.Offset))
+		_, err = file.WriteAt(data.Part.Body, data.Part.Offset)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrInternal, err)
 		}
