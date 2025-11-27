@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"os"
 	"sync"
 	"time"
@@ -21,13 +22,17 @@ func (c *CachedFile) close() {
 }
 
 func (c *CachedFile) isExpired() bool {
-	return time.Now().Unix() < c.expiration
+	return time.Now().Unix() > c.expiration
 }
 
-func NewCachedFile(file *os.File, expiration int64) *CachedFile {
+func (c *CachedFile) updateExpiration() {
+	c.expiration = time.Now().Add(CACHE_LIFETIME).Unix()
+}
+
+func NewCachedFile(file *os.File) *CachedFile {
 	return &CachedFile{
 		file:       file,
-		expiration: expiration,
+		expiration: time.Now().Add(CACHE_LIFETIME).Unix(),
 	}
 }
 
@@ -36,17 +41,17 @@ type Cache struct {
 	mux   sync.RWMutex
 
 	clean_time time.Duration
-	close_ch   chan struct{}
+	ctx        context.Context
 }
 
-func NewCache() *Cache {
+func NewCache(ctx context.Context) *Cache {
 	cache := &Cache{
 		files:      make(map[string]*CachedFile),
 		mux:        sync.RWMutex{},
 		clean_time: CACHE_CLEAN_TIME,
-		close_ch:   make(chan struct{}),
+		ctx:        ctx,
 	}
-	cache.startCleaner()
+	go cache.startCleaner()
 
 	return cache
 }
@@ -56,7 +61,7 @@ func (c *Cache) clean() {
 	defer c.mux.Unlock()
 
 	for key, file := range c.files {
-		if !file.isExpired() {
+		if file.isExpired() {
 			file.close()
 			delete(c.files, key)
 		}
@@ -71,7 +76,7 @@ func (c *Cache) startCleaner() {
 		select {
 		case <-ticker.C:
 			c.clean()
-		case <-c.close_ch:
+		case <-c.ctx.Done():
 			return
 		}
 	}
@@ -79,7 +84,7 @@ func (c *Cache) startCleaner() {
 
 func (c *Cache) Push(key string, file *os.File) {
 	c.mux.Lock()
-	c.files[key] = NewCachedFile(file, time.Now().Unix())
+	c.files[key] = NewCachedFile(file)
 	c.mux.Unlock()
 }
 
@@ -90,12 +95,8 @@ func (c *Cache) Get(key string) (*os.File, bool) {
 	c.mux.RUnlock()
 
 	if ok {
+		cc_file.updateExpiration()
 		return cc_file.file, true
 	}
-
 	return nil, false
-}
-
-func (c *Cache) Close() {
-	close(c.close_ch)
 }
