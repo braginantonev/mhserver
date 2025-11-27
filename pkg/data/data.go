@@ -9,7 +9,7 @@ import (
 
 var (
 	// Так себе, но ладно. Потом что-нибудь придумаю
-	dataFolders = map[pb.DataType]string{
+	DataFolders = map[pb.DataType]string{
 		pb.DataType_File:  "files",
 		pb.DataType_Image: "images",
 		pb.DataType_Music: "music",
