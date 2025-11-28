@@ -8,7 +8,12 @@ import (
 )
 
 var (
-	ErrFailedReadBody   = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
-	ErrRequestBodyEmpty = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)
-	ErrBadJsonBody      = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
+	ErrWrongContextUsername = httperror.NewInternalHttpError(errors.New("context username from jwt is not string"), "")
+	ErrFailedReadBody       = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
+	ErrRequestBodyEmpty     = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)
+	ErrBadJsonBody          = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
+
+	// Data info errors
+	ErrEmptyFilename = httperror.NewExternalHttpError(errors.New("filename is empty"), http.StatusBadRequest)
+	ErrEmptyFilePart = httperror.NewExternalHttpError(errors.New("empty file part"), http.StatusBadRequest)
 )
