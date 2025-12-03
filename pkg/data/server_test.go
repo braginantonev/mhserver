@@ -31,6 +31,8 @@ const (
 `
 )
 
+//Todo: Сделать ебучие кейсы! Кто в этом разберется?
+
 func TestSaveData(t *testing.T) {
 	grpc_server := grpc.NewServer()
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(TEST_WORKSPACE_PATH, CHUNK_SIZE)))
@@ -39,7 +41,6 @@ func TestSaveData(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	defer func() { _ = lis.Close() }()
 
 	go func() {
 		if err := grpc_server.Serve(lis); err != nil {
