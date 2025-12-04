@@ -60,6 +60,10 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 		return nil, ErrUnexpectedFileType
 	}
 
+	if data.Info.File == "" {
+		return nil, ErrEmptyFilename
+	}
+
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
 	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, data.Info.User, file_type, data.Info.File)
 
@@ -93,6 +97,10 @@ func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empt
 	file_type, ok := DataFolders[data.Info.Type]
 	if !ok {
 		return nil, ErrUnexpectedFileType
+	}
+
+	if data.Info.File == "" {
+		return nil, ErrEmptyFilename
 	}
 
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
