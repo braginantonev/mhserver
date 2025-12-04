@@ -57,11 +57,6 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	}
 	save_data.Info.User = username
 
-	if save_data.GetInfo().File == "" {
-		ErrEmptyFilename.Write(w)
-		return
-	}
-
 	if r.Method == http.MethodPatch && len(save_data.GetPart().Body) == 0 {
 		ErrEmptyFilePart.Write(w)
 		return

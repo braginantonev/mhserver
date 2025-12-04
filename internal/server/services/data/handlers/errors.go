@@ -16,6 +16,5 @@ var (
 	ErrBadJsonBody          = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
 
 	// Data info errors
-	ErrEmptyFilename = httperror.NewExternalHttpError(errors.New("filename is empty"), http.StatusBadRequest)
 	ErrEmptyFilePart = httperror.NewExternalHttpError(errors.New("empty file part"), http.StatusBadRequest)
 )

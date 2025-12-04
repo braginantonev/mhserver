@@ -96,18 +96,6 @@ func TestSaveData(t *testing.T) {
 			expected_body: data_handlers.ErrRequestBodyEmpty.Error(),
 		},
 		{
-			name:   "empty filename",
-			method: http.MethodPost,
-			data: &pb.Data{
-				Info: &pb.DataInfo{
-					File: "",
-				},
-				Part: &pb.FilePart{},
-			},
-			expected_code: http.StatusBadRequest,
-			expected_body: data_handlers.ErrEmptyFilename.Error(),
-		},
-		{
 			name:   "empty file part",
 			method: http.MethodPatch,
 			data: &pb.Data{
@@ -206,4 +194,34 @@ func TestSaveData(t *testing.T) {
 	for _, test := range save_file_cases {
 		test_func(test, t)
 	}
+}
+
+func TestGetData(t *testing.T) {
+	err := createWorkdir(HandlerConfig.DataConfig.WorkspacePath, TEST_USERNAME)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), HandlerConfig.DataConfig))
+
+	lis, err := net.Listen("tcp", "localhost:8080")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data_client := pb.NewDataServiceClient(grpc_connection)
+	HandlerConfig.DataServiceClient = data_client
+
 }
