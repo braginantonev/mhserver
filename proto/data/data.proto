@@ -1,0 +1,43 @@
+syntax = "proto3";
+package data;
+option go_package = "github.com/braginantonev/mhserver/proto/data";
+
+import "google/protobuf/empty.proto";
+
+enum DataType {
+    File = 0;
+    Image = 1;
+    Music = 2;
+    //Todo
+}
+
+enum Action {
+    Create = 0;
+    Patch = 1;
+    Finish = 2;
+    Delete = 3;
+    Get = 4;
+}
+
+message FilePart {
+    bytes body = 1;
+    int64 offset = 2;
+    bool isLast = 3;
+}
+
+message DataInfo {
+    DataType type = 1;
+    string user = 2;
+    string file = 3;
+}
+
+message Data {
+    DataInfo info = 1;
+    Action action = 2;
+    FilePart part = 3;
+}
+
+service DataService {
+    rpc SaveData (Data) returns (google.protobuf.Empty);
+    rpc GetData (Data) returns (FilePart);
+}

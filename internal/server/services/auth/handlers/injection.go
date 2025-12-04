@@ -13,6 +13,9 @@ type AuthHandler interface {
 type Config struct {
 	DB           *sql.DB
 	JWTSignature string
+
+	WorkspacePath   string
+	SubServersNames []string
 }
 
 type Handler struct {
