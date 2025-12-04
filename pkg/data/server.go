@@ -55,8 +55,13 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 		return nil, ErrWrongAction
 	}
 
+	file_type, ok := DataFolders[data.Info.Type]
+	if !ok {
+		return nil, ErrUnexpectedFileType
+	}
+
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, data.Info.User, DataFolders[data.Info.Type], data.Info.File)
+	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, data.Info.User, file_type, data.Info.File)
 
 	file, ok := s.cache.Get(file_path)
 	if !ok {
@@ -85,8 +90,13 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 }
 
 func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empty, error) {
+	file_type, ok := DataFolders[data.Info.Type]
+	if !ok {
+		return nil, ErrUnexpectedFileType
+	}
+
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s/%s.part", s.cfg.WorkspacePath, data.Info.User, DataFolders[data.Info.Type], data.Info.File)
+	file_path := fmt.Sprintf("%s%s/%s/%s.part", s.cfg.WorkspacePath, data.Info.User, file_type, data.Info.File)
 
 	switch data.Action {
 	case pb.Action_Create:
