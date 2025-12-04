@@ -31,7 +31,6 @@ type TestCase struct {
 
 const (
 	TEST_USERNAME string = "okabe"
-	TEST_FILE     string = "cern_secrets.txt"
 )
 
 var (
@@ -51,15 +50,17 @@ func createWorkdir(workspace_path, username string) error {
 }
 
 func TestSaveData(t *testing.T) {
-	err := createWorkdir(HandlerConfig.DataConfig.WorkspacePath, TEST_USERNAME)
+	hand_cfg := HandlerConfig
+
+	err := createWorkdir(hand_cfg.DataConfig.WorkspacePath, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), HandlerConfig.DataConfig))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.DataConfig))
 
-	lis, err := net.Listen("tcp", "localhost:8080")
+	lis, err := net.Listen("tcp", "localhost:8100")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,17 +71,19 @@ func TestSaveData(t *testing.T) {
 		}
 	}()
 
-	grpc_connection, err := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpc_connection, err := grpc.NewClient("localhost:8100", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	data_client := pb.NewDataServiceClient(grpc_connection)
-	HandlerConfig.DataServiceClient = data_client
+	hand_cfg.DataServiceClient = data_client
 
-	handler := data_handlers.NewDataHandler(HandlerConfig)
+	handler := data_handlers.NewDataHandler(hand_cfg)
 
-	parallel_cases := []TestCase{
+	filename := "test_save_data.txt"
+
+	parallel_cases := [...]TestCase{
 		{
 			name:          "wrong method",
 			method:        http.MethodDelete,
@@ -100,25 +103,23 @@ func TestSaveData(t *testing.T) {
 			method: http.MethodPatch,
 			data: &pb.Data{
 				Info: &pb.DataInfo{
-					File: TEST_FILE,
+					File: filename,
 				},
-				Part: &pb.FilePart{},
 			},
 			expected_code: http.StatusBadRequest,
 			expected_body: data_handlers.ErrEmptyFilePart.Error(),
 		},
 	}
 
-	save_file_cases := []TestCase{
+	save_file_cases := [...]TestCase{
 		{
 			name:   "create file",
 			method: http.MethodPost,
 			data: &pb.Data{
 				Info: &pb.DataInfo{
 					Type: pb.DataType_File,
-					File: TEST_FILE,
+					File: filename,
 				},
-				Part: &pb.FilePart{},
 			},
 			expected_code: http.StatusOK,
 			expected_body: "",
@@ -129,7 +130,7 @@ func TestSaveData(t *testing.T) {
 			data: &pb.Data{
 				Info: &pb.DataInfo{
 					Type: pb.DataType_File,
-					File: TEST_FILE,
+					File: filename,
 				},
 				Part: &pb.FilePart{
 					Body:   TestFileBody,
@@ -145,9 +146,8 @@ func TestSaveData(t *testing.T) {
 			data: &pb.Data{
 				Info: &pb.DataInfo{
 					Type: pb.DataType_File,
-					File: TEST_FILE,
+					File: filename,
 				},
-				Part: &pb.FilePart{},
 			},
 			expected_code: http.StatusOK,
 			expected_body: "",
@@ -197,15 +197,17 @@ func TestSaveData(t *testing.T) {
 }
 
 func TestGetData(t *testing.T) {
-	err := createWorkdir(HandlerConfig.DataConfig.WorkspacePath, TEST_USERNAME)
+	hand_cfg := HandlerConfig
+
+	err := createWorkdir(hand_cfg.DataConfig.WorkspacePath, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), HandlerConfig.DataConfig))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.DataConfig))
 
-	lis, err := net.Listen("tcp", "localhost:8080")
+	lis, err := net.Listen("tcp", "localhost:8101")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,12 +218,108 @@ func TestGetData(t *testing.T) {
 		}
 	}()
 
-	grpc_connection, err := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpc_connection, err := grpc.NewClient("localhost:8101", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	data_client := pb.NewDataServiceClient(grpc_connection)
-	HandlerConfig.DataServiceClient = data_client
+	hand_cfg.DataServiceClient = data_client
 
+	handler := data_handlers.NewDataHandler(hand_cfg)
+
+	// Create test file
+	filename := "test_get_data_handler.txt"
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", hand_cfg.DataConfig.WorkspacePath, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = file.Write(TestFileBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cases := [...]struct {
+		TestCase
+		body_is_json bool // If true - convert TestFileBody to JSON
+	}{
+		{
+			TestCase: TestCase{
+				name:          "wrong method",
+				method:        http.MethodDelete,
+				data:          nil,
+				expected_code: http.StatusMethodNotAllowed,
+			},
+		},
+		{
+			TestCase: TestCase{
+				name:          "empty body",
+				method:        http.MethodGet,
+				data:          nil,
+				expected_code: http.StatusBadRequest,
+				expected_body: data_handlers.ErrRequestBodyEmpty.Error(),
+			},
+		},
+		{
+			TestCase: TestCase{
+				name:   "good get",
+				method: http.MethodGet,
+				data: &pb.Data{
+					Info: &pb.DataInfo{
+						File: filename,
+					},
+					Part: &pb.FilePart{
+						Offset: 0,
+					},
+				},
+				expected_code: http.StatusOK,
+			},
+			body_is_json: true,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			body := []byte("")
+			if test.data != nil {
+				body, err = json.Marshal(test.data)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			req := httptest.NewRequest(test.method, server.LOGIN_ENDPOINT, bytes.NewReader(body))
+			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
+			w := httptest.NewRecorder()
+
+			handler.GetData(w, req)
+			res := w.Result()
+			defer func() { _ = res.Body.Close() }()
+
+			if res.StatusCode != test.expected_code {
+				t.Errorf("expected code %d, but got %d", test.expected_code, res.StatusCode)
+			}
+
+			if test.body_is_json {
+				parsed, err := json.Marshal(pb.FilePart{
+					Body:   TestFileBody,
+					IsLast: true,
+				})
+				if err != nil {
+					t.Error(err)
+				}
+				test.expected_body = string(parsed)
+			}
+
+			got_body, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(got_body) != test.expected_body {
+				t.Errorf("expected body: `%s`\nbut got: `%s`", test.expected_body, string(got_body))
+			}
+		})
+	}
 }
