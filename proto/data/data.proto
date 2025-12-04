@@ -22,6 +22,7 @@ enum Action {
 message FilePart {
     bytes body = 1;
     int64 offset = 2;
+    bool isLast = 3;
 }
 
 message DataInfo {

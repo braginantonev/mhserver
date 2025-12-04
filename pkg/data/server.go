@@ -71,18 +71,16 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 		s.cache.Push(file_path, file)
 	}
 
-	send_data := make([]byte, s.cfg.ChunkSize)
-	n, err := file.ReadAt(send_data, data.Part.Offset)
-	if err != nil {
-		if err == io.EOF {
-			return nil, EOF
-		}
+	read_data := make([]byte, s.cfg.ChunkSize)
+	n, err := file.ReadAt(read_data, data.Part.Offset)
+	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
 	}
 
 	return &pb.FilePart{
-		Body:   send_data[:n],
+		Body:   read_data[:n],
 		Offset: data.Part.Offset,
+		IsLast: err == io.EOF,
 	}, nil
 }
 
