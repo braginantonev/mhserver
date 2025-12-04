@@ -1,6 +1,7 @@
 package data_test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -17,29 +18,34 @@ import (
 )
 
 const (
-	TEST_WORKSPACE_PATH string = "/tmp/"
-	TEST_USER           string = "TestUser"
-	TEST_FILE           string = "test_file.txt"
-	CHUNK_SIZE          int    = 75
+	WORKSPACE_PATH string = "/tmp/mhserver_tests/"
+	TEST_USER      string = "user"
+	CHUNK_SIZE     int    = 25
 
 	TEST_FILE_BODY string = `Антон Чигур никого не убивал!
-Антон Чигур никого не убивал!
-Антон Чигур никого не убивал!
-Антон Чигур никого не убивал!
-Антон Чигур никого не убивал!
-Кто прочитал тот гей
-`
+Антон Чигур никого не покарал!
+Антон Чигур ничего не уничтожж!`
 )
 
-func TestSaveData(t *testing.T) {
-	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(TEST_WORKSPACE_PATH, CHUNK_SIZE)))
+// Create server workspace in to test files with `File` type only
+func createWorkspaceFolders(WorkspacePath, username string) error {
+	return os.MkdirAll(fmt.Sprintf("%s%s/files", WorkspacePath, username), 0700)
+}
 
-	lis, err := net.Listen("tcp", "localhost:8080")
-	if err != nil {
-		panic(err)
+func TestSaveData(t *testing.T) {
+	test_file_name := "save_data_test_file.txt"
+
+	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
+		t.Fatal(err)
 	}
-	defer func() { _ = lis.Close() }()
+
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
+
+	lis, err := net.Listen("tcp", "localhost:8081")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	go func() {
 		if err := grpc_server.Serve(lis); err != nil {
@@ -47,7 +53,7 @@ func TestSaveData(t *testing.T) {
 		}
 	}()
 
-	grpc_connection, err := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpc_connection, err := grpc.NewClient("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,16 +62,10 @@ func TestSaveData(t *testing.T) {
 
 	test_file := strings.NewReader(TEST_FILE_BODY)
 
-	//Todo: for files `file` type only
-	err = os.MkdirAll(fmt.Sprintf("%s%s/files", TEST_WORKSPACE_PATH, TEST_USER), 0700)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	data_info := &pb.DataInfo{
 		Type: pb.DataType_File,
 		User: TEST_USER,
-		File: TEST_FILE,
+		File: test_file_name,
 	}
 
 	//* Test wrong action
@@ -127,7 +127,7 @@ func TestSaveData(t *testing.T) {
 	}
 
 	//! for files `file` type only
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USER, TEST_FILE), os.O_RDONLY, 0660)
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_RDONLY, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,5 +139,85 @@ func TestSaveData(t *testing.T) {
 
 	if string(got_body_file) != TEST_FILE_BODY {
 		t.Error("got file body not implement expected")
+	}
+}
+
+func TestGetData(t *testing.T) {
+	test_file_name := "get_data_test_file.txt"
+
+	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create data grpc client
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
+
+	lis, err := net.Listen("tcp", "localhost:8082")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data_client := pb.NewDataServiceClient(grpc_connection)
+
+	// Create test file
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_CREATE|os.O_RDWR, 0660)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = file.Write([]byte(TEST_FILE_BODY))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = file.Close()
+
+	// Test
+	got_file := bytes.NewBuffer(make([]byte, 0, len(TEST_FILE_BODY)))
+
+	//! Real clients wants a speed, so in real request we use a parallels treads
+	// len(TEST_FILE_BODY)/CHUNK_SIZE - imitation DataHandler.GetFileSize()
+	for i := 0; i < 10; i++ {
+		part, err := data_client.GetData(t.Context(), &pb.Data{
+			Info: &pb.DataInfo{
+				Type: pb.DataType_File,
+				User: TEST_USER,
+				File: test_file_name,
+			},
+			Action: pb.Action_Get,
+			Part: &pb.FilePart{
+				Offset: int64(i * CHUNK_SIZE),
+			},
+		})
+
+		if err != nil {
+			st, _ := status.FromError(err)
+			if st.Message() != data.EOF.Error() {
+				t.Error(st.Message())
+			}
+		}
+
+		if _, loc_err := got_file.Write(part.GetBody()); loc_err != nil {
+			t.Error(loc_err)
+		}
+
+		if part.IsLast {
+			break
+		}
+	}
+
+	if got_file.String() != TEST_FILE_BODY {
+		t.Errorf("expected file body: `%s`\nbut got: `%s`", TEST_FILE_BODY, got_file.String())
 	}
 }
