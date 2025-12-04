@@ -8,6 +8,8 @@ import (
 )
 
 var (
+	ErrInternal = httperror.NewInternalHttpError(nil, "")
+
 	ErrWrongContextUsername = httperror.NewInternalHttpError(errors.New("context username from jwt is not string"), "")
 	ErrFailedReadBody       = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
 	ErrRequestBodyEmpty     = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)

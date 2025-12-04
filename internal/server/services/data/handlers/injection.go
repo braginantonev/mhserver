@@ -9,6 +9,7 @@ import (
 
 type DataHandler interface {
 	SaveData(w http.ResponseWriter, r *http.Request)
+	GetData(w http.ResponseWriter, r *http.Request)
 }
 
 type Config struct {
