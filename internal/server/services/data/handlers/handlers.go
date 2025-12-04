@@ -121,5 +121,5 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(json_part)
+	_,_ = w.Write(json_part)
 }
