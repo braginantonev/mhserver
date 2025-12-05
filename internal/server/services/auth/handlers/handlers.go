@@ -74,7 +74,7 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Name, handler.cfg.SubServersNames...)
+	err = data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Name, handler.cfg.UserCatalogs...)
 	if err != nil {
 		httperror.NewInternalHttpError(err, "RegisterHandler.data.GenerateUserFolders").Write(w)
 	}
