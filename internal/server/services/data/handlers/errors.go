@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/braginantonev/mhserver/pkg/data"
 	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 
@@ -18,3 +19,11 @@ var (
 	// Data info errors
 	ErrEmptyFilePart = httperror.NewExternalHttpError(errors.New("empty file part"), http.StatusBadRequest)
 )
+
+func handleServiceError(err error, w http.ResponseWriter, func_name string) {
+	if errors.Is(errors.Unwrap(err), data.ErrInternal) {
+		ErrInternal.Append(err).WithFuncName(func_name).Write(w)
+	} else {
+		httperror.NewExternalHttpError(err, http.StatusBadRequest).Write(w)
+	}
+}

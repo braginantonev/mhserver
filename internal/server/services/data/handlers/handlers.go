@@ -3,13 +3,10 @@ package data_handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/pkg/data"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
-	"github.com/braginantonev/mhserver/pkg/httperror"
 	pb "github.com/braginantonev/mhserver/proto/data"
 )
 
@@ -63,11 +60,8 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = h.cfg.DataServiceClient.SaveData(ctx, save_data)
-	if err != nil && !errors.Is(err, data.EOF) {
-		if errors.Is(errors.Unwrap(err), data.ErrInternal) {
-			httperror.NewInternalHttpError(err, "Handlers.SaveData.SaveData").Write(w)
-		}
-		httperror.NewExternalHttpError(err, http.StatusBadRequest).Write(w)
+	if err != nil {
+		handleServiceError(err, w, "data.SaveData")
 	}
 }
 
@@ -107,11 +101,7 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 
 	part, err := s.cfg.DataServiceClient.GetData(ctx, req_data)
 	if err != nil {
-		if errors.Is(errors.Unwrap(err), data.ErrInternal) {
-			ErrInternal.Append(err).WithFuncName("Handlers.GetData.SaveData").Write(w)
-		} else {
-			httperror.NewExternalHttpError(err, http.StatusBadRequest).Write(w)
-		}
+		handleServiceError(err, w, "data.GetData")
 		return
 	}
 
@@ -121,5 +111,5 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_,_ = w.Write(json_part)
+	_, _ = w.Write(json_part)
 }
