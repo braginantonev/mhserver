@@ -9,8 +9,13 @@ import (
 )
 
 const (
+	// Auth
 	LOGIN_ENDPOINT    string = "/api/users/login"
 	REGISTER_ENDPOINT string = "/api/users/register"
+
+	// Data
+	SAVE_DATA_ENDPOINT string = "/files/save"
+	GET_DATA_ENDPOINT  string = "/files/get"
 )
 
 type Services struct {
@@ -37,8 +42,13 @@ func NewServer(
 func (s Server) Run(addr string) error {
 	mux := http.NewServeMux()
 
+	// Auth
 	mux.HandleFunc(LOGIN_ENDPOINT, s.AuthService.Handlers.Login)
 	mux.HandleFunc(REGISTER_ENDPOINT, s.AuthService.Handlers.Register)
+
+	// Data
+	mux.HandleFunc(GET_DATA_ENDPOINT, s.DataService.Handler.GetData)
+	mux.HandleFunc(SAVE_DATA_ENDPOINT, s.DataService.Handler.SaveData)
 
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		slog.Error(err.Error())
