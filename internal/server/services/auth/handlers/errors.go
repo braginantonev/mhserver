@@ -16,21 +16,15 @@ var (
 		auth.ErrUserAlreadyExists: httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusContinue),
 	}
 
+	ErrInternal         = httperror.NewInternalHttpError(errors.New(""), "")
 	ErrRequestBodyEmpty = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)
 	ErrBadJsonBody      = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
 	ErrFailedReadBody   = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
 )
 
-/*
-Wrapper for "github.com/braginantonev/mhserver/pkg/auth" errors. Also that is a shit
-
-args values:
-
-	0 - function name (for internal errors)
-*/
-func writeError(w http.ResponseWriter, err error, args ...string) {
+func handleServiceError(w http.ResponseWriter, err error, func_name string) {
 	if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
-		httperror.NewInternalHttpError(err, args[0]).Write(w)
+		ErrInternal.Append(err).WithFuncName(func_name).Write(w)
 	} else {
 		authErrors[err].Write(w)
 	}

@@ -38,7 +38,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
 	if err != nil {
-		writeError(w, err, "auth.Login")
+		handleServiceError(w, err, "auth.Login")
 	} else {
 		_, _ = w.Write([]byte(token))
 	}
@@ -70,7 +70,7 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Registration request", slog.String("username", user.Name))
 
 	if err := auth.Register(user, handler.cfg.DB); err != nil {
-		writeError(w, err, "auth.Register")
+		handleServiceError(w, err, "auth.Register")
 		return
 	}
 
