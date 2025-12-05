@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	pb "github.com/braginantonev/mhserver/proto/data"
@@ -16,6 +17,8 @@ var (
 		http.MethodPost:  pb.Action_Create,
 		http.MethodPut:   pb.Action_Finish,
 	}
+
+	RequestTimeout = 5 * time.Second
 )
 
 // Use only with auth_middlewares.WithAuth()
@@ -37,7 +40,8 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
 
 	save_data := &pb.Data{}
 	if err = json.Unmarshal(body, &save_data); err != nil {
@@ -82,7 +86,8 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
 
 	req_data := &pb.Data{}
 	if err = json.Unmarshal(body, &req_data); err != nil {
