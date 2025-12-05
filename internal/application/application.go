@@ -1,13 +1,19 @@
 package application
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"net"
 
 	"github.com/BurntSushi/toml"
+	"github.com/braginantonev/mhserver/internal/application/di"
 	"github.com/braginantonev/mhserver/internal/configs"
+	"github.com/braginantonev/mhserver/internal/server"
 	_ "github.com/go-sql-driver/mysql"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ApplicationMode int
@@ -47,6 +53,10 @@ func NewApplication() *Application {
 }
 
 func (app *Application) InitDB() error {
+	if app.db != nil {
+		return nil
+	}
+
 	db, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
 	if err != nil {
 		return err
@@ -60,50 +70,85 @@ func (app *Application) InitDB() error {
 	return nil
 }
 
-func (app *Application) Run(mode ApplicationMode) error {
-	/*ctx := context.Background()
+func (app *Application) runMain() error {
+	connections := make(map[string]*grpc.ClientConn)
+	user_catalogs := make([]string, 0, len(app.SubServers)-1)
 
-	//* Initialize database
+	//* Sub servers connections
+	for name, subserver := range app.SubServers {
+		if !subserver.Enabled || name == "main" {
+			continue
+		}
+
+		conn, err := grpc.NewClient(fmt.Sprintf("%s:%s", subserver.IP, subserver.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return err
+		}
+		connections[name] = conn
+		user_catalogs = append(user_catalogs, name)
+	}
+
+	data_client := di.GetDataClient(connections["files"])
+
+	auth_service := di.SetupAuthService(app.ApplicationConfig, app.db, user_catalogs)
+	data_service := di.SetupDataService(app.ApplicationConfig, data_client)
+
+	srv := server.NewServer(auth_service, data_service)
+
+	return srv.Serve(app.SubServers["main"].IP, app.SubServers["main"].Port)
+}
+
+func (app *Application) runSubserver(ctx context.Context) error {
+	grpc_server := grpc.NewServer()
+	var g_ip, g_port string
+
+	for name, subserver := range app.SubServers {
+		if !subserver.Enabled || name == "main" {
+			continue
+		}
+
+		// Set ip and port for grpc server
+		g_ip, g_port = subserver.IP, subserver.Port
+
+		di.ServiceRegisterFunc[name](ctx, grpc_server, app.ApplicationConfig)
+	}
+
+	go func(ctx context.Context, grpc *grpc.Server, ip, port string) {
+		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", ip, port))
+		if err != nil {
+			slog.ErrorContext(ctx, "error listen grpc", slog.String("err", err.Error()))
+			return
+		}
+
+		if err := grpc.Serve(lis); err != nil {
+			slog.ErrorContext(ctx, "error serve grpc server", slog.String("err", err.Error()))
+		}
+	}(ctx, grpc_server, g_ip, g_port)
+
+	return nil
+}
+
+func (app *Application) Run(mode ApplicationMode) error {
+	ctx := context.Background()
+
 	if err := app.InitDB(); err != nil {
 		slog.Error(err.Error())
 		return err
 	}
 
-	grpc_server := grpc.NewServer()
-	grpc_lis, err := net.Listen("tcp", "localhost:8100")
-	if err != nil {
-		return err
-	}
-
-	main_server := server.Server{}
-
-	// Used by auth service, to create user (client) catalogs
-	user_catalogs := make([]string, 0, len(app.SubServers))
-
-	for name, _ := range app.SubServers {
-		if name == "main" {
-			continue
-		}
-
-		user_catalogs = append(user_catalogs, name)
-	}
-
-	//* Setup local sub servers
 	if mode != AppMode_MainServerOnly {
-		for name, subserver := range app.SubServers {
-			if !subserver.Enabled || name == "main" {
-				continue
-			}
-
-			if subserver.IP == "localhost" {
-				di.RegisterDataServer(ctx, grpc_server)
-			}
+		err := app.runSubserver(ctx)
+		if err != nil {
+			return err
 		}
 	}
 
-	//Todo: setup handlers
-	//Todo: setup grpc services
-	//Todo: setup main server*/
+	if mode != AppMode_SubServersOnly {
+		err := app.runMain()
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
