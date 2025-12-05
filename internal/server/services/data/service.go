@@ -8,8 +8,8 @@ type DataService struct {
 	Handler data_handlers.DataHandler
 }
 
-func NewDataService(handler data_handlers.DataHandler) DataService {
-	return DataService{
+func NewDataService(handler data_handlers.DataHandler) *DataService {
+	return &DataService{
 		Handler: handler,
 	}
 }
