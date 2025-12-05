@@ -6,30 +6,22 @@ import (
 	"log/slog"
 
 	"github.com/BurntSushi/toml"
+	"github.com/braginantonev/mhserver/internal/configs"
 	_ "github.com/go-sql-driver/mysql"
+)
+
+type ApplicationMode int
+
+const (
+	AppMode_MainServerOnly ApplicationMode = iota
+	AppMode_SubServersOnly
+	AppMode_AllServers
 )
 
 const CONFIG_PATH string = "/usr/share/mhserver/mhserver.conf"
 
-type (
-	Config struct {
-		ServerName    string `toml:"server_name"`
-		WorkspacePath string `toml:"workspace_path"`
-		JWTSignature  string `toml:"jwt_signature"`
-		DB_Pass       string `toml:"db_pass"`
-		SubServers    map[string]SubServer
-	}
-
-	SubServer struct {
-		Enabled  bool
-		HostName string
-		IP       string
-		Port     string
-	}
-)
-
-func NewConfig() Config {
-	var cfg Config
+func NewApplicationConfig() configs.ApplicationConfig {
+	var cfg configs.ApplicationConfig
 
 	if _, err := toml.DecodeFile(CONFIG_PATH, &cfg); err != nil {
 		panic(fmt.Sprintf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
@@ -44,26 +36,74 @@ func NewConfig() Config {
 }
 
 type Application struct {
-	Config
-	DB *sql.DB
+	configs.ApplicationConfig //Todo: Change to private
+	db                        *sql.DB
 }
 
 func NewApplication() *Application {
 	return &Application{
-		Config: NewConfig(),
+		ApplicationConfig: NewApplicationConfig(),
 	}
 }
 
 func (app *Application) InitDB() error {
-	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
+	db, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
 	if err != nil {
 		return err
 	}
 
-	if err = DB.Ping(); err != nil {
+	if err = db.Ping(); err != nil {
 		return err
 	}
 
-	app.DB = DB
+	app.db = db
+	return nil
+}
+
+func (app *Application) Run(mode ApplicationMode) error {
+	/*ctx := context.Background()
+
+	//* Initialize database
+	if err := app.InitDB(); err != nil {
+		slog.Error(err.Error())
+		return err
+	}
+
+	grpc_server := grpc.NewServer()
+	grpc_lis, err := net.Listen("tcp", "localhost:8100")
+	if err != nil {
+		return err
+	}
+
+	main_server := server.Server{}
+
+	// Used by auth service, to create user (client) catalogs
+	user_catalogs := make([]string, 0, len(app.SubServers))
+
+	for name, _ := range app.SubServers {
+		if name == "main" {
+			continue
+		}
+
+		user_catalogs = append(user_catalogs, name)
+	}
+
+	//* Setup local sub servers
+	if mode != AppMode_MainServerOnly {
+		for name, subserver := range app.SubServers {
+			if !subserver.Enabled || name == "main" {
+				continue
+			}
+
+			if subserver.IP == "localhost" {
+				di.RegisterDataServer(ctx, grpc_server)
+			}
+		}
+	}
+
+	//Todo: setup handlers
+	//Todo: setup grpc services
+	//Todo: setup main server*/
+
 	return nil
 }
