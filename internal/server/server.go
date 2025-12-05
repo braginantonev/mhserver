@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -34,13 +35,13 @@ func NewServer(
 	}
 }
 
-func (s Server) Run(addr string) error {
+func (s Server) Serve(ip, port string) error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc(LOGIN_ENDPOINT, s.AuthService.Handlers.Login)
 	mux.HandleFunc(REGISTER_ENDPOINT, s.AuthService.Handlers.Register)
 
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", ip, port), mux); err != nil {
 		slog.Error(err.Error())
 		return ErrFailedStartServer
 	}
