@@ -1,38 +1,37 @@
 package application
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"net"
+	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/braginantonev/mhserver/internal/application/di"
+	"github.com/braginantonev/mhserver/internal/configs"
+	"github.com/braginantonev/mhserver/internal/server"
 	_ "github.com/go-sql-driver/mysql"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
+
+type ApplicationMode int
+
+const (
+	AppMode_MainServerOnly ApplicationMode = iota
+	AppMode_SubServersOnly
+	AppMode_AllServers
 )
 
 const CONFIG_PATH string = "/usr/share/mhserver/mhserver.conf"
 
-type (
-	Config struct {
-		ServerName    string `toml:"server_name"`
-		WorkspacePath string `toml:"workspace_path"`
-		JWTSignature  string `toml:"jwt_signature"`
-		DB_Pass       string `toml:"db_pass"`
-		SubServers    map[string]SubServer
-	}
-
-	SubServer struct {
-		Enabled  bool
-		HostName string
-		IP       string
-		Port     string
-	}
-)
-
-func NewConfig() Config {
-	var cfg Config
+func NewApplicationConfig() configs.ApplicationConfig {
+	var cfg configs.ApplicationConfig
 
 	if _, err := toml.DecodeFile(CONFIG_PATH, &cfg); err != nil {
-		panic(fmt.Sprintf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
+		panic(fmt.Errorf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
 	}
 
 	slog.Info("Configuration loaded.")
@@ -44,26 +43,131 @@ func NewConfig() Config {
 }
 
 type Application struct {
-	Config
-	DB *sql.DB
+	configs.ApplicationConfig //Todo: Change to private
+	db                        *sql.DB
 }
 
 func NewApplication() *Application {
 	return &Application{
-		Config: NewConfig(),
+		ApplicationConfig: NewApplicationConfig(),
 	}
 }
 
 func (app *Application) InitDB() error {
-	DB, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
+	if app.db != nil {
+		return nil
+	}
+
+	db, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
 	if err != nil {
 		return err
 	}
 
-	if err = DB.Ping(); err != nil {
+	if err = db.Ping(); err != nil {
 		return err
 	}
 
-	app.DB = DB
+	app.db = db
+	return nil
+}
+
+func (app *Application) runMain() error {
+	connections := make(map[string]*grpc.ClientConn)
+	user_catalogs := make([]string, 0, len(app.SubServers)-1)
+
+	//* Sub servers connections
+	for name, subserver := range app.SubServers {
+		if !subserver.Enabled || name == "main" {
+			continue
+		}
+
+		address := fmt.Sprintf("%s:%s", subserver.IP, subserver.Port)
+
+		conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return err
+		}
+
+		slog.Info("Create subserver client", slog.String("subserver_name", name), slog.String("address", address))
+
+		connections[name] = conn
+		user_catalogs = append(user_catalogs, name)
+	}
+
+	data_client := di.GetDataClient(connections["files"])
+
+	auth_service := di.SetupAuthService(app.ApplicationConfig, app.db, user_catalogs)
+	data_service := di.SetupDataService(app.ApplicationConfig, data_client)
+
+	srv := server.NewServer(auth_service, data_service)
+
+	return srv.Serve(app.SubServers["main"].IP, app.SubServers["main"].Port)
+}
+
+func (app *Application) runSubserver(ctx context.Context, wait bool) error {
+	grpc_server := grpc.NewServer()
+	var grpc_ip, grpc_port string
+
+	wg := sync.WaitGroup{}
+
+	for name, subserver := range app.SubServers {
+		if !subserver.Enabled || name == "main" {
+			continue
+		}
+
+		// Set ip and port for grpc server
+		grpc_ip, grpc_port = subserver.IP, subserver.Port
+
+		di.ServiceRegisterFunc[name](ctx, grpc_server, app.ApplicationConfig)
+		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
+	}
+
+	wg.Add(1)
+	go func(ip, port string) {
+		defer wg.Done()
+
+		addr := fmt.Sprintf("%s:%s", ip, port)
+		lis, err := net.Listen("tcp", addr)
+		if err != nil {
+			slog.Error("error listen grpc", slog.String("err", err.Error()))
+			return
+		}
+
+		slog.Info("Serve grpc server", slog.String("address", addr))
+
+		if err := grpc_server.Serve(lis); err != nil {
+			slog.Error("error serve grpc server", slog.String("err", err.Error()))
+		}
+	}(grpc_ip, grpc_port)
+
+	if wait {
+		wg.Wait()
+	}
+
+	return nil
+}
+
+func (app *Application) Run(mode ApplicationMode) error {
+	ctx := context.Background()
+
+	if err := app.InitDB(); err != nil {
+		slog.Error(err.Error())
+		return err
+	}
+
+	if mode != AppMode_MainServerOnly {
+		err := app.runSubserver(ctx, mode == AppMode_SubServersOnly)
+		if err != nil {
+			return err
+		}
+	}
+
+	if mode != AppMode_SubServersOnly {
+		err := app.runMain()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

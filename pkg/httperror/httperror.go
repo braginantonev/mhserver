@@ -47,7 +47,7 @@ func (herr HttpError) CompareWith(http_error HttpError) error {
 func (herr HttpError) Write(w http.ResponseWriter) {
 	switch herr.Type {
 	case INTERNAL:
-		slog.Error(herr.description, slog.String("handler", herr.funcName))
+		slog.Error(herr.description, slog.String("func", herr.funcName))
 		w.WriteHeader(http.StatusInternalServerError)
 
 	case EXTERNAL:

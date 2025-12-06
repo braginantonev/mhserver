@@ -14,8 +14,8 @@ type Config struct {
 	DB           *sql.DB
 	JWTSignature string
 
-	WorkspacePath   string
-	SubServersNames []string
+	WorkspacePath string
+	UserCatalogs  []string
 }
 
 type Handler struct {
