@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/braginantonev/mhserver/internal/application/di"
@@ -105,9 +106,11 @@ func (app *Application) runMain() error {
 	return srv.Serve(app.SubServers["main"].IP, app.SubServers["main"].Port)
 }
 
-func (app *Application) runSubserver(ctx context.Context) error {
+func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 	grpc_server := grpc.NewServer()
 	var g_ip, g_port string
+
+	wg := sync.WaitGroup{}
 
 	for name, subserver := range app.SubServers {
 		if !subserver.Enabled || name == "main" {
@@ -121,20 +124,27 @@ func (app *Application) runSubserver(ctx context.Context) error {
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
 	}
 
-	go func(ctx context.Context, grpc *grpc.Server, ip, port string) {
+	wg.Add(1)
+	go func(ip, port string) {
+		defer wg.Done()
+
 		addr := fmt.Sprintf("%s:%s", ip, port)
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
-			slog.ErrorContext(ctx, "error listen grpc", slog.String("err", err.Error()))
+			slog.Error("error listen grpc", slog.String("err", err.Error()))
 			return
 		}
 
-		slog.InfoContext(ctx, "Serve grpc server", slog.String("address", addr))
+		slog.Info("Serve grpc server", slog.String("address", addr))
 
-		if err := grpc.Serve(lis); err != nil {
-			slog.ErrorContext(ctx, "error serve grpc server", slog.String("err", err.Error()))
+		if err := grpc_server.Serve(lis); err != nil {
+			slog.Error("error serve grpc server", slog.String("err", err.Error()))
 		}
-	}(ctx, grpc_server, g_ip, g_port)
+	}(g_ip, g_port)
+
+	if wait {
+		wg.Wait()
+	}
 
 	return nil
 }
@@ -148,7 +158,7 @@ func (app *Application) Run(mode ApplicationMode) error {
 	}
 
 	if mode != AppMode_MainServerOnly {
-		err := app.runSubserver(ctx)
+		err := app.runSubserver(ctx, mode == AppMode_SubServersOnly)
 		if err != nil {
 			return err
 		}
