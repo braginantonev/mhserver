@@ -108,7 +108,7 @@ func (app *Application) runMain() error {
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 	grpc_server := grpc.NewServer()
-	var g_ip, g_port string
+	var grpc_ip, grpc_port string
 
 	wg := sync.WaitGroup{}
 
@@ -118,7 +118,7 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 		}
 
 		// Set ip and port for grpc server
-		g_ip, g_port = subserver.IP, subserver.Port
+		grpc_ip, grpc_port = subserver.IP, subserver.Port
 
 		di.ServiceRegisterFunc[name](ctx, grpc_server, app.ApplicationConfig)
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
@@ -140,7 +140,7 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 		if err := grpc_server.Serve(lis); err != nil {
 			slog.Error("error serve grpc server", slog.String("err", err.Error()))
 		}
-	}(g_ip, g_port)
+	}(grpc_ip, grpc_port)
 
 	if wait {
 		wg.Wait()

@@ -56,7 +56,3 @@ func RegisterDataServer(ctx context.Context, grpc *grpc.Server, app_cfg configs.
 func GetDataServerClient(conn *grpc.ClientConn) data_pb.DataServiceClient {
 	return data_pb.NewDataServiceClient(conn)
 }
-
-/*func setupGrpcService[S GrpcConstraint](cfg Config) GrpcClientsConstraint {
-
-}*/
