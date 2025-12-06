@@ -71,8 +71,6 @@ func (app *Application) InitDB() error {
 	return nil
 }
 
-//Todo: Need to review this block of code
-
 func (app *Application) runMain() error {
 	connections := make(map[string]*grpc.ClientConn)
 	user_catalogs := make([]string, 0, len(app.SubServers)-1)
