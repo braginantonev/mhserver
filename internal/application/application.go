@@ -30,7 +30,7 @@ func NewApplicationConfig() configs.ApplicationConfig {
 	var cfg configs.ApplicationConfig
 
 	if _, err := toml.DecodeFile(CONFIG_PATH, &cfg); err != nil {
-		panic(fmt.Sprintf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
+		panic(fmt.Errorf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
 	}
 
 	slog.Info("Configuration loaded.")
@@ -70,6 +70,8 @@ func (app *Application) InitDB() error {
 	return nil
 }
 
+//Todo: Need to review this block of code
+
 func (app *Application) runMain() error {
 	connections := make(map[string]*grpc.ClientConn)
 	user_catalogs := make([]string, 0, len(app.SubServers)-1)
@@ -80,10 +82,15 @@ func (app *Application) runMain() error {
 			continue
 		}
 
-		conn, err := grpc.NewClient(fmt.Sprintf("%s:%s", subserver.IP, subserver.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		address := fmt.Sprintf("%s:%s", subserver.IP, subserver.Port)
+
+		conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return err
 		}
+
+		slog.Info("Create subserver client", slog.String("subserver_name", name), slog.String("address", address))
+
 		connections[name] = conn
 		user_catalogs = append(user_catalogs, name)
 	}
@@ -111,14 +118,18 @@ func (app *Application) runSubserver(ctx context.Context) error {
 		g_ip, g_port = subserver.IP, subserver.Port
 
 		di.ServiceRegisterFunc[name](ctx, grpc_server, app.ApplicationConfig)
+		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
 	}
 
 	go func(ctx context.Context, grpc *grpc.Server, ip, port string) {
-		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", ip, port))
+		addr := fmt.Sprintf("%s:%s", ip, port)
+		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			slog.ErrorContext(ctx, "error listen grpc", slog.String("err", err.Error()))
 			return
 		}
+
+		slog.InfoContext(ctx, "Serve grpc server", slog.String("address", addr))
 
 		if err := grpc.Serve(lis); err != nil {
 			slog.ErrorContext(ctx, "error serve grpc server", slog.String("err", err.Error()))
