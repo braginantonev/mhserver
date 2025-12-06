@@ -29,6 +29,11 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.cfg.DataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		ErrFailedReadBody.Append(err).WithFuncName("Handlers.SaveData.io.ReadAll").Write(w)
@@ -69,9 +74,14 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
+func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.cfg.DataServiceClient == nil {
+		ErrUnavailable.Write(w)
 		return
 	}
 
@@ -104,7 +114,7 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	}
 	req_data.Info.User = username
 
-	part, err := s.cfg.DataServiceClient.GetData(ctx, req_data)
+	part, err := h.cfg.DataServiceClient.GetData(ctx, req_data)
 	if err != nil {
 		handleServiceError(err, w, "data.GetData")
 		return
