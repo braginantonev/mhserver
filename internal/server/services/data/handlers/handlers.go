@@ -42,7 +42,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	save_data := &pb.Data{}
+	var save_data pb.Data
 	if err = json.Unmarshal(body, &save_data); err != nil {
 		ErrBadJsonBody.Append(err).Write(w)
 		return
@@ -62,7 +62,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.cfg.DataServiceClient.SaveData(ctx, save_data)
+	_, err = h.cfg.DataServiceClient.SaveData(ctx, &save_data)
 	if err != nil && !errors.Is(err, data.EOF) {
 		if errors.Is(errors.Unwrap(err), data.ErrInternal) {
 			httperror.NewInternalHttpError(err, "Handlers.SaveData.SaveData").Write(w)
@@ -90,7 +90,7 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	req_data := &pb.Data{}
+	var req_data pb.Data
 	if err = json.Unmarshal(body, &req_data); err != nil {
 		ErrBadJsonBody.Append(err).Write(w)
 		return
@@ -105,7 +105,7 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	}
 	req_data.Info.User = username
 
-	part, err := s.cfg.DataServiceClient.GetData(ctx, req_data)
+	part, err := s.cfg.DataServiceClient.GetData(ctx, &req_data)
 	if err != nil {
 		if errors.Is(errors.Unwrap(err), data.ErrInternal) {
 			ErrInternal.Append(err).WithFuncName("Handlers.GetData.SaveData").Write(w)
@@ -121,5 +121,5 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_,_ = w.Write(json_part)
+	_, _ = w.Write(json_part)
 }
