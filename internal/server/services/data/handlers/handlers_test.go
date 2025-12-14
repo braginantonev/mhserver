@@ -104,13 +104,12 @@ func TestSaveData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), data_handlers.NewDataHandler(hand_cfg).SaveData, http.MethodPost, server.GET_DATA_ENDPOINT)
+	err = testEmptyConnection(t.Context(), data_handlers.NewDataHandler(hand_cfg, nil).SaveData, http.MethodPost, server.GET_DATA_ENDPOINT)
 	if err != nil {
 		t.Error(err)
 	}
 
-	hand_cfg.DataServiceClient = data_client
-	handler := data_handlers.NewDataHandler(hand_cfg)
+	handler := data_handlers.NewDataHandler(hand_cfg, data_client)
 
 	filename := "test_save_data.txt"
 
@@ -257,13 +256,12 @@ func TestGetData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), data_handlers.NewDataHandler(hand_cfg).GetData, http.MethodGet, server.SAVE_DATA_ENDPOINT)
+	err = testEmptyConnection(t.Context(), data_handlers.NewDataHandler(hand_cfg, nil).GetData, http.MethodGet, server.SAVE_DATA_ENDPOINT)
 	if err != nil {
 		t.Error(err)
 	}
 
-	hand_cfg.DataServiceClient = data_client
-	handler := data_handlers.NewDataHandler(hand_cfg)
+	handler := data_handlers.NewDataHandler(hand_cfg, data_client)
 
 	// Create test file
 	filename := "test_get_data_handler.txt"

@@ -22,8 +22,9 @@ type Handler struct {
 	dataServiceClient pb.DataServiceClient
 }
 
-func NewDataHandler(cfg Config) Handler {
+func NewDataHandler(cfg Config, grpc_client pb.DataServiceClient) Handler {
 	return Handler{
-		cfg: cfg,
+		cfg:               cfg,
+		dataServiceClient: grpc_client,
 	}
 }
