@@ -14,8 +14,9 @@ const (
 	REGISTER_ENDPOINT string = "/api/users/register"
 
 	// Data
-	SAVE_DATA_ENDPOINT string = "/files/save"
-	GET_DATA_ENDPOINT  string = "/files/get"
+	SAVE_DATA_ENDPOINT    string = "/api/files/save"
+	GET_DATA_ENDPOINT     string = "/api/files/get"
+	GET_DATA_SUM_ENDPOINT string = "/api/files/sum"
 )
 
 type Services struct {
