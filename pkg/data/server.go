@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -50,6 +51,21 @@ func NewDataServer(ctx context.Context, cfg Config) *DataServer {
 	}
 }
 
+func (s *DataServer) openFile(path string, flag int, perm os.FileMode) (file *os.File, err error) {
+	file, ok := s.cache.Get(path)
+	if !ok {
+		file, err = os.OpenFile(path, flag, perm)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrFileNotExist
+			}
+			return nil, fmt.Errorf("%w: %v", ErrInternal, err)
+		}
+		s.cache.Push(path, file)
+	}
+	return file, err
+}
+
 func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, error) {
 	if data.Action != pb.Action_Get {
 		return nil, ErrWrongAction
@@ -67,17 +83,9 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
 	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, data.Info.User, file_type, data.Info.File)
 
-	file, ok := s.cache.Get(file_path)
-	if !ok {
-		var err error
-		file, err = os.OpenFile(file_path, os.O_RDONLY, 0220)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return nil, ErrFileNotExist
-			}
-			return nil, fmt.Errorf("%w: %v", ErrInternal, err)
-		}
-		s.cache.Push(file_path, file)
+	file, err := s.openFile(file_path, os.O_RDONLY, 0220)
+	if err != nil {
+		return nil, err
 	}
 
 	read_data := make([]byte, s.cfg.ChunkSize)
@@ -116,17 +124,9 @@ func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empt
 		slog.InfoContext(ctx, "Create file - "+file_path)
 
 	case pb.Action_Patch:
-		var err error
-		file, ok := s.cache.Get(file_path)
-		if !ok {
-			file, err = os.OpenFile(file_path, os.O_WRONLY, 0440)
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					return nil, ErrFileNotExist
-				}
-				return nil, fmt.Errorf("%w: %v", ErrInternal, err)
-			}
-			s.cache.Push(file_path, file)
+		file, err := s.openFile(file_path, os.O_WRONLY, 0440)
+		if err != nil {
+			return nil, err
 		}
 
 		_, err = file.WriteAt(data.Part.Body, data.Part.Offset)
@@ -146,4 +146,33 @@ func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empt
 	}
 
 	return nil, nil
+}
+
+func (s *DataServer) GetSum(ctx context.Context, info *pb.DataInfo) (*pb.SHASum, error) {
+	file_type, ok := DataFolders[info.Type]
+	if !ok {
+		return nil, ErrUnexpectedFileType
+	}
+
+	if info.File == "" {
+		return nil, ErrEmptyFilename
+	}
+
+	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
+	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.User, file_type, info.File)
+
+	file, err := s.openFile(file_path, os.O_RDONLY, 0400)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrInternal, err.Error())
+	}
+
+	sha := sha256.Sum256(body)
+	return &pb.SHASum{
+		Sum: sha[:],
+	}, nil
 }

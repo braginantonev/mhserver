@@ -37,7 +37,12 @@ message Data {
     FilePart part = 3;
 }
 
+message SHASum {
+    bytes sum = 1;
+}
+
 service DataService {
     rpc SaveData (Data) returns (google.protobuf.Empty);
     rpc GetData (Data) returns (FilePart);
+    rpc GetSum (DataInfo) returns (SHASum);
 }
