@@ -29,7 +29,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.cfg.DataServiceClient == nil {
+	if h.dataServiceClient == nil {
 		ErrUnavailable.Write(w)
 		return
 	}
@@ -68,7 +68,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.cfg.DataServiceClient.SaveData(ctx, save_data)
+	_, err = h.dataServiceClient.SaveData(ctx, save_data)
 	if err != nil {
 		handleServiceError(err, w, "data.SaveData")
 	}
@@ -80,7 +80,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.cfg.DataServiceClient == nil {
+	if h.dataServiceClient == nil {
 		ErrUnavailable.Write(w)
 		return
 	}
@@ -114,7 +114,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	}
 	req_data.Info.User = username
 
-	part, err := h.cfg.DataServiceClient.GetData(ctx, req_data)
+	part, err := h.dataServiceClient.GetData(ctx, req_data)
 	if err != nil {
 		handleServiceError(err, w, "data.GetData")
 		return

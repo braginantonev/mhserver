@@ -15,11 +15,11 @@ type DataHandler interface {
 type Config struct {
 	DataConfig        data.Config
 	MaxRequestsCount  int
-	DataServiceClient pb.DataServiceClient
 }
 
 type Handler struct {
 	cfg Config
+	dataServiceClient pb.DataServiceClient
 }
 
 func NewDataHandler(cfg Config) Handler {
