@@ -50,6 +50,7 @@ func (s Server) Run(addr string) error {
 	// Data
 	mux.HandleFunc(GET_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetData))
 	mux.HandleFunc(SAVE_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.SaveData))
+	mux.HandleFunc(GET_DATA_SUM_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetSum))
 
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		slog.Error(err.Error())

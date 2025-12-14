@@ -128,3 +128,50 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 
 	_, _ = w.Write(json_part)
 }
+
+func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		ErrFailedReadBody.Append(err).WithFuncName("Handlers.GetData.io.ReadAll").Write(w)
+		return
+	}
+
+	if len(body) == 0 {
+		ErrRequestBodyEmpty.Write(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
+
+	req_info := &pb.DataInfo{}
+	if err = json.Unmarshal(body, &req_info); err != nil {
+		ErrBadJsonBody.Append(err).Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.GetData").Write(w)
+		return
+	}
+	req_info.User = username
+
+	sum, err := h.dataServiceClient.GetSum(ctx, req_info)
+	if err != nil {
+		handleServiceError(err, w, "data.GetSum")
+		return
+	}
+
+	w.Write(sum.Sum)
+}
