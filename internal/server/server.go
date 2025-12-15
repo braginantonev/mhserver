@@ -5,8 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/internal/http/auth"
-	"github.com/braginantonev/mhserver/internal/http/data"
+	"github.com/braginantonev/mhserver/internal/domain"
 )
 
 const (
@@ -20,25 +19,9 @@ const (
 	GET_DATA_SUM_ENDPOINT string = "/api/files/sum"
 )
 
-type Services struct {
-	AuthService *auth.AuthService
-	DataService *data.DataService
-}
-
 type Server struct {
-	Services
-}
-
-func NewServer(
-	auth_service *auth.AuthService,
-	data_service *data.DataService,
-) Server {
-	return Server{
-		Services: Services{
-			AuthService: auth_service,
-			DataService: data_service,
-		},
-	}
+	AuthService *domain.HttpAuthService
+	DataService *domain.HttpDataService
 }
 
 func (s Server) Serve(ip, port string) error {
