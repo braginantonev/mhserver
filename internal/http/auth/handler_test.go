@@ -1,6 +1,6 @@
 //! Run this test with sudo
 
-package auth_handlers_test
+package authhandler_test
 
 import (
 	"bytes"
@@ -12,9 +12,10 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/application"
-	auth_handlers "github.com/braginantonev/mhserver/internal/http/auth/handlers"
+	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
+	authhandler "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/server"
-	"github.com/braginantonev/mhserver/pkg/auth"
+	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/pkg/httptestutils"
 )
 
@@ -63,7 +64,7 @@ func TestLogin(t *testing.T) {
 				IsConvertibleToJSON: false, // Empty json request
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: auth_handlers.ErrRequestBodyEmpty.Error(),
+			expected_body: authhandler.ErrRequestBodyEmpty.Error(),
 		},
 		{
 			name:   "bad password",
@@ -87,7 +88,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
+	handler := authhandler.NewAuthHandler(authconfig.AuthHandlerConfig{
 		JWTSignature: TEST_JWT_SIG,
 		DB:           db,
 	})
@@ -194,11 +195,11 @@ func TestRegister(t *testing.T) {
 				IsConvertibleToJSON: false,
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: auth_handlers.ErrRequestBodyEmpty.Error(),
+			expected_body: authhandler.ErrRequestBodyEmpty.Error(),
 		},
 	}
 
-	handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
+	handler := authhandler.NewAuthHandler(authconfig.AuthHandlerConfig{
 		DB:           db,
 		JWTSignature: TEST_JWT_SIG,
 	})

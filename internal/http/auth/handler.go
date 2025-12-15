@@ -1,4 +1,4 @@
-package auth_handlers
+package authhandler
 
 import (
 	"encoding/json"
@@ -6,10 +6,21 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/pkg/auth"
-	"github.com/braginantonev/mhserver/pkg/data"
+	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
+	"github.com/braginantonev/mhserver/internal/grpc/data"
+	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/pkg/httperror"
 )
+
+type Handler struct {
+	cfg authconfig.AuthHandlerConfig
+}
+
+func NewAuthHandler(cfg authconfig.AuthHandlerConfig) Handler {
+	return Handler{
+		cfg: cfg,
+	}
+}
 
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Login request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
