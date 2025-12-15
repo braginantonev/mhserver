@@ -53,7 +53,7 @@ func (s Server) Serve(ip, port string) error {
 	mux.HandleFunc(SAVE_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.SaveData))
 	mux.HandleFunc(GET_DATA_SUM_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetSum))
 
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", ip, port), mux); err != nil {
 		slog.Error(err.Error())
 		return ErrFailedStartServer
 	}

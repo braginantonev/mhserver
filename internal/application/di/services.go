@@ -32,10 +32,9 @@ func SetupAuthService(app_cfg configs.ApplicationConfig, db *sql.DB, user_catalo
 
 func SetupDataService(app_cfg configs.ApplicationConfig, client data_pb.DataServiceClient) *data_service.DataService {
 	return data_service.NewDataService(data_handlers.NewDataHandler(data_handlers.Config{
-		DataConfig:        data.NewDataServerConfig(app_cfg.WorkspacePath, 50), //Todo: Change const chunk size to app.ChunkSize
-		MaxRequestsCount:  100,                                                 //Todo: Change const value to app.MaxRequestsCount
-		DataServiceClient: client,
-	}))
+		DataConfig:       data.NewDataServerConfig(app_cfg.WorkspacePath, 50), //Todo: Change const chunk size to app.ChunkSize
+		MaxRequestsCount: 100,                                                 //Todo: Change const value to app.MaxRequestsCount
+	}, client))
 }
 
 //* GRPC
