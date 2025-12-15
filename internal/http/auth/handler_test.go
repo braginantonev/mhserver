@@ -17,7 +17,7 @@ import (
 	authhandler "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
-	"github.com/braginantonev/mhserver/internal/services/auth"
+	"github.com/braginantonev/mhserver/internal/service/auth"
 )
 
 const TEST_JWT_SIG string = "test123"
