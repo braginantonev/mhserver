@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/internal/services/auth"
-	"github.com/braginantonev/mhserver/internal/services/data"
+	"github.com/braginantonev/mhserver/internal/http/auth"
+	"github.com/braginantonev/mhserver/internal/http/data"
 )
 
 const (

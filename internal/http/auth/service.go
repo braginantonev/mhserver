@@ -1,8 +1,8 @@
 package auth
 
 import (
-	auth_handlers "github.com/braginantonev/mhserver/internal/services/auth/handlers"
-	auth_middlewares "github.com/braginantonev/mhserver/internal/services/auth/middlewares"
+	auth_handlers "github.com/braginantonev/mhserver/internal/http/auth/handlers"
+	auth_middlewares "github.com/braginantonev/mhserver/internal/http/auth/middlewares"
 )
 
 type AuthService struct {

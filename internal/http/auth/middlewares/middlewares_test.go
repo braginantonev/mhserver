@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/braginantonev/mhserver/internal/application"
-	auth_middlewares "github.com/braginantonev/mhserver/internal/services/auth/middlewares"
+	auth_middlewares "github.com/braginantonev/mhserver/internal/http/auth/middlewares"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/braginantonev/mhserver/pkg/httptestutils"

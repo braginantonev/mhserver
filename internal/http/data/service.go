@@ -1,7 +1,7 @@
 package data
 
 import (
-	data_handlers "github.com/braginantonev/mhserver/internal/services/data/handlers"
+	data_handlers "github.com/braginantonev/mhserver/internal/http/data/handlers"
 )
 
 type DataService struct {

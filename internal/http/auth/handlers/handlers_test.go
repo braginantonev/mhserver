@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/application"
+	auth_handlers "github.com/braginantonev/mhserver/internal/http/auth/handlers"
 	"github.com/braginantonev/mhserver/internal/server"
-	auth_handlers "github.com/braginantonev/mhserver/internal/services/auth/handlers"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httptestutils"
 )

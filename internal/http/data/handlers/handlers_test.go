@@ -12,8 +12,8 @@ import (
 	"os"
 	"testing"
 
+	data_handlers "github.com/braginantonev/mhserver/internal/http/data/handlers"
 	"github.com/braginantonev/mhserver/internal/server"
-	data_handlers "github.com/braginantonev/mhserver/internal/services/data/handlers"
 	"github.com/braginantonev/mhserver/pkg/data"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	pb "github.com/braginantonev/mhserver/proto/data"
