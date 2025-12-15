@@ -1,13 +1,24 @@
-package auth_middlewares
+package authhandler
 
 import (
 	"context"
 	"errors"
 	"net/http"
 
+	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+type Middleware struct {
+	cfg authconfig.AuthMiddlewareConfig
+}
+
+func NewAuthMiddleware(cfg authconfig.AuthMiddlewareConfig) Middleware {
+	return Middleware{
+		cfg: cfg,
+	}
+}
 
 // Extract username from jwt and put him in request context
 func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {

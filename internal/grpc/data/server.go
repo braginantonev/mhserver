@@ -9,45 +9,22 @@ import (
 	"log/slog"
 	"os"
 
+	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/repository/filecache"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-const (
-	STANDARD_CHUNK_SIZE int = 50
-)
-
-type Config struct {
-	// User files path
-	WorkspacePath string
-
-	// Chunk size is a size of one part file, which will be saved
-	ChunkSize int
-
-	//Todo: Upload semaphore
-}
-
-func NewDataServerConfig(workspace_path string, chunk_size int) Config {
-	if chunk_size <= 0 {
-		chunk_size = STANDARD_CHUNK_SIZE
-	}
-
-	return Config{
-		WorkspacePath: workspace_path,
-		ChunkSize:     chunk_size,
-	}
-}
-
 type DataServer struct {
 	pb.DataServiceServer
-	cfg   Config
-	cache *Cache
+	cfg   dataconfig.DataServiceConfig
+	cache *filecache.Cache
 }
 
-func NewDataServer(ctx context.Context, cfg Config) *DataServer {
+func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
 	return &DataServer{
 		cfg:   cfg,
-		cache: NewCache(ctx),
+		cache: filecache.NewCache(ctx),
 	}
 }
 

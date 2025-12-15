@@ -13,7 +13,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/braginantonev/mhserver/pkg/data"
+	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/grpc/data"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -117,7 +118,7 @@ func TestSaveData(t *testing.T) {
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
 
 	lis, err := net.Listen("tcp", "localhost:8081")
 	if err != nil {
@@ -182,7 +183,7 @@ func TestGetData(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
 
 	lis, err := net.Listen("tcp", "localhost:8082")
 	if err != nil {
@@ -260,7 +261,7 @@ func TestGetSum(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
 
 	lis, err := net.Listen("tcp", "localhost:8083")
 	if err != nil {

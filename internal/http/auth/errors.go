@@ -1,10 +1,10 @@
-package auth_handlers
+package authhandler
 
 import (
 	"errors"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/pkg/auth"
+	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 
@@ -16,10 +16,20 @@ var (
 		auth.ErrUserAlreadyExists: httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusContinue),
 	}
 
+	// Handler
 	ErrInternal         = httperror.NewInternalHttpError(errors.New(""), "")
 	ErrRequestBodyEmpty = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)
 	ErrBadJsonBody      = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
 	ErrFailedReadBody   = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
+
+	// Middleware
+	ErrGetJWTClaims = httperror.NewInternalHttpError(errors.New("failed get jwt claims"), "AuthMiddleware.WithAuth")
+
+	ErrUserNotAuthorized   = httperror.NewExternalHttpError(errors.New("user not authorized"), http.StatusUnauthorized)
+	ErrBadJWTToken         = httperror.NewExternalHttpError(errors.New("bad jwt token"), http.StatusBadRequest)
+	ErrJwtSignatureInvalid = httperror.NewExternalHttpError(errors.New("jwt signature is invalid"), http.StatusBadRequest)
+
+	ErrAuthorizationExpired = httperror.NewExternalHttpError(errors.New("authorization expired"), http.StatusUnauthorized)
 )
 
 func handleServiceError(w http.ResponseWriter, err error, func_name string) {

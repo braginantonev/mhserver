@@ -10,7 +10,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/braginantonev/mhserver/internal/application/di"
-	"github.com/braginantonev/mhserver/internal/configs"
+	appconfig "github.com/braginantonev/mhserver/internal/config/app"
+	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
 	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
@@ -27,8 +28,8 @@ const (
 
 const CONFIG_PATH string = "/usr/share/mhserver/mhserver.conf"
 
-func NewApplicationConfig() configs.ApplicationConfig {
-	var cfg configs.ApplicationConfig
+func NewApplicationConfig() appconfig.ApplicationConfig {
+	var cfg appconfig.ApplicationConfig
 
 	if _, err := toml.DecodeFile(CONFIG_PATH, &cfg); err != nil {
 		panic(fmt.Errorf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
@@ -43,8 +44,8 @@ func NewApplicationConfig() configs.ApplicationConfig {
 }
 
 type Application struct {
-	configs.ApplicationConfig //Todo: Change to private
-	db                        *sql.DB
+	appconfig.ApplicationConfig //Todo: Change to private
+	db                          *sql.DB
 }
 
 func NewApplication() *Application {
@@ -53,22 +54,13 @@ func NewApplication() *Application {
 	}
 }
 
-func (app *Application) InitDB() error {
+func (app *Application) InitDB() (err error) {
 	if app.db != nil {
 		return nil
 	}
 
-	db, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
-	if err != nil {
-		return err
-	}
-
-	if err = db.Ping(); err != nil {
-		return err
-	}
-
-	app.db = db
-	return nil
+	app.db, err = database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	return
 }
 
 func (app *Application) runMain() error {
@@ -102,7 +94,10 @@ func (app *Application) runMain() error {
 	auth_service := di.SetupAuthService(app.ApplicationConfig, app.db, user_catalogs)
 	data_service := di.SetupDataService(app.ApplicationConfig, data_client)
 
-	srv := server.NewServer(auth_service, data_service)
+	srv := server.Server{
+		AuthService: auth_service,
+		DataService: data_service,
+	}
 
 	return srv.Serve(app.SubServers["main"].IP, app.SubServers["main"].Port)
 }

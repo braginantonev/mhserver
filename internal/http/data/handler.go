@@ -1,4 +1,4 @@
-package data_handlers
+package datahandler
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	pb "github.com/braginantonev/mhserver/proto/data"
 )
@@ -21,6 +22,18 @@ var (
 
 	RequestTimeout = 5 * time.Second
 )
+
+type Handler struct {
+	cfg               dataconfig.DataHandlerConfig
+	dataServiceClient pb.DataServiceClient
+}
+
+func NewDataHandler(cfg dataconfig.DataHandlerConfig, grpc_client pb.DataServiceClient) Handler {
+	return Handler{
+		cfg:               cfg,
+		dataServiceClient: grpc_client,
+	}
+}
 
 // Use only with auth_middlewares.WithAuth()
 func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
