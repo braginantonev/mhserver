@@ -48,7 +48,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 
-	save_data := &pb.Data{}
+	var save_data pb.Data
 	if err = json.Unmarshal(body, &save_data); err != nil {
 		ErrBadJsonBody.Append(err).Write(w)
 		return
@@ -99,7 +99,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 
-	req_data := &pb.Data{}
+	var req_data pb.Data
 	if err = json.Unmarshal(body, &req_data); err != nil {
 		ErrBadJsonBody.Append(err).Write(w)
 		return

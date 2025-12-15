@@ -1,50 +1,32 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/application"
-	"github.com/braginantonev/mhserver/internal/server"
-	"github.com/braginantonev/mhserver/internal/server/services/auth"
-	auth_handlers "github.com/braginantonev/mhserver/internal/server/services/auth/handlers"
-	auth_middlewares "github.com/braginantonev/mhserver/internal/server/services/auth/middlewares"
+)
+
+var (
+	ArgAppMode = map[string]application.ApplicationMode{
+		"-M": application.AppMode_MainServerOnly,
+		"-S": application.AppMode_SubServersOnly,
+	}
 )
 
 func main() {
 	app := application.NewApplication()
-	if err := app.InitDB(); err != nil {
-		slog.Error(err.Error())
-	}
 
-	//* Setup auth service
-	subservers_names := make([]string, 0, 5)
-	for name := range app.SubServers {
-		if name != "main" {
-			subservers_names = append(subservers_names, name)
+	app_mode := application.AppMode_AllServers
+	for _, arg := range os.Args {
+		mode, ok := ArgAppMode[arg]
+		if ok {
+			app_mode = mode
 		}
 	}
 
-	auth_handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
-		DB:              app.DB,
-		JWTSignature:    app.JWTSignature,
-		WorkspacePath:   app.WorkspacePath,
-		SubServersNames: subservers_names,
-	})
-
-	auth_middleware := auth_middlewares.NewAuthMiddleware(auth_middlewares.Config{
-		JWTSignature: app.JWTSignature,
-	})
-
-	auth_service := auth.NewAuthService(auth_handler, auth_middleware)
-
-	srv := server.NewServer(
-		auth_service,
-		nil,
-	)
-
-	if err := srv.Run(fmt.Sprintf("%s:%s", app.SubServers["main"].IP, app.SubServers["main"].Port)); err != nil {
+	if err := app.Run(app_mode); err != nil {
+		slog.Error(err.Error())
 		os.Exit(1)
 	}
 }

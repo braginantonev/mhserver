@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -40,7 +41,7 @@ func NewServer(
 	}
 }
 
-func (s Server) Run(addr string) error {
+func (s Server) Serve(ip, port string) error {
 	mux := http.NewServeMux()
 
 	// Auth
