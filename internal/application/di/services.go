@@ -40,7 +40,7 @@ func SetupDataService(app_cfg configs.ApplicationConfig, client data_pb.DataServ
 //* GRPC
 
 var (
-	ServiceRegisterFunc = map[string]func(context.Context, *grpc.Server, configs.ApplicationConfig){
+	RegisterServer = map[string]func(context.Context, *grpc.Server, configs.ApplicationConfig){
 		"files": RegisterDataServer,
 	}
 )

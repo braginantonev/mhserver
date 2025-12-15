@@ -26,7 +26,7 @@ func main() {
 	}
 
 	if err := app.Run(app_mode); err != nil {
-		slog.Error(err.Error())
+		slog.Error("Failed run application", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 }

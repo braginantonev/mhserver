@@ -78,6 +78,9 @@ func (app *Application) runMain() error {
 	//* Sub servers connections
 	for name, subserver := range app.SubServers {
 		if !subserver.Enabled || name == "main" {
+			if name != "main" {
+				slog.Warn("Subserver not enabled. Skip connection.", slog.String("subserver", name))
+			}
 			continue
 		}
 
@@ -112,13 +115,16 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 
 	for name, subserver := range app.SubServers {
 		if !subserver.Enabled || name == "main" {
+			if name != "main" {
+				slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", name))
+			}
 			continue
 		}
 
 		// Set ip and port for grpc server
 		grpc_ip, grpc_port = subserver.IP, subserver.Port
 
-		di.ServiceRegisterFunc[name](ctx, grpc_server, app.ApplicationConfig)
+		di.RegisterServer[name](ctx, grpc_server, app.ApplicationConfig)
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
 	}
 
@@ -148,10 +154,12 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 }
 
 func (app *Application) Run(mode ApplicationMode) error {
+	slog.Info("Run application with", slog.Int("mode", int(mode)))
+
 	ctx := context.Background()
 
 	if err := app.InitDB(); err != nil {
-		slog.Error(err.Error())
+		slog.Error("Failed init database", slog.String("error", err.Error()))
 		return err
 	}
 
