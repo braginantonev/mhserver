@@ -4,49 +4,49 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/braginantonev/mhserver/internal/configs"
-	auth_service "github.com/braginantonev/mhserver/internal/http/auth"
-	auth_handlers "github.com/braginantonev/mhserver/internal/http/auth/handlers"
-	auth_middlewares "github.com/braginantonev/mhserver/internal/http/auth/middlewares"
-	data_service "github.com/braginantonev/mhserver/internal/http/data"
-	data_handlers "github.com/braginantonev/mhserver/internal/http/data/handlers"
-	"github.com/braginantonev/mhserver/pkg/data"
+	appconfig "github.com/braginantonev/mhserver/internal/config/app"
+	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
+	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/domain"
+	"github.com/braginantonev/mhserver/internal/grpc/data"
+	authhandler "github.com/braginantonev/mhserver/internal/http/auth"
+	datahandler "github.com/braginantonev/mhserver/internal/http/data"
 	data_pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/grpc"
 )
 
-func SetupAuthService(app_cfg configs.ApplicationConfig, db *sql.DB, user_catalogs []string) *auth_service.AuthService {
-	handler := auth_handlers.NewAuthHandler(auth_handlers.Config{
+func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_catalogs []string) *domain.HttpAuthService {
+	handler := authhandler.NewAuthHandler(authconfig.AuthHandlerConfig{
 		DB:            db,
 		JWTSignature:  app_cfg.JWTSignature,
 		WorkspacePath: app_cfg.WorkspacePath,
 		UserCatalogs:  user_catalogs,
 	})
 
-	middleware := auth_middlewares.NewAuthMiddleware(auth_middlewares.Config{
+	middleware := authhandler.NewAuthMiddleware(authconfig.AuthMiddlewareConfig{
 		JWTSignature: app_cfg.JWTSignature,
 	})
 
-	return auth_service.NewAuthService(handler, middleware)
+	return domain.NewAuthService(handler, middleware)
 }
 
-func SetupDataService(app_cfg configs.ApplicationConfig, client data_pb.DataServiceClient) *data_service.DataService {
-	return data_service.NewDataService(data_handlers.NewDataHandler(data_handlers.Config{
-		DataConfig:       data.NewDataServerConfig(app_cfg.WorkspacePath, 50), //Todo: Change const chunk size to app.ChunkSize
-		MaxRequestsCount: 100,                                                 //Todo: Change const value to app.MaxRequestsCount
+func SetupDataService(app_cfg appconfig.ApplicationConfig, client data_pb.DataServiceClient) *domain.HttpDataService {
+	return domain.NewDataService(datahandler.NewDataHandler(dataconfig.DataHandlerConfig{
+		ServiceConfig:    dataconfig.NewDataServerConfig(app_cfg.WorkspacePath, 50), //Todo: Change const chunk size to app.ChunkSize
+		MaxRequestsCount: 100,                                                       //Todo: Change const value to app.MaxRequestsCount
 	}, client))
 }
 
 //* GRPC
 
 var (
-	RegisterServer = map[string]func(context.Context, *grpc.Server, configs.ApplicationConfig){
+	RegisterServer = map[string]func(context.Context, *grpc.Server, appconfig.ApplicationConfig){
 		"files": RegisterDataServer,
 	}
 )
 
-func RegisterDataServer(ctx context.Context, grpc *grpc.Server, app_cfg configs.ApplicationConfig) {
-	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, data.Config{
+func RegisterDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) {
+	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, dataconfig.DataServiceConfig{
 		WorkspacePath: app_cfg.WorkspacePath,
 		ChunkSize:     50, //Todo: Change const chunk size to app.ChunkSize
 	}))
