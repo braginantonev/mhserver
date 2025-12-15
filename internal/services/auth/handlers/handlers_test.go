@@ -13,7 +13,7 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/internal/server"
-	auth_handlers "github.com/braginantonev/mhserver/internal/server/services/auth/handlers"
+	auth_handlers "github.com/braginantonev/mhserver/internal/services/auth/handlers"
 	"github.com/braginantonev/mhserver/pkg/auth"
 	"github.com/braginantonev/mhserver/pkg/httptestutils"
 )
