@@ -8,22 +8,24 @@ import (
 )
 
 type DataHandler interface {
-	SaveData(w http.ResponseWriter, r *http.Request)
-	GetData(w http.ResponseWriter, r *http.Request)
+	SaveData(http.ResponseWriter, *http.Request)
+	GetData(http.ResponseWriter, *http.Request)
+	GetSum(http.ResponseWriter, *http.Request)
 }
 
 type Config struct {
-	DataConfig        data.Config
-	MaxRequestsCount  int
-	DataServiceClient pb.DataServiceClient
+	DataConfig       data.Config
+	MaxRequestsCount int
 }
 
 type Handler struct {
-	cfg Config
+	cfg               Config
+	dataServiceClient pb.DataServiceClient
 }
 
-func NewDataHandler(cfg Config) Handler {
+func NewDataHandler(cfg Config, grpc_client pb.DataServiceClient) Handler {
 	return Handler{
-		cfg: cfg,
+		cfg:               cfg,
+		dataServiceClient: grpc_client,
 	}
 }

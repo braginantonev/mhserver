@@ -3,13 +3,11 @@ package data_handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
+	"time"
 
-	"github.com/braginantonev/mhserver/pkg/data"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
-	"github.com/braginantonev/mhserver/pkg/httperror"
 	pb "github.com/braginantonev/mhserver/proto/data"
 )
 
@@ -19,6 +17,8 @@ var (
 		http.MethodPost:  pb.Action_Create,
 		http.MethodPut:   pb.Action_Finish,
 	}
+
+	RequestTimeout = 5 * time.Second
 )
 
 // Use only with auth_middlewares.WithAuth()
@@ -26,6 +26,11 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	action, ok := saveActions[r.Method]
 	if !ok {
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
 		return
 	}
 
@@ -40,7 +45,8 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
 
 	var save_data pb.Data
 	if err = json.Unmarshal(body, &save_data); err != nil {
@@ -62,18 +68,20 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.cfg.DataServiceClient.SaveData(ctx, &save_data)
-	if err != nil && !errors.Is(err, data.EOF) {
-		if errors.Is(errors.Unwrap(err), data.ErrInternal) {
-			httperror.NewInternalHttpError(err, "Handlers.SaveData.SaveData").Write(w)
-		}
-		httperror.NewExternalHttpError(err, http.StatusBadRequest).Write(w)
+	_, err = h.dataServiceClient.SaveData(ctx, save_data)
+	if err != nil {
+		handleServiceError(err, w, "data.SaveData")
 	}
 }
 
-func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
+func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
 		return
 	}
 
@@ -88,7 +96,8 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
 
 	var req_data pb.Data
 	if err = json.Unmarshal(body, &req_data); err != nil {
@@ -105,13 +114,9 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	}
 	req_data.Info.User = username
 
-	part, err := s.cfg.DataServiceClient.GetData(ctx, &req_data)
+	part, err := h.dataServiceClient.GetData(ctx, req_data)
 	if err != nil {
-		if errors.Is(errors.Unwrap(err), data.ErrInternal) {
-			ErrInternal.Append(err).WithFuncName("Handlers.GetData.SaveData").Write(w)
-		} else {
-			httperror.NewExternalHttpError(err, http.StatusBadRequest).Write(w)
-		}
+		handleServiceError(err, w, "data.GetData")
 		return
 	}
 
@@ -122,4 +127,51 @@ func (s Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, _ = w.Write(json_part)
+}
+
+func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		ErrFailedReadBody.Append(err).WithFuncName("Handlers.GetData.io.ReadAll").Write(w)
+		return
+	}
+
+	if len(body) == 0 {
+		ErrRequestBodyEmpty.Write(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
+
+	req_info := &pb.DataInfo{}
+	if err = json.Unmarshal(body, &req_info); err != nil {
+		ErrBadJsonBody.Append(err).Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.GetData").Write(w)
+		return
+	}
+	req_info.User = username
+
+	sum, err := h.dataServiceClient.GetSum(ctx, req_info)
+	if err != nil {
+		handleServiceError(err, w, "data.GetSum")
+		return
+	}
+
+	_, _ = w.Write(sum.Sum)
 }

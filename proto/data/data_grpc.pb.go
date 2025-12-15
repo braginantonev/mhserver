@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	DataService_SaveData_FullMethodName = "/data.DataService/SaveData"
 	DataService_GetData_FullMethodName  = "/data.DataService/GetData"
+	DataService_GetSum_FullMethodName   = "/data.DataService/GetSum"
 )
 
 // DataServiceClient is the client API for DataService service.
@@ -30,6 +31,7 @@ const (
 type DataServiceClient interface {
 	SaveData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*FilePart, error)
+	GetSum(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*SHASum, error)
 }
 
 type dataServiceClient struct {
@@ -60,12 +62,23 @@ func (c *dataServiceClient) GetData(ctx context.Context, in *Data, opts ...grpc.
 	return out, nil
 }
 
+func (c *dataServiceClient) GetSum(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*SHASum, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SHASum)
+	err := c.cc.Invoke(ctx, DataService_GetSum_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DataServiceServer is the server API for DataService service.
 // All implementations must embed UnimplementedDataServiceServer
 // for forward compatibility.
 type DataServiceServer interface {
 	SaveData(context.Context, *Data) (*emptypb.Empty, error)
 	GetData(context.Context, *Data) (*FilePart, error)
+	GetSum(context.Context, *DataInfo) (*SHASum, error)
 	mustEmbedUnimplementedDataServiceServer()
 }
 
@@ -81,6 +94,9 @@ func (UnimplementedDataServiceServer) SaveData(context.Context, *Data) (*emptypb
 }
 func (UnimplementedDataServiceServer) GetData(context.Context, *Data) (*FilePart, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetData not implemented")
+}
+func (UnimplementedDataServiceServer) GetSum(context.Context, *DataInfo) (*SHASum, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSum not implemented")
 }
 func (UnimplementedDataServiceServer) mustEmbedUnimplementedDataServiceServer() {}
 func (UnimplementedDataServiceServer) testEmbeddedByValue()                     {}
@@ -139,6 +155,24 @@ func _DataService_GetData_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DataService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DataInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DataServiceServer).GetSum(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DataService_GetSum_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DataServiceServer).GetSum(ctx, req.(*DataInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DataService_ServiceDesc is the grpc.ServiceDesc for DataService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -153,6 +187,10 @@ var DataService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetData",
 			Handler:    _DataService_GetData_Handler,
+		},
+		{
+			MethodName: "GetSum",
+			Handler:    _DataService_GetSum_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

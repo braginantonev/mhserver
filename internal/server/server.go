@@ -15,8 +15,9 @@ const (
 	REGISTER_ENDPOINT string = "/api/users/register"
 
 	// Data
-	SAVE_DATA_ENDPOINT string = "/files/save"
-	GET_DATA_ENDPOINT  string = "/files/get"
+	SAVE_DATA_ENDPOINT    string = "/api/files/save"
+	GET_DATA_ENDPOINT     string = "/api/files/get"
+	GET_DATA_SUM_ENDPOINT string = "/api/files/sum"
 )
 
 type Services struct {
@@ -48,10 +49,11 @@ func (s Server) Serve(ip, port string) error {
 	mux.HandleFunc(REGISTER_ENDPOINT, s.AuthService.Handlers.Register)
 
 	// Data
-	mux.HandleFunc(GET_DATA_ENDPOINT, s.DataService.Handler.GetData)
-	mux.HandleFunc(SAVE_DATA_ENDPOINT, s.DataService.Handler.SaveData)
+	mux.HandleFunc(GET_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetData))
+	mux.HandleFunc(SAVE_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.SaveData))
+	mux.HandleFunc(GET_DATA_SUM_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetSum))
 
-	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", ip, port), mux); err != nil {
+	if err := http.ListenAndServe(addr, mux); err != nil {
 		slog.Error(err.Error())
 		return ErrFailedStartServer
 	}

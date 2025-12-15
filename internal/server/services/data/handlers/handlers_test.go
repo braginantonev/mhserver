@@ -49,6 +49,31 @@ func createWorkdir(workspace_path, username string) error {
 	return os.MkdirAll(fmt.Sprintf("%s%s/files", workspace_path, username), 0700)
 }
 
+func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, method, endpoint string) error {
+	req := httptest.NewRequest(method, endpoint, nil)
+	req = req.WithContext(context.WithValue(ctx, httpcontextkeys.USERNAME, TEST_USERNAME))
+	w := httptest.NewRecorder()
+
+	handler_func(w, req)
+	res := w.Result()
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != data_handlers.ErrUnavailable.StatusCode {
+		return fmt.Errorf("expected code %d, but got %d", data_handlers.ErrUnavailable.StatusCode, res.StatusCode)
+	}
+
+	got_body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	if string(got_body) != data_handlers.ErrUnavailable.Error() {
+		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", data_handlers.ErrUnavailable.Error(), string(got_body))
+	}
+
+	return nil
+}
+
 func TestSaveData(t *testing.T) {
 	hand_cfg := HandlerConfig
 
@@ -77,9 +102,14 @@ func TestSaveData(t *testing.T) {
 	}
 
 	data_client := pb.NewDataServiceClient(grpc_connection)
-	hand_cfg.DataServiceClient = data_client
 
-	handler := data_handlers.NewDataHandler(hand_cfg)
+	// Test without connection to service
+	err = testEmptyConnection(t.Context(), data_handlers.NewDataHandler(hand_cfg, nil).SaveData, http.MethodPost, server.GET_DATA_ENDPOINT)
+	if err != nil {
+		t.Error(err)
+	}
+
+	handler := data_handlers.NewDataHandler(hand_cfg, data_client)
 
 	filename := "test_save_data.txt"
 
@@ -163,7 +193,7 @@ func TestSaveData(t *testing.T) {
 			}
 		}
 
-		req := httptest.NewRequest(test.method, server.LOGIN_ENDPOINT, bytes.NewReader(body))
+		req := httptest.NewRequest(test.method, server.SAVE_DATA_ENDPOINT, bytes.NewReader(body))
 		req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 		w := httptest.NewRecorder()
 
@@ -224,9 +254,14 @@ func TestGetData(t *testing.T) {
 	}
 
 	data_client := pb.NewDataServiceClient(grpc_connection)
-	hand_cfg.DataServiceClient = data_client
 
-	handler := data_handlers.NewDataHandler(hand_cfg)
+	// Test without connection to service
+	err = testEmptyConnection(t.Context(), data_handlers.NewDataHandler(hand_cfg, nil).GetData, http.MethodGet, server.SAVE_DATA_ENDPOINT)
+	if err != nil {
+		t.Error(err)
+	}
+
+	handler := data_handlers.NewDataHandler(hand_cfg, data_client)
 
 	// Create test file
 	filename := "test_get_data_handler.txt"
@@ -289,7 +324,7 @@ func TestGetData(t *testing.T) {
 				}
 			}
 
-			req := httptest.NewRequest(test.method, server.LOGIN_ENDPOINT, bytes.NewReader(body))
+			req := httptest.NewRequest(test.method, server.GET_DATA_ENDPOINT, bytes.NewReader(body))
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 
