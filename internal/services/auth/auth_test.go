@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/application"
+	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/services/auth"
-	"github.com/braginantonev/mhserver/pkg/httptestutils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -45,7 +45,7 @@ func TestRegister(t *testing.T) {
 	}
 
 	app := application.NewApplication()
-	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	db, err := database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	app := application.NewApplication()
-	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	db, err := database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
 	if err != nil {
 		t.Fatal(err)
 	}

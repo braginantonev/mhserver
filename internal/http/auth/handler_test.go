@@ -5,6 +5,7 @@ package authhandler_test
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -14,16 +15,30 @@ import (
 	"github.com/braginantonev/mhserver/internal/application"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authhandler "github.com/braginantonev/mhserver/internal/http/auth"
+	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
 	"github.com/braginantonev/mhserver/internal/services/auth"
-	"github.com/braginantonev/mhserver/pkg/httptestutils"
 )
 
 const TEST_JWT_SIG string = "test123"
 
+type TestUser struct {
+	auth.User
+	Register            bool
+	IsConvertibleToJSON bool
+}
+
+func (user TestUser) ToJSON() ([]byte, error) {
+	if !user.IsConvertibleToJSON {
+		return []byte(""), nil
+	}
+
+	return json.Marshal(user)
+}
+
 func TestLogin(t *testing.T) {
 	app := application.NewApplication()
-	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	db, err := database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,14 +46,14 @@ func TestLogin(t *testing.T) {
 	cases := [...]struct {
 		name          string
 		method        string
-		user          httptestutils.TestUser
+		user          TestUser
 		expected_code int
 		expected_body string
 	}{
 		{
 			name:   "wrong method",
 			method: http.MethodPost,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("not registered", "123"),
 				IsConvertibleToJSON: true,
 			},
@@ -48,7 +63,7 @@ func TestLogin(t *testing.T) {
 		{
 			name:   "normal login",
 			method: http.MethodGet,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("login_handler_test1", "123"),
 				Register:            true,
 				IsConvertibleToJSON: true,
@@ -59,7 +74,7 @@ func TestLogin(t *testing.T) {
 		{
 			name:   "empty request",
 			method: http.MethodGet,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("empty", "empty"),
 				IsConvertibleToJSON: false, // Empty json request
 			},
@@ -69,7 +84,7 @@ func TestLogin(t *testing.T) {
 		{
 			name:   "bad password",
 			method: http.MethodGet,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("login_handler_test1", "123456"), // Use user from 'normal login' test
 				IsConvertibleToJSON: true,
 			},
@@ -79,7 +94,7 @@ func TestLogin(t *testing.T) {
 		{
 			name:   "user not found",
 			method: http.MethodGet,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("not_registered", "123"),
 				IsConvertibleToJSON: true,
 			},
@@ -145,7 +160,7 @@ func TestLogin(t *testing.T) {
 
 func TestRegister(t *testing.T) {
 	app := application.NewApplication()
-	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	db, err := database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,14 +168,14 @@ func TestRegister(t *testing.T) {
 	cases := [...]struct {
 		name          string
 		method        string
-		user          httptestutils.TestUser
+		user          TestUser
 		expected_code int
 		expected_body string
 	}{
 		{
 			name:   "wrong method",
 			method: http.MethodGet,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("not registered", "123"),
 				IsConvertibleToJSON: true,
 			},
@@ -170,7 +185,7 @@ func TestRegister(t *testing.T) {
 		{
 			name:   "normal register",
 			method: http.MethodPost,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("register_handler_test1", "123"),
 				IsConvertibleToJSON: true,
 			},
@@ -180,7 +195,7 @@ func TestRegister(t *testing.T) {
 		{
 			name:   "empty username",
 			method: http.MethodPost,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("", "123"),
 				IsConvertibleToJSON: true,
 			},
@@ -190,7 +205,7 @@ func TestRegister(t *testing.T) {
 		{
 			name:   "empty request",
 			method: http.MethodPost,
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:                auth.NewUser("register_handler_test1", "123"),
 				IsConvertibleToJSON: false,
 			},

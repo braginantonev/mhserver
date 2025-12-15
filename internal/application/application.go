@@ -11,6 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/braginantonev/mhserver/internal/application/di"
 	appconfig "github.com/braginantonev/mhserver/internal/config/app"
+	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
 	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
@@ -53,22 +54,13 @@ func NewApplication() *Application {
 	}
 }
 
-func (app *Application) InitDB() error {
+func (app *Application) InitDB() (err error) {
 	if app.db != nil {
 		return nil
 	}
 
-	db, err := sql.Open("mysql", fmt.Sprintf("mhserver:%s@/%s", app.DB_Pass, app.ServerName))
-	if err != nil {
-		return err
-	}
-
-	if err = db.Ping(); err != nil {
-		return err
-	}
-
-	app.db = db
-	return nil
+	app.db, err = database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	return
 }
 
 func (app *Application) runMain() error {

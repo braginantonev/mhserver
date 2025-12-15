@@ -12,9 +12,9 @@ import (
 	"github.com/braginantonev/mhserver/internal/application"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authmiddleware "github.com/braginantonev/mhserver/internal/http/auth"
+	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
-	"github.com/braginantonev/mhserver/pkg/httptestutils"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -60,7 +60,7 @@ func NewWrongToken(bad_username string, args ...any) Token {
 
 func TestWithAuth(t *testing.T) {
 	app := application.NewApplication()
-	db, err := httptestutils.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	db, err := database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestWithAuth(t *testing.T) {
 
 	cases := [...]struct {
 		name          string
-		user          httptestutils.TestUser
+		user          TestUser
 		token         Token
 		expected_code int
 		expected_body string
@@ -77,7 +77,7 @@ func TestWithAuth(t *testing.T) {
 		{
 			name:  "normal auth",
 			token: Token{},
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User:     auth.NewUser("with_auth_middleware_test1", "123"),
 				Register: true,
 			},
@@ -87,7 +87,7 @@ func TestWithAuth(t *testing.T) {
 		{
 			name:  "empty authorization token",
 			token: NewWrongToken(""),
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusUnauthorized,
@@ -96,7 +96,7 @@ func TestWithAuth(t *testing.T) {
 		{
 			name:  "wrong token signature",
 			token: NewWrongToken("123", "wrong signature", jwt.SigningMethodHS256, time_now.Unix(), time_now.Add(time.Minute).Unix(), time_now.Unix()),
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusBadRequest,
@@ -105,7 +105,7 @@ func TestWithAuth(t *testing.T) {
 		{
 			name:  "expired token",
 			token: NewWrongToken("123", app.JWTSignature, jwt.SigningMethodHS256, time_now.Unix()-60, time_now.Unix()-30, time_now.Unix()-60),
-			user: httptestutils.TestUser{
+			user: TestUser{
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusUnauthorized,
