@@ -1,4 +1,4 @@
-package configs
+package appconfig
 
 type ApplicationConfig struct {
 	ServerName    string `toml:"server_name"`
