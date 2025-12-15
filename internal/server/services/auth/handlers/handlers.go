@@ -12,6 +12,8 @@ import (
 )
 
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Login request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -19,7 +21,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("LoginHandler.io.ReadAll").Write(w)
+		ErrFailedReadBody.Append(err).WithFuncName("Handlers.Login.io.ReadAll").Write(w)
 		return
 	}
 
@@ -33,8 +35,6 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 		ErrBadJsonBody.Append(err).Write(w)
 		return
 	}
-
-	slog.Info("Login request", slog.String("username", user.Name))
 
 	token, err := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
 	if err != nil {
@@ -45,6 +45,8 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Register request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -52,7 +54,7 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("RegisterHandler.io.ReadAll").Write(w)
+		ErrFailedReadBody.Append(err).WithFuncName("Handlers.Register.io.ReadAll").Write(w)
 		return
 	}
 
@@ -67,8 +69,6 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Registration request", slog.String("username", user.Name))
-
 	if err := auth.Register(user, handler.cfg.DB); err != nil {
 		handleServiceError(w, err, "auth.Register")
 		return
@@ -76,6 +76,6 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	err = data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Name, handler.cfg.UserCatalogs...)
 	if err != nil {
-		httperror.NewInternalHttpError(err, "RegisterHandler.data.GenerateUserFolders").Write(w)
+		httperror.NewInternalHttpError(err, "Handlers.Register.data.GenerateUserFolders").Write(w)
 	}
 }

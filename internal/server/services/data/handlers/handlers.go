@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -23,6 +24,8 @@ var (
 
 // Use only with auth_middlewares.WithAuth()
 func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
+	slog.Info("SaveData request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
 	action, ok := saveActions[r.Method]
 	if !ok {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -75,6 +78,8 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
+	slog.Info("GetData request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -130,6 +135,8 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
+	slog.Info("GetSum request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
