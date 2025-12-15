@@ -173,5 +173,5 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(sum.Sum)
+	_, _ = w.Write(sum.Sum)
 }
