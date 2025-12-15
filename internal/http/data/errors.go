@@ -1,15 +1,15 @@
-package data_handlers
+package datahandler
 
 import (
 	"errors"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/pkg/data"
+	"github.com/braginantonev/mhserver/internal/grpc/data"
 	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 
 var (
-	// Service errors
+	// GRPC errors
 	ErrInternal    = httperror.NewInternalHttpError(errors.New("internal error"), "")
 	ErrUnavailable = httperror.NewExternalHttpError(errors.New("service is off or unavailable"), http.StatusServiceUnavailable)
 

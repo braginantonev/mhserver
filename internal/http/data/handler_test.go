@@ -1,4 +1,4 @@
-package data_handlers_test
+package datahandler_test
 
 import (
 	"bytes"
@@ -12,9 +12,10 @@ import (
 	"os"
 	"testing"
 
-	data_handlers "github.com/braginantonev/mhserver/internal/http/data/handlers"
+	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/grpc/data"
+	datahandler "github.com/braginantonev/mhserver/internal/http/data"
 	"github.com/braginantonev/mhserver/internal/server"
-	"github.com/braginantonev/mhserver/pkg/data"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/grpc"
@@ -34,8 +35,8 @@ const (
 )
 
 var (
-	HandlerConfig = data_handlers.Config{
-		DataConfig: data.Config{
+	HandlerConfig = dataconfig.DataHandlerConfig{
+		ServiceConfig: dataconfig.DataServiceConfig{
 			WorkspacePath: "/tmp/mhserver_tests/",
 			ChunkSize:     25,
 		},
@@ -58,8 +59,8 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 	res := w.Result()
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode != data_handlers.ErrUnavailable.StatusCode {
-		return fmt.Errorf("expected code %d, but got %d", data_handlers.ErrUnavailable.StatusCode, res.StatusCode)
+	if res.StatusCode != datahandler.ErrUnavailable.StatusCode {
+		return fmt.Errorf("expected code %d, but got %d", datahandler.ErrUnavailable.StatusCode, res.StatusCode)
 	}
 
 	got_body, err := io.ReadAll(res.Body)
@@ -67,8 +68,8 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 		return err
 	}
 
-	if string(got_body) != data_handlers.ErrUnavailable.Error() {
-		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", data_handlers.ErrUnavailable.Error(), string(got_body))
+	if string(got_body) != datahandler.ErrUnavailable.Error() {
+		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", datahandler.ErrUnavailable.Error(), string(got_body))
 	}
 
 	return nil
@@ -77,13 +78,13 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 func TestSaveData(t *testing.T) {
 	hand_cfg := HandlerConfig
 
-	err := createWorkdir(hand_cfg.DataConfig.WorkspacePath, TEST_USERNAME)
+	err := createWorkdir(hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.DataConfig))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.ServiceConfig))
 
 	lis, err := net.Listen("tcp", "localhost:8100")
 	if err != nil {
@@ -104,12 +105,12 @@ func TestSaveData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), data_handlers.NewDataHandler(hand_cfg, nil).SaveData, http.MethodPost, server.GET_DATA_ENDPOINT)
+	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(hand_cfg, nil).SaveData, http.MethodPost, server.GET_DATA_ENDPOINT)
 	if err != nil {
 		t.Error(err)
 	}
 
-	handler := data_handlers.NewDataHandler(hand_cfg, data_client)
+	handler := datahandler.NewDataHandler(hand_cfg, data_client)
 
 	filename := "test_save_data.txt"
 
@@ -126,7 +127,7 @@ func TestSaveData(t *testing.T) {
 			method:        http.MethodPost,
 			data:          nil,
 			expected_code: http.StatusBadRequest,
-			expected_body: data_handlers.ErrRequestBodyEmpty.Error(),
+			expected_body: datahandler.ErrRequestBodyEmpty.Error(),
 		},
 		{
 			name:   "empty file part",
@@ -137,7 +138,7 @@ func TestSaveData(t *testing.T) {
 				},
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: data_handlers.ErrEmptyFilePart.Error(),
+			expected_body: datahandler.ErrEmptyFilePart.Error(),
 		},
 	}
 
@@ -229,13 +230,13 @@ func TestSaveData(t *testing.T) {
 func TestGetData(t *testing.T) {
 	hand_cfg := HandlerConfig
 
-	err := createWorkdir(hand_cfg.DataConfig.WorkspacePath, TEST_USERNAME)
+	err := createWorkdir(hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.DataConfig))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.ServiceConfig))
 
 	lis, err := net.Listen("tcp", "localhost:8101")
 	if err != nil {
@@ -256,16 +257,16 @@ func TestGetData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), data_handlers.NewDataHandler(hand_cfg, nil).GetData, http.MethodGet, server.SAVE_DATA_ENDPOINT)
+	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(hand_cfg, nil).GetData, http.MethodGet, server.SAVE_DATA_ENDPOINT)
 	if err != nil {
 		t.Error(err)
 	}
 
-	handler := data_handlers.NewDataHandler(hand_cfg, data_client)
+	handler := datahandler.NewDataHandler(hand_cfg, data_client)
 
 	// Create test file
 	filename := "test_get_data_handler.txt"
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", hand_cfg.DataConfig.WorkspacePath, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +294,7 @@ func TestGetData(t *testing.T) {
 				method:        http.MethodGet,
 				data:          nil,
 				expected_code: http.StatusBadRequest,
-				expected_body: data_handlers.ErrRequestBodyEmpty.Error(),
+				expected_body: datahandler.ErrRequestBodyEmpty.Error(),
 			},
 		},
 		{
