@@ -293,7 +293,7 @@ func TestGetSum(t *testing.T) {
 		return string(result)
 	}
 
-	cases := []struct {
+	cases := [...]struct {
 		name           string
 		data_info      *pb.DataInfo
 		file_body      string
