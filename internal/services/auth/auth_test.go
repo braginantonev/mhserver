@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/application"
-	"github.com/braginantonev/mhserver/pkg/auth"
+	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/pkg/httptestutils"
 	"golang.org/x/crypto/bcrypt"
 )
