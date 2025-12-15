@@ -66,7 +66,7 @@ func TestWithAuth(t *testing.T) {
 
 	time_now := time.Now()
 
-	cases := []struct {
+	cases := [...]struct {
 		name          string
 		user          httptestutils.TestUser
 		token         Token

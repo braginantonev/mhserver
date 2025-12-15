@@ -12,7 +12,7 @@ import (
 var errTest error = errors.New("hi stranger")
 
 func TestCompareWith(t *testing.T) {
-	cases := []struct {
+	cases := [...]struct {
 		name          string
 		http_err      httperror.HttpError
 		test_http_err httperror.HttpError

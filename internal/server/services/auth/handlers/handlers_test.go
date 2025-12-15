@@ -27,7 +27,7 @@ func TestLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cases := []struct {
+	cases := [...]struct {
 		name          string
 		method        string
 		user          httptestutils.TestUser
@@ -149,7 +149,7 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cases := []struct {
+	cases := [...]struct {
 		name          string
 		method        string
 		user          httptestutils.TestUser
