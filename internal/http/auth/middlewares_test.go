@@ -13,7 +13,7 @@ import (
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authmiddleware "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
-	"github.com/braginantonev/mhserver/internal/services/auth"
+	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/golang-jwt/jwt/v5"
 )

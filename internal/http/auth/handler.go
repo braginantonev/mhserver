@@ -8,7 +8,7 @@ import (
 
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
-	"github.com/braginantonev/mhserver/internal/services/auth"
+	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/braginantonev/mhserver/internal/services/auth"
+	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 

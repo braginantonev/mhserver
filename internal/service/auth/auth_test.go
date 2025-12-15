@@ -9,7 +9,7 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/internal/repository/database"
-	"github.com/braginantonev/mhserver/internal/services/auth"
+	"github.com/braginantonev/mhserver/internal/service/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
