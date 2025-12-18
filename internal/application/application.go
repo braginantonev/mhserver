@@ -46,13 +46,13 @@ func NewApplicationConfig() appconfig.ApplicationConfig {
 }
 
 type Application struct {
-	appconfig.ApplicationConfig //Todo: Change to private
-	db                          *sql.DB
+	cfg appconfig.ApplicationConfig
+	db  *sql.DB
 }
 
 func NewApplication() *Application {
 	return &Application{
-		ApplicationConfig: NewApplicationConfig(),
+		cfg: NewApplicationConfig(),
 	}
 }
 
@@ -63,7 +63,7 @@ func (app *Application) InitDB() (err error) {
 
 	app.db, err = database.OpenDB(mysql.Config{
 		User:                 "mhserver",
-		Passwd:               app.DB_Pass,
+		Passwd:               app.cfg.DB_Pass,
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "mhs_main",
@@ -73,16 +73,16 @@ func (app *Application) InitDB() (err error) {
 }
 
 func (app *Application) runMain() error {
-	if !app.SubServers["main"].Enabled {
+	if !app.cfg.SubServers["main"].Enabled {
 		slog.Warn("main server is disabled. Use -S to use subservers only!")
 		return nil
 	}
 
 	connections := make(map[string]*grpc.ClientConn)
-	user_catalogs := make([]string, 0, len(app.SubServers)-1)
+	user_catalogs := make([]string, 0, len(app.cfg.SubServers)-1)
 
 	//* Sub servers connections
-	for name, subserver := range app.SubServers {
+	for name, subserver := range app.cfg.SubServers {
 		if !subserver.Enabled || name == "main" {
 			if name != "main" {
 				slog.Warn("Subserver not enabled. Skip connection.", slog.String("subserver", name))
@@ -105,15 +105,15 @@ func (app *Application) runMain() error {
 
 	data_client := di.GetDataClient(connections["files"])
 
-	auth_service := di.SetupAuthService(app.ApplicationConfig, app.db, user_catalogs)
-	data_service := di.SetupDataService(app.ApplicationConfig, data_client)
+	auth_service := di.SetupAuthService(app.cfg, app.db, user_catalogs)
+	data_service := di.SetupDataService(app.cfg, data_client)
 
 	srv := server.Server{
 		AuthService: auth_service,
 		DataService: data_service,
 	}
 
-	return srv.Serve(app.SubServers["main"].IP, app.SubServers["main"].Port)
+	return srv.Serve(app.cfg.SubServers["main"].IP, app.cfg.SubServers["main"].Port)
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {
@@ -122,7 +122,7 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 
 	wg := sync.WaitGroup{}
 
-	for name, subserver := range app.SubServers {
+	for name, subserver := range app.cfg.SubServers {
 		if !subserver.Enabled || name == "main" {
 			if name != "main" {
 				slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", name))
@@ -133,7 +133,7 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 		// Set ip and port for grpc server
 		grpc_ip, grpc_port = subserver.IP, subserver.Port
 
-		di.RegisterServer[name](ctx, grpc_server, app.ApplicationConfig)
+		di.RegisterServer[name](ctx, grpc_server, app.cfg)
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
 	}
 

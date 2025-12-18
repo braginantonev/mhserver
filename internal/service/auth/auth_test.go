@@ -1,5 +1,3 @@
-//! Run this test with sudo
-
 package auth_test
 
 import (

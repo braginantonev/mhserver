@@ -1,5 +1,3 @@
-//! Run this test with sudo
-
 package authhandler_test
 
 import (
