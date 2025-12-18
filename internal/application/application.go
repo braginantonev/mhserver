@@ -62,16 +62,22 @@ func (app *Application) InitDB() (err error) {
 	}
 
 	app.db, err = database.OpenDB(mysql.Config{
-		User:   "mhserver",
-		Passwd: app.DB_Pass,
-		Net:    "tcp",
-		Addr:   "127.0.0.1:3306",
-		DBName: "mhs_main",
+		User:                 "mhserver",
+		Passwd:               app.DB_Pass,
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		DBName:               "mhs_main",
+		AllowNativePasswords: true,
 	})
 	return
 }
 
 func (app *Application) runMain() error {
+	if !app.SubServers["main"].Enabled {
+		slog.Warn("main server is disabled. Use -S to use subservers only!")
+		return nil
+	}
+
 	connections := make(map[string]*grpc.ClientConn)
 	user_catalogs := make([]string, 0, len(app.SubServers)-1)
 
