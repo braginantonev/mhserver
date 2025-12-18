@@ -141,14 +141,17 @@ do
     echo "enabled = true" | sudo tee -a $CONFIG_NAME > /dev/null
 
     user_input=""
-    while [ -z $user_input ]; do
-        read -p "Enter subserver IP (use 'localhost' for current pc): " user_input
-    done
-    echo -e "ip = \"$user_input\"" | sudo tee -a $CONFIG_NAME > /dev/null
+    read -p "Enter subserver IP (localhost by default): " user_input
+
+    if [[ -z $user_input ]]; then
+        echo -e "ip = \"localhost\"" | sudo tee -a $CONFIG_NAME > /dev/null
+    else
+        echo -e "ip = \"$user_input\"" | sudo tee -a $CONFIG_NAME > /dev/null
+    fi
 
     user_input=""
     while [ -z $user_input ]; do
-        read -p "Enter subserver port: " user_input
+        read -p "Enter subserver port (use a unique port): " user_input
     done
     echo -e "port = \"$user_input\"" | sudo tee -a $CONFIG_NAME > /dev/null
 
