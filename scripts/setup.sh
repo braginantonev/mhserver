@@ -3,11 +3,19 @@
 CONFIG_PATH=/usr/share/mhserver/
 CONFIG_NAME=mhserver.conf
 
+TEMP_PATH=/tmp/mhserver_setup
 SUB_SERVERS=(main files music images llm)
 
 if [[ !(-e $CONFIG_PATH) ]]; then
     sudo mkdir $CONFIG_PATH
 fi
+
+#* --- Copy sql commands to /tmp/ --- *#
+
+if [[ !(-e $TEMP_PATH) ]]; then
+    mkdir $TEMP_PATH
+fi
+cp -r sql $TEMP_PATH
 
 cd $CONFIG_PATH
 
@@ -31,22 +39,6 @@ fi
 sudo chmod 600 $CONFIG_NAME
 
 echo "Hello! Let's setup your home server"
-
-#* ---  Setup server name --- *#
-echo # Skip the line
-
-server_name=""
-while [ -z $server_name ]; do
-    read -p "Enter your server name: " server_name
-done
-
-server_name=mhserver_$server_name
-echo -e "server_name = \"$server_name\"" | sudo tee -a $CONFIG_NAME > /dev/null
-
-if [ $? -ne 0 ]; then
-    echo -e "\aInternal error. Please tell me about this in Github Issues."
-    exit 1
-fi
 
 #* --- Create server workspace folder --- *#
 workspacePath=""
@@ -94,43 +86,42 @@ echo "db_pass = \"$db_pass\"" | sudo tee -a $CONFIG_NAME > /dev/null
 #* --- Create server user (mysql) and user database --- *#
 echo # Skip the line
 
-sql_driver=""
-while [ -z $sql_driver ]; do
-    read -p "What sql-driver you use? (mysql or mariadb): " sql_driver
-done
-
-echo "Generating server database..."
-
-sudo $sql_driver -u root -e "CREATE DATABASE IF NOT EXISTS $server_name;
-CREATE USER IF NOT EXISTS 'mhserver'@'localhost' IDENTIFIED BY '$db_pass';
-GRANT ALL PRIVILEGES ON $server_name.* TO 'mhserver'@'localhost';"
-
+echo "Create mhserver db user..."
+sudo mariadb -u root -e "create user if not exists 'mhserver'@'localhost' identified by '$db_pass';"
 if [ $? -ne 0 ]; then
-    echo -e "\aError in generating server databases"
+    echo -e "\aFailed create $sql_driver user"
     exit 1
 fi
 
-#* ---- Create table: Users ---- *#
+echo "Create mhserver_tests db user..."
+sudo mariadb -u root -e "create user if not exists 'mhserver_tests'@'localhost';"
+if [ $? -ne 0 ]; then
+    echo -e "\aFailed create $sql_driver user"
+    exit 1
+fi
 
-echo "Database has been generated"
-echo -e "\nGenerating user tables..."
+echo "Create server databases..."
+sudo mariadb -u root < $TEMP_PATH/sql/create-db.sql
+if [ $? -ne 0 ]; then
+    echo -e "\aError in generating server $sql_driver databases"
+    exit 1
+fi
 
-echo "NOTE: Use your new password"
-$sql_driver -u mhserver -p -e "USE $server_name;
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user VARCHAR(30) NOT NULL,
-    password VARCHAR(256) NOT NULL
-);"
+#* ---- Create users table ---- *#
 
-#Todo: Добавить создание остальных таблиц
-
+echo -e "Create users table..."
+mariadb -u mhserver --password=$db_pass -D mhs_main < $TEMP_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
 fi
 
-echo -e "\nSetup subservers..."
+echo -e "Create tests users table..."
+mariadb -u mhserver_tests -D mhs_main_test < $TEMP_PATH/sql/tables.sql
+if [ $? -ne 0 ]; then
+    echo -e "\aError in creating database tables"
+    exit 1
+fi
 
 for server in ${SUB_SERVERS[*]}
 do
@@ -148,17 +139,19 @@ do
     fi
 
     echo "enabled = true" | sudo tee -a $CONFIG_NAME > /dev/null
-    echo -e "hostname = \"mhserver_$server\"" | sudo tee -a $CONFIG_NAME > /dev/null
+
+    user_input=""
+    read -p "Enter subserver IP (localhost by default): " user_input
+
+    if [[ -z $user_input ]]; then
+        echo -e "ip = \"localhost\"" | sudo tee -a $CONFIG_NAME > /dev/null
+    else
+        echo -e "ip = \"$user_input\"" | sudo tee -a $CONFIG_NAME > /dev/null
+    fi
 
     user_input=""
     while [ -z $user_input ]; do
-        read -p "Enter subserver IP (use 'localhost' for current pc): " user_input
-    done
-    echo -e "ip = \"$user_input\"" | sudo tee -a $CONFIG_NAME > /dev/null
-
-    user_input=""
-    while [ -z $user_input ]; do
-        read -p "Enter subserver port: " user_input
+        read -p "Enter subserver port (use a unique port): " user_input
     done
     echo -e "port = \"$user_input\"" | sudo tee -a $CONFIG_NAME > /dev/null
 

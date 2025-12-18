@@ -1,7 +1,6 @@
 package appconfig
 
 type ApplicationConfig struct {
-	ServerName    string `toml:"server_name"`
 	WorkspacePath string `toml:"workspace_path"`
 	JWTSignature  string `toml:"jwt_signature"`
 	DB_Pass       string `toml:"db_pass"`
@@ -9,8 +8,7 @@ type ApplicationConfig struct {
 }
 
 type SubServer struct {
-	Enabled  bool
-	HostName string
-	IP       string
-	Port     string
+	Enabled bool
+	IP      string
+	Port    string
 }

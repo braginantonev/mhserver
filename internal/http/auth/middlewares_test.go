@@ -9,13 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/braginantonev/mhserver/internal/application"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authmiddleware "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
+	"github.com/go-sql-driver/mysql"
 	"github.com/golang-jwt/jwt/v5"
+)
+
+const (
+	TestJWT string = "123abcd"
 )
 
 type Token struct {
@@ -59,8 +63,14 @@ func NewWrongToken(bad_username string, args ...any) Token {
 }
 
 func TestWithAuth(t *testing.T) {
-	app := application.NewApplication()
-	db, err := database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	db, err := database.OpenDB(mysql.Config{
+		User:                 "mhserver_tests",
+		Passwd:               "",
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		DBName:               "mhs_main_test",
+		AllowNativePasswords: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +114,7 @@ func TestWithAuth(t *testing.T) {
 		},
 		{
 			name:  "expired token",
-			token: NewWrongToken("123", app.JWTSignature, jwt.SigningMethodHS256, time_now.Unix()-60, time_now.Unix()-30, time_now.Unix()-60),
+			token: NewWrongToken("123", TestJWT, jwt.SigningMethodHS256, time_now.Unix()-60, time_now.Unix()-30, time_now.Unix()-60),
 			user: TestUser{
 				User: auth.NewUser("123", "123"),
 			},
@@ -114,7 +124,7 @@ func TestWithAuth(t *testing.T) {
 	}
 
 	middleware := authmiddleware.NewAuthMiddleware(authconfig.AuthMiddlewareConfig{
-		JWTSignature: app.JWTSignature,
+		JWTSignature: TestJWT,
 	})
 
 	for _, test := range cases {
@@ -128,7 +138,7 @@ func TestWithAuth(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if !test.token.IsWrong {
 				var err error
-				test.token.string, err = auth.Login(test.user.User, db, app.JWTSignature)
+				test.token.string, err = auth.Login(test.user.User, db, TestJWT)
 				if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
 					t.Fatal(err)
 				}

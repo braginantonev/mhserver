@@ -13,7 +13,7 @@ import (
 	appconfig "github.com/braginantonev/mhserver/internal/config/app"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -24,6 +24,8 @@ const (
 	AppMode_MainServerOnly ApplicationMode = iota
 	AppMode_SubServersOnly
 	AppMode_AllServers
+
+	DATABASE_NAME string = "mhserver"
 )
 
 const CONFIG_PATH string = "/usr/share/mhserver/mhserver.conf"
@@ -37,7 +39,7 @@ func NewApplicationConfig() appconfig.ApplicationConfig {
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
-	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", cfg.ServerName))
+	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", DATABASE_NAME))
 	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
 
 	return cfg
@@ -59,11 +61,23 @@ func (app *Application) InitDB() (err error) {
 		return nil
 	}
 
-	app.db, err = database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	app.db, err = database.OpenDB(mysql.Config{
+		User:                 "mhserver",
+		Passwd:               app.DB_Pass,
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		DBName:               "mhs_main",
+		AllowNativePasswords: true,
+	})
 	return
 }
 
 func (app *Application) runMain() error {
+	if !app.SubServers["main"].Enabled {
+		slog.Warn("main server is disabled. Use -S to use subservers only!")
+		return nil
+	}
+
 	connections := make(map[string]*grpc.ClientConn)
 	user_catalogs := make([]string, 0, len(app.SubServers)-1)
 
