@@ -17,7 +17,7 @@ fi
 if [[ !(-e $TEMP_PATH) ]]; then
     mkdir $TEMP_PATH
 fi
-cp -r ../sql $TEMP_PATH
+cp -r sql $TEMP_PATH
 
 cd $CONFIG_PATH
 
@@ -96,18 +96,22 @@ while true; do
     fi
 done
 
-echo "Create server db user..."
-
+echo "Create mhserver db user..."
 sudo $sql_driver -u root -e "create user if not exists 'mhserver'@'localhost' identified by '$db_pass';"
 if [ $? -ne 0 ]; then
     echo -e "\aFailed create $sql_driver user"
     exit 1
 fi
 
-echo "Create server database..."
+echo "Create mhserver_tests db user..."
+sudo $sql_driver -u root -e "create user if not exists 'mhserver_tests'@'localhost';"
+if [ $? -ne 0 ]; then
+    echo -e "\aFailed create $sql_driver user"
+    exit 1
+fi
 
+echo "Create server databases..."
 sudo $sql_driver -u root < $TEMP_PATH/sql/create-db.sql
-
 if [ $? -ne 0 ]; then
     echo -e "\aError in generating server $sql_driver databases"
     exit 1
@@ -116,15 +120,18 @@ fi
 #* ---- Create users table ---- *#
 
 echo -e "Create users table..."
-
-$sql_driver -u mhserver --password=$db_pass -D mhserver < $TEMP_PATH/sql/users-table.sql
-
+$sql_driver -u mhserver --password=$db_pass -D mhs_main < $TEMP_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
 fi
 
-echo -e "\nSetup subservers..."
+echo -e "Create tests users table..."
+$sql_driver -u mhserver_tests -D mhs_main_test < $TEMP_PATH/sql/tables.sql
+if [ $? -ne 0 ]; then
+    echo -e "\aError in creating database tables"
+    exit 1
+fi
 
 for server in ${SUB_SERVERS[*]}
 do

@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS mhserver;
-GRANT ALL PRIVILEGES ON mhserver.* TO 'mhserver'@'localhost';
+CREATE DATABASE IF NOT EXISTS mhs_main;
+GRANT ALL PRIVILEGES ON mhs_main.* TO 'mhserver'@'localhost';
 
-CREATE DATABASE IF NOT EXISTS mhserver_test;
-GRANT ALL PRIVILEGES ON mhserver_test.* TO 'mhserver'@'localhost';
+CREATE DATABASE IF NOT EXISTS mhs_main_test;
+GRANT ALL PRIVILEGES ON mhs_main_test.* TO 'mhserver_tests'@'localhost';
