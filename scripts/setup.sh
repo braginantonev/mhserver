@@ -4,8 +4,6 @@ CONFIG_PATH=/usr/share/mhserver/
 CONFIG_NAME=mhserver.conf
 
 TEMP_PATH=/tmp/mhserver_setup
-
-SQL_DRIVERS=(mysql mariadb)
 SUB_SERVERS=(main files music images llm)
 
 if [[ !(-e $CONFIG_PATH) ]]; then
@@ -88,30 +86,22 @@ echo "db_pass = \"$db_pass\"" | sudo tee -a $CONFIG_NAME > /dev/null
 #* --- Create server user (mysql) and user database --- *#
 echo # Skip the line
 
-sql_driver=""
-while true; do
-    read -p "What sql-driver you use? (mysql or mariadb): " sql_driver
-    if [[ ${SQL_DRIVERS[@]} =~ $sql_driver ]]; then
-        break
-    fi
-done
-
 echo "Create mhserver db user..."
-sudo $sql_driver -u root -e "create user if not exists 'mhserver'@'localhost' identified by '$db_pass';"
+sudo mariadb -u root -e "create user if not exists 'mhserver'@'localhost' identified by '$db_pass';"
 if [ $? -ne 0 ]; then
     echo -e "\aFailed create $sql_driver user"
     exit 1
 fi
 
 echo "Create mhserver_tests db user..."
-sudo $sql_driver -u root -e "create user if not exists 'mhserver_tests'@'localhost';"
+sudo mariadb -u root -e "create user if not exists 'mhserver_tests'@'localhost';"
 if [ $? -ne 0 ]; then
     echo -e "\aFailed create $sql_driver user"
     exit 1
 fi
 
 echo "Create server databases..."
-sudo $sql_driver -u root < $TEMP_PATH/sql/create-db.sql
+sudo mariadb -u root < $TEMP_PATH/sql/create-db.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in generating server $sql_driver databases"
     exit 1
@@ -120,14 +110,14 @@ fi
 #* ---- Create users table ---- *#
 
 echo -e "Create users table..."
-$sql_driver -u mhserver --password=$db_pass -D mhs_main < $TEMP_PATH/sql/tables.sql
+mariadb -u mhserver --password=$db_pass -D mhs_main < $TEMP_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
 fi
 
 echo -e "Create tests users table..."
-$sql_driver -u mhserver_tests -D mhs_main_test < $TEMP_PATH/sql/tables.sql
+mariadb -u mhserver_tests -D mhs_main_test < $TEMP_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
