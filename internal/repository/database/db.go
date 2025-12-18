@@ -2,11 +2,12 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
+
+	"github.com/go-sql-driver/mysql"
 )
 
-func OpenDB(user string, user_pass string, database string) (*sql.DB, error) {
-	DB, err := sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", user, user_pass, database))
+func OpenDB(cfg mysql.Config) (*sql.DB, error) {
+	DB, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return nil, err
 	}

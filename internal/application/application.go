@@ -13,7 +13,7 @@ import (
 	appconfig "github.com/braginantonev/mhserver/internal/config/app"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -61,7 +61,13 @@ func (app *Application) InitDB() (err error) {
 		return nil
 	}
 
-	app.db, err = database.OpenDB("mhserver", app.DB_Pass, DATABASE_NAME)
+	app.db, err = database.OpenDB(mysql.Config{
+		User:   "mhserver",
+		Passwd: app.DB_Pass,
+		Net:    "tcp",
+		Addr:   "127.0.0.1:3306",
+		DBName: "mhs_main",
+	})
 	return
 }
 

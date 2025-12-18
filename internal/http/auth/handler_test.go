@@ -12,12 +12,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/braginantonev/mhserver/internal/application"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authhandler "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
 	"github.com/braginantonev/mhserver/internal/service/auth"
+	"github.com/go-sql-driver/mysql"
 )
 
 const TEST_JWT_SIG string = "test123"
@@ -37,8 +37,14 @@ func (user TestUser) ToJSON() ([]byte, error) {
 }
 
 func TestLogin(t *testing.T) {
-	app := application.NewApplication()
-	db, err := database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	db, err := database.OpenDB(mysql.Config{
+		User:                 "mhserver_tests",
+		Passwd:               "",
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		DBName:               "mhs_main_test",
+		AllowNativePasswords: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,8 +165,14 @@ func TestLogin(t *testing.T) {
 }
 
 func TestRegister(t *testing.T) {
-	app := application.NewApplication()
-	db, err := database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	db, err := database.OpenDB(mysql.Config{
+		User:                 "mhserver_tests",
+		Passwd:               "",
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		DBName:               "mhs_main_test",
+		AllowNativePasswords: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
