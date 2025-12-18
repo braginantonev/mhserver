@@ -8,8 +8,7 @@ type ApplicationConfig struct {
 }
 
 type SubServer struct {
-	Enabled  bool
-	HostName string
-	IP       string
-	Port     string
+	Enabled bool
+	IP      string
+	Port    string
 }
