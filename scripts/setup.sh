@@ -139,7 +139,6 @@ do
     fi
 
     echo "enabled = true" | sudo tee -a $CONFIG_NAME > /dev/null
-    echo -e "hostname = \"mhserver_$server\"" | sudo tee -a $CONFIG_NAME > /dev/null
 
     user_input=""
     while [ -z $user_input ]; do
