@@ -32,22 +32,6 @@ sudo chmod 600 $CONFIG_NAME
 
 echo "Hello! Let's setup your home server"
 
-#* ---  Setup server name --- *#
-echo # Skip the line
-
-server_name=""
-while [ -z $server_name ]; do
-    read -p "Enter your server name: " server_name
-done
-
-server_name=mhserver_$server_name
-echo -e "server_name = \"$server_name\"" | sudo tee -a $CONFIG_NAME > /dev/null
-
-if [ $? -ne 0 ]; then
-    echo -e "\aInternal error. Please tell me about this in Github Issues."
-    exit 1
-fi
-
 #* --- Create server workspace folder --- *#
 workspacePath=""
 
@@ -101,9 +85,9 @@ done
 
 echo "Generating server database..."
 
-sudo $sql_driver -u root -e "CREATE DATABASE IF NOT EXISTS $server_name;
-CREATE USER IF NOT EXISTS 'mhserver'@'localhost' IDENTIFIED BY '$db_pass';
-GRANT ALL PRIVILEGES ON $server_name.* TO 'mhserver'@'localhost';"
+sudo $sql_driver -u root -e "create database if not exists mhserver;
+create user if not exists 'mhserver'@'localhost' identified by '$db_pass';
+grant all privileges on mhserver.* TO 'mhserver'@'localhost';"
 
 if [ $? -ne 0 ]; then
     echo -e "\aError in generating server databases"
@@ -116,7 +100,7 @@ echo "Database has been generated"
 echo -e "\nGenerating user tables..."
 
 echo "NOTE: Use your new password"
-$sql_driver -u mhserver -p -e "USE $server_name;
+$sql_driver -u mhserver -p -e "use mhserver;
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user VARCHAR(30) NOT NULL,
