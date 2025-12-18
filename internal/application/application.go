@@ -24,6 +24,8 @@ const (
 	AppMode_MainServerOnly ApplicationMode = iota
 	AppMode_SubServersOnly
 	AppMode_AllServers
+
+	DATABASE_NAME string = "mhserver"
 )
 
 const CONFIG_PATH string = "/usr/share/mhserver/mhserver.conf"
@@ -37,7 +39,7 @@ func NewApplicationConfig() appconfig.ApplicationConfig {
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
-	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", cfg.ServerName))
+	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", DATABASE_NAME))
 	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
 
 	return cfg
@@ -59,7 +61,7 @@ func (app *Application) InitDB() (err error) {
 		return nil
 	}
 
-	app.db, err = database.OpenDB("mhserver", app.DB_Pass, app.ServerName)
+	app.db, err = database.OpenDB("mhserver", app.DB_Pass, DATABASE_NAME)
 	return
 }
 
