@@ -106,7 +106,7 @@ func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empt
 			return nil, err
 		}
 
-		slog.Info("write to file", slog.Uint64("chunk", data.Info.GetSize().Chunk))
+		//slog.Info("write to file", slog.Uint64("chunk", data.Info.GetSize().Chunk))
 
 		_, err = file.WriteAt(data.Part.Body, data.Part.Offset)
 		if err != nil {
@@ -154,4 +154,9 @@ func (s *DataServer) GetSum(ctx context.Context, info *pb.DataInfo) (*pb.SHASum,
 	return &pb.SHASum{
 		Sum: sha[:],
 	}, nil
+}
+
+func (s *DataServer) GetChunkSize(ctx context.Context, info *pb.DataInfo) (*pb.FileSize, error) {
+	// memory.FreeMemory()
+	return nil, nil
 }

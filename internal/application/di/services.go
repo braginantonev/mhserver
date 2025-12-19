@@ -32,8 +32,8 @@ func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_cata
 
 func SetupDataService(app_cfg appconfig.ApplicationConfig, client data_pb.DataServiceClient) *domain.HttpDataService {
 	return domain.NewDataService(datahandler.NewDataHandler(dataconfig.DataHandlerConfig{
-		ServiceConfig:    dataconfig.NewDataServerConfig(app_cfg.WorkspacePath, 50), //Todo: Change const chunk size to app.ChunkSize
-		MaxRequestsCount: 100,                                                       //Todo: Change const value to app.MaxRequestsCount
+		ServiceConfig:    dataconfig.NewDataServerConfig(app_cfg.WorkspacePath, app_cfg.AvailableRAM),
+		MaxRequestsCount: 100, //Todo: Change const value to app.MaxRequestsCount
 	}, client))
 }
 

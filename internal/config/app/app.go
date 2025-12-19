@@ -4,6 +4,7 @@ type ApplicationConfig struct {
 	WorkspacePath string `toml:"workspace_path"`
 	JWTSignature  string `toml:"jwt_signature"`
 	DB_Pass       string `toml:"db_pass"`
+	AvailableRAM  string `toml:"available_ram"`
 	SubServers    map[string]SubServer
 }
 
