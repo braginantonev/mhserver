@@ -38,6 +38,7 @@ func NewApplicationConfig() appconfig.ApplicationConfig {
 	}
 
 	slog.Info("Configuration loaded.")
+	slog.Info(fmt.Sprintf("Available server ram: %s", cfg.AvailableRAM))
 	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
 	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", DATABASE_NAME))
 	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
