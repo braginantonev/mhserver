@@ -188,8 +188,8 @@ func (x *FilePart) GetIsLast() bool {
 
 type FileSize struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Size          int64                  `protobuf:"varint,1,opt,name=size,proto3" json:"size,omitempty"`
-	Chunk         int64                  `protobuf:"varint,2,opt,name=chunk,proto3" json:"chunk,omitempty"`
+	Size          uint64                 `protobuf:"varint,1,opt,name=size,proto3" json:"size,omitempty"`
+	Chunk         uint64                 `protobuf:"varint,2,opt,name=chunk,proto3" json:"chunk,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -224,14 +224,14 @@ func (*FileSize) Descriptor() ([]byte, []int) {
 	return file_data_data_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *FileSize) GetSize() int64 {
+func (x *FileSize) GetSize() uint64 {
 	if x != nil {
 		return x.Size
 	}
 	return 0
 }
 
-func (x *FileSize) GetChunk() int64 {
+func (x *FileSize) GetChunk() uint64 {
 	if x != nil {
 		return x.Chunk
 	}
@@ -420,8 +420,8 @@ const file_data_data_proto_rawDesc = "" +
 	"\x06offset\x18\x02 \x01(\x03R\x06offset\x12\x16\n" +
 	"\x06isLast\x18\x03 \x01(\bR\x06isLast\"4\n" +
 	"\bFileSize\x12\x12\n" +
-	"\x04size\x18\x01 \x01(\x03R\x04size\x12\x14\n" +
-	"\x05chunk\x18\x02 \x01(\x03R\x05chunk\"z\n" +
+	"\x04size\x18\x01 \x01(\x04R\x04size\x12\x14\n" +
+	"\x05chunk\x18\x02 \x01(\x04R\x05chunk\"z\n" +
 	"\bDataInfo\x12\"\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x0e.data.DataTypeR\x04type\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +

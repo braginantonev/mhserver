@@ -26,8 +26,8 @@ message FilePart {
 }
 
 message FileSize {
-    int64 size = 1;
-    int64 chunk = 2;
+    uint64 size = 1;
+    uint64 chunk = 2;
 }
 
 message DataInfo {

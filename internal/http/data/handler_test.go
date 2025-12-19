@@ -31,14 +31,14 @@ type TestCase struct {
 }
 
 const (
-	TEST_USERNAME string = "okabe"
+	TEST_USERNAME   string = "okabe"
+	TEST_CHUNK_SIZE uint64 = 20
 )
 
 var (
 	HandlerConfig = dataconfig.DataHandlerConfig{
 		ServiceConfig: dataconfig.DataServiceConfig{
 			WorkspacePath: "/tmp/mhserver_tests/",
-			ChunkSize:     25,
 		},
 		MaxRequestsCount: 25,
 		// Data service client will be init
@@ -162,6 +162,9 @@ func TestSaveData(t *testing.T) {
 				Info: &pb.DataInfo{
 					Type: pb.DataType_File,
 					File: filename,
+					Size: &pb.FileSize{
+						Chunk: TEST_CHUNK_SIZE,
+					},
 				},
 				Part: &pb.FilePart{
 					Body:   TestFileBody,
@@ -304,6 +307,9 @@ func TestGetData(t *testing.T) {
 				data: &pb.Data{
 					Info: &pb.DataInfo{
 						File: filename,
+						Size: &pb.FileSize{
+							Chunk: TEST_CHUNK_SIZE,
+						},
 					},
 					Part: &pb.FilePart{
 						Offset: 0,
