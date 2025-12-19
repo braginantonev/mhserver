@@ -186,18 +186,71 @@ func (x *FilePart) GetIsLast() bool {
 	return false
 }
 
+type FileSize struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Size          int64                  `protobuf:"varint,1,opt,name=size,proto3" json:"size,omitempty"`
+	Chunk         int64                  `protobuf:"varint,2,opt,name=chunk,proto3" json:"chunk,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileSize) Reset() {
+	*x = FileSize{}
+	mi := &file_data_data_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileSize) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileSize) ProtoMessage() {}
+
+func (x *FileSize) ProtoReflect() protoreflect.Message {
+	mi := &file_data_data_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileSize.ProtoReflect.Descriptor instead.
+func (*FileSize) Descriptor() ([]byte, []int) {
+	return file_data_data_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *FileSize) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *FileSize) GetChunk() int64 {
+	if x != nil {
+		return x.Chunk
+	}
+	return 0
+}
+
 type DataInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Type          DataType               `protobuf:"varint,1,opt,name=type,proto3,enum=data.DataType" json:"type,omitempty"`
 	User          string                 `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
 	File          string                 `protobuf:"bytes,3,opt,name=file,proto3" json:"file,omitempty"`
+	Size          *FileSize              `protobuf:"bytes,4,opt,name=size,proto3" json:"size,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DataInfo) Reset() {
 	*x = DataInfo{}
-	mi := &file_data_data_proto_msgTypes[1]
+	mi := &file_data_data_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -209,7 +262,7 @@ func (x *DataInfo) String() string {
 func (*DataInfo) ProtoMessage() {}
 
 func (x *DataInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[1]
+	mi := &file_data_data_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -222,7 +275,7 @@ func (x *DataInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataInfo.ProtoReflect.Descriptor instead.
 func (*DataInfo) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{1}
+	return file_data_data_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DataInfo) GetType() DataType {
@@ -246,6 +299,13 @@ func (x *DataInfo) GetFile() string {
 	return ""
 }
 
+func (x *DataInfo) GetSize() *FileSize {
+	if x != nil {
+		return x.Size
+	}
+	return nil
+}
+
 type Data struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Info          *DataInfo              `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
@@ -257,7 +317,7 @@ type Data struct {
 
 func (x *Data) Reset() {
 	*x = Data{}
-	mi := &file_data_data_proto_msgTypes[2]
+	mi := &file_data_data_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -269,7 +329,7 @@ func (x *Data) String() string {
 func (*Data) ProtoMessage() {}
 
 func (x *Data) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[2]
+	mi := &file_data_data_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -282,7 +342,7 @@ func (x *Data) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Data.ProtoReflect.Descriptor instead.
 func (*Data) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{2}
+	return file_data_data_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Data) GetInfo() *DataInfo {
@@ -315,7 +375,7 @@ type SHASum struct {
 
 func (x *SHASum) Reset() {
 	*x = SHASum{}
-	mi := &file_data_data_proto_msgTypes[3]
+	mi := &file_data_data_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -327,7 +387,7 @@ func (x *SHASum) String() string {
 func (*SHASum) ProtoMessage() {}
 
 func (x *SHASum) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[3]
+	mi := &file_data_data_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -340,7 +400,7 @@ func (x *SHASum) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SHASum.ProtoReflect.Descriptor instead.
 func (*SHASum) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{3}
+	return file_data_data_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SHASum) GetSum() []byte {
@@ -358,11 +418,15 @@ const file_data_data_proto_rawDesc = "" +
 	"\bFilePart\x12\x12\n" +
 	"\x04body\x18\x01 \x01(\fR\x04body\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x03R\x06offset\x12\x16\n" +
-	"\x06isLast\x18\x03 \x01(\bR\x06isLast\"V\n" +
+	"\x06isLast\x18\x03 \x01(\bR\x06isLast\"4\n" +
+	"\bFileSize\x12\x12\n" +
+	"\x04size\x18\x01 \x01(\x03R\x04size\x12\x14\n" +
+	"\x05chunk\x18\x02 \x01(\x03R\x05chunk\"z\n" +
 	"\bDataInfo\x12\"\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x0e.data.DataTypeR\x04type\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
-	"\x04file\x18\x03 \x01(\tR\x04file\"t\n" +
+	"\x04file\x18\x03 \x01(\tR\x04file\x12\"\n" +
+	"\x04size\x18\x04 \x01(\v2\x0e.data.FileSizeR\x04size\"t\n" +
 	"\x04Data\x12\"\n" +
 	"\x04info\x18\x01 \x01(\v2\x0e.data.DataInfoR\x04info\x12$\n" +
 	"\x06action\x18\x02 \x01(\x0e2\f.data.ActionR\x06action\x12\"\n" +
@@ -381,13 +445,14 @@ const file_data_data_proto_rawDesc = "" +
 	"\x06Finish\x10\x02\x12\n" +
 	"\n" +
 	"\x06Delete\x10\x03\x12\a\n" +
-	"\x03Get\x10\x042\x8c\x01\n" +
+	"\x03Get\x10\x042\xbc\x01\n" +
 	"\vDataService\x12.\n" +
 	"\bSaveData\x12\n" +
 	".data.Data\x1a\x16.google.protobuf.Empty\x12%\n" +
 	"\aGetData\x12\n" +
 	".data.Data\x1a\x0e.data.FilePart\x12&\n" +
-	"\x06GetSum\x12\x0e.data.DataInfo\x1a\f.data.SHASumB.Z,github.com/braginantonev/mhserver/proto/datab\x06proto3"
+	"\x06GetSum\x12\x0e.data.DataInfo\x1a\f.data.SHASum\x12.\n" +
+	"\fGetChunkSize\x12\x0e.data.DataInfo\x1a\x0e.data.FileSizeB.Z,github.com/braginantonev/mhserver/proto/datab\x06proto3"
 
 var (
 	file_data_data_proto_rawDescOnce sync.Once
@@ -402,32 +467,36 @@ func file_data_data_proto_rawDescGZIP() []byte {
 }
 
 var file_data_data_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_data_data_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_data_data_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_data_data_proto_goTypes = []any{
 	(DataType)(0),         // 0: data.DataType
 	(Action)(0),           // 1: data.Action
 	(*FilePart)(nil),      // 2: data.FilePart
-	(*DataInfo)(nil),      // 3: data.DataInfo
-	(*Data)(nil),          // 4: data.Data
-	(*SHASum)(nil),        // 5: data.SHASum
-	(*emptypb.Empty)(nil), // 6: google.protobuf.Empty
+	(*FileSize)(nil),      // 3: data.FileSize
+	(*DataInfo)(nil),      // 4: data.DataInfo
+	(*Data)(nil),          // 5: data.Data
+	(*SHASum)(nil),        // 6: data.SHASum
+	(*emptypb.Empty)(nil), // 7: google.protobuf.Empty
 }
 var file_data_data_proto_depIdxs = []int32{
 	0, // 0: data.DataInfo.type:type_name -> data.DataType
-	3, // 1: data.Data.info:type_name -> data.DataInfo
-	1, // 2: data.Data.action:type_name -> data.Action
-	2, // 3: data.Data.part:type_name -> data.FilePart
-	4, // 4: data.DataService.SaveData:input_type -> data.Data
-	4, // 5: data.DataService.GetData:input_type -> data.Data
-	3, // 6: data.DataService.GetSum:input_type -> data.DataInfo
-	6, // 7: data.DataService.SaveData:output_type -> google.protobuf.Empty
-	2, // 8: data.DataService.GetData:output_type -> data.FilePart
-	5, // 9: data.DataService.GetSum:output_type -> data.SHASum
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 1: data.DataInfo.size:type_name -> data.FileSize
+	4, // 2: data.Data.info:type_name -> data.DataInfo
+	1, // 3: data.Data.action:type_name -> data.Action
+	2, // 4: data.Data.part:type_name -> data.FilePart
+	5, // 5: data.DataService.SaveData:input_type -> data.Data
+	5, // 6: data.DataService.GetData:input_type -> data.Data
+	4, // 7: data.DataService.GetSum:input_type -> data.DataInfo
+	4, // 8: data.DataService.GetChunkSize:input_type -> data.DataInfo
+	7, // 9: data.DataService.SaveData:output_type -> google.protobuf.Empty
+	2, // 10: data.DataService.GetData:output_type -> data.FilePart
+	6, // 11: data.DataService.GetSum:output_type -> data.SHASum
+	3, // 12: data.DataService.GetChunkSize:output_type -> data.FileSize
+	9, // [9:13] is the sub-list for method output_type
+	5, // [5:9] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_data_data_proto_init() }
@@ -441,7 +510,7 @@ func file_data_data_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_data_data_proto_rawDesc), len(file_data_data_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

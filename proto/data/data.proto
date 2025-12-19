@@ -25,10 +25,16 @@ message FilePart {
     bool isLast = 3;
 }
 
+message FileSize {
+    int64 size = 1;
+    int64 chunk = 2;
+}
+
 message DataInfo {
     DataType type = 1;
     string user = 2;
     string file = 3;
+    FileSize size = 4;
 }
 
 message Data {
@@ -45,4 +51,5 @@ service DataService {
     rpc SaveData (Data) returns (google.protobuf.Empty);
     rpc GetData (Data) returns (FilePart);
     rpc GetSum (DataInfo) returns (SHASum);
+    rpc GetChunkSize (DataInfo) returns (FileSize);
 }
