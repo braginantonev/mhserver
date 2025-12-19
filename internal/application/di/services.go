@@ -48,7 +48,6 @@ var (
 func RegisterDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) {
 	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, dataconfig.DataServiceConfig{
 		WorkspacePath: app_cfg.WorkspacePath,
-		ChunkSize:     50, //Todo: Change const chunk size to app.ChunkSize
 	}))
 }
 

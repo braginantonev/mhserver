@@ -65,7 +65,7 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 		return nil, err
 	}
 
-	read_data := make([]byte, s.cfg.ChunkSize)
+	read_data := make([]byte, data.Info.GetSize().Chunk)
 	n, err := file.ReadAt(read_data, data.Part.Offset)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
@@ -105,6 +105,8 @@ func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empt
 		if err != nil {
 			return nil, err
 		}
+
+		slog.Info("write to file", slog.Uint64("chunk", data.Info.GetSize().Chunk))
 
 		_, err = file.WriteAt(data.Part.Body, data.Part.Offset)
 		if err != nil {
