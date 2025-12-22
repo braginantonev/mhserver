@@ -107,7 +107,7 @@ func (app *Application) runMain() error {
 	data_client := di.GetDataClient(connections["files"])
 
 	auth_service := di.SetupAuthService(app.cfg, app.db, user_catalogs)
-	data_service := di.SetupDataService(app.cfg, data_client)
+	data_service := di.SetupDataService(data_client)
 
 	srv := server.Server{
 		AuthService: auth_service,

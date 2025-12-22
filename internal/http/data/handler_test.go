@@ -31,18 +31,12 @@ type TestCase struct {
 }
 
 const (
-	TEST_USERNAME   string = "okabe"
-	TEST_CHUNK_SIZE uint64 = 20
+	TEST_WORKSPACE_PATH string = "/tmp/mhserver_tests/"
+	TEST_USERNAME       string = "okabe"
+	TEST_CHUNK_SIZE     uint64 = 20
 )
 
 var (
-	HandlerConfig = dataconfig.DataHandlerConfig{
-		ServiceConfig: dataconfig.DataServiceConfig{
-			WorkspacePath: "/tmp/mhserver_tests/",
-		},
-		MaxRequestsCount: 25,
-		// Data service client will be init
-	}
 	TestFileBody = []byte("hello world")
 )
 
@@ -76,15 +70,17 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 }
 
 func TestSaveData(t *testing.T) {
-	hand_cfg := HandlerConfig
-
-	err := createWorkdir(hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME)
+	err := createWorkdir(TEST_WORKSPACE_PATH, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.ServiceConfig))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8100")
 	if err != nil {
@@ -105,12 +101,12 @@ func TestSaveData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(hand_cfg, nil).SaveData, http.MethodPost, server.GET_DATA_ENDPOINT)
+	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).SaveData, http.MethodPost, server.GET_DATA_ENDPOINT)
 	if err != nil {
 		t.Error(err)
 	}
 
-	handler := datahandler.NewDataHandler(hand_cfg, data_client)
+	handler := datahandler.NewDataHandler(data_client)
 
 	filename := "test_save_data.txt"
 
@@ -231,15 +227,17 @@ func TestSaveData(t *testing.T) {
 }
 
 func TestGetData(t *testing.T) {
-	hand_cfg := HandlerConfig
-
-	err := createWorkdir(hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME)
+	err := createWorkdir(TEST_WORKSPACE_PATH, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.ServiceConfig))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8101")
 	if err != nil {
@@ -260,16 +258,16 @@ func TestGetData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(hand_cfg, nil).GetData, http.MethodGet, server.SAVE_DATA_ENDPOINT)
+	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).GetData, http.MethodGet, server.SAVE_DATA_ENDPOINT)
 	if err != nil {
 		t.Error(err)
 	}
 
-	handler := datahandler.NewDataHandler(hand_cfg, data_client)
+	handler := datahandler.NewDataHandler(data_client)
 
 	// Create test file
 	filename := "test_get_data_handler.txt"
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}

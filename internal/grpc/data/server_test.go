@@ -118,7 +118,11 @@ func TestSaveData(t *testing.T) {
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, "1G")))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8081")
 	if err != nil {
@@ -186,7 +190,11 @@ func TestGetData(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, "1G")))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8082")
 	if err != nil {
@@ -267,7 +275,11 @@ func TestGetSum(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, "1G")))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8083")
 	if err != nil {
