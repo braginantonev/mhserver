@@ -6,6 +6,7 @@ type DataHandler interface {
 	SaveData(http.ResponseWriter, *http.Request)
 	GetData(http.ResponseWriter, *http.Request)
 	GetSum(http.ResponseWriter, *http.Request)
+	GetChunkSize(http.ResponseWriter, *http.Request)
 }
 
 type HttpDataService struct {
