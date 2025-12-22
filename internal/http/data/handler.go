@@ -3,12 +3,12 @@ package datahandler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"time"
 
-	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	pb "github.com/braginantonev/mhserver/proto/data"
 )
@@ -24,13 +24,11 @@ var (
 )
 
 type Handler struct {
-	cfg               dataconfig.DataHandlerConfig
 	dataServiceClient pb.DataServiceClient
 }
 
-func NewDataHandler(cfg dataconfig.DataHandlerConfig, grpc_client pb.DataServiceClient) Handler {
+func NewDataHandler(grpc_client pb.DataServiceClient) Handler {
 	return Handler{
-		cfg:               cfg,
 		dataServiceClient: grpc_client,
 	}
 }
@@ -162,7 +160,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("Handlers.GetData.io.ReadAll").Write(w)
+		ErrFailedReadBody.Append(err).WithFuncName("Handlers.GetSum.io.ReadAll").Write(w)
 		return
 	}
 
@@ -182,7 +180,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.GetData").Write(w)
+		ErrWrongContextUsername.WithFuncName("Handlers.GetSum").Write(w)
 		return
 	}
 	req_info.User = username
@@ -194,4 +192,50 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, _ = w.Write(sum.Sum)
+}
+
+func (h Handler) GetChunkSize(w http.ResponseWriter, r *http.Request) {
+	slog.Info("GetChunkSize request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		ErrFailedReadBody.Append(err).WithFuncName("Handlers.GetChunkSize.io.ReadAll").Write(w)
+		return
+	}
+
+	if len(body) == 0 {
+		ErrRequestBodyEmpty.Write(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
+
+	req_info := &pb.DataInfo{}
+	if err = json.Unmarshal(body, &req_info); err != nil {
+		ErrBadJsonBody.Append(err).Write(w)
+		return
+	}
+
+	if req_info.GetSize().Size == 0 {
+		ErrNullFileSize.Write(w)
+		return
+	}
+
+	chunk_size, err := h.dataServiceClient.GetChunkSize(ctx, req_info)
+	if err != nil {
+		handleServiceError(err, w, "DataService.GetChunkSize")
+	}
+
+	_, _ = fmt.Fprint(w, chunk_size.Chunk)
 }
