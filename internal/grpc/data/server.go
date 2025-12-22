@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"os"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
@@ -17,8 +18,9 @@ import (
 
 type DataServer struct {
 	pb.DataServiceServer
-	cfg   dataconfig.DataServiceConfig
-	cache *filecache.Cache
+	cfg          dataconfig.DataServiceConfig
+	cache        *filecache.Cache
+	active_files map[string]any
 }
 
 func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
@@ -157,6 +159,14 @@ func (s *DataServer) GetSum(ctx context.Context, info *pb.DataInfo) (*pb.SHASum,
 }
 
 func (s *DataServer) GetChunkSize(ctx context.Context, info *pb.DataInfo) (*pb.FileSize, error) {
-	// memory.FreeMemory()
-	return nil, nil
+	file_size := info.GetSize().Size
+
+	ram_based := s.cfg.Memory.AvailableRAM / uint64(len(s.active_files)+1)
+	file_based := dataconfig.BASE_CHUNK_SIZE * uint64(math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
+	chunk_size := (max(s.cfg.Memory.MinChunkSize, min(min(ram_based, file_based), s.cfg.Memory.MaxChunkSize)) / 4096) * 4096
+
+	return &pb.FileSize{
+		Size:  file_size,
+		Chunk: chunk_size,
+	}, nil
 }
