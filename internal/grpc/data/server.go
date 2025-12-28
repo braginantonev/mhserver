@@ -19,15 +19,14 @@ import (
 
 type DataServer struct {
 	pb.DataServiceServer
-	cfg          dataconfig.DataServiceConfig
-	cache        *filecache.Cache
-	active_files map[string]any
+	cfg   dataconfig.DataServiceConfig
+	cache *filecache.FileCache
 }
 
 func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
 	return &DataServer{
 		cfg:   cfg,
-		cache: filecache.NewCache(ctx),
+		cache: filecache.NewFileCache(ctx),
 	}
 }
 
@@ -109,8 +108,6 @@ func (s *DataServer) SaveData(ctx context.Context, data *pb.Data) (*emptypb.Empt
 			return nil, err
 		}
 
-		//slog.Info("write to file", slog.Uint64("chunk", data.Info.GetSize().Chunk))
-
 		_, err = file.WriteAt(data.Part.Body, data.Part.Offset)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrInternal, err)
@@ -163,7 +160,7 @@ func (s *DataServer) GetChunkSize(ctx context.Context, info *pb.DataInfo) (*pb.F
 	file_size := info.GetSize().Size
 	available_ram := min(s.cfg.Memory.AvailableRAM, freemem.GetAvailableMemory())
 
-	ram_based := available_ram / uint64(len(s.active_files)+1)
+	ram_based := available_ram / uint64(s.cache.GetFilesCount()+1)
 	file_based := dataconfig.BASE_CHUNK_SIZE * uint64(math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
 	chunk_size := (max(s.cfg.Memory.MinChunkSize, min(min(ram_based, file_based), s.cfg.Memory.MaxChunkSize)) / 4096) * 4096
 
