@@ -12,6 +12,7 @@ import (
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/repository/filecache"
+	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -160,8 +161,9 @@ func (s *DataServer) GetSum(ctx context.Context, info *pb.DataInfo) (*pb.SHASum,
 
 func (s *DataServer) GetChunkSize(ctx context.Context, info *pb.DataInfo) (*pb.FileSize, error) {
 	file_size := info.GetSize().Size
+	available_ram := min(s.cfg.Memory.AvailableRAM, freemem.GetAvailableMemory())
 
-	ram_based := s.cfg.Memory.AvailableRAM / uint64(len(s.active_files)+1)
+	ram_based := available_ram / uint64(len(s.active_files)+1)
 	file_based := dataconfig.BASE_CHUNK_SIZE * uint64(math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
 	chunk_size := (max(s.cfg.Memory.MinChunkSize, min(min(ram_based, file_based), s.cfg.Memory.MaxChunkSize)) / 4096) * 4096
 
