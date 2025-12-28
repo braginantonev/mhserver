@@ -157,7 +157,7 @@ func (s *DataServer) GetSum(ctx context.Context, info *pb.DataInfo) (*pb.SHASum,
 }
 
 func (s *DataServer) GetChunkSize(ctx context.Context, info *pb.DataInfo) (*pb.FileSize, error) {
-	file_size := info.GetSize().Size
+	file_size := info.Size.Size
 	available_ram := min(s.cfg.Memory.AvailableRAM, freemem.GetAvailableMemory())
 
 	ram_based := available_ram / uint64(s.cache.GetFilesCount()+1)
