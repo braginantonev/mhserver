@@ -227,7 +227,12 @@ func (h Handler) GetChunkSize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req_info.GetSize().Size == 0 {
+	if req_info.Size == nil {
+		ErrNullFileSize.Write(w)
+		return
+	}
+
+	if req_info.Size.Size == 0 {
 		ErrNullFileSize.Write(w)
 		return
 	}

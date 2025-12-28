@@ -18,10 +18,10 @@ var (
 	ErrFailedReadBody       = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
 	ErrRequestBodyEmpty     = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)
 	ErrBadJsonBody          = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
-	ErrNullFileSize         = httperror.NewExternalHttpError(errors.New("file size is null"), http.StatusBadRequest)
 
 	// Data info errors
 	ErrEmptyFilePart = httperror.NewExternalHttpError(errors.New("empty file part"), http.StatusBadRequest)
+	ErrNullFileSize  = httperror.NewExternalHttpError(errors.New("file size is null"), http.StatusBadRequest)
 )
 
 func handleServiceError(err error, w http.ResponseWriter, func_name string) {
