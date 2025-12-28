@@ -83,6 +83,15 @@ done
 
 echo "db_pass = \"$db_pass\"" | sudo tee -a $CONFIG_NAME > /dev/null
 
+#* --- Set available ram --- *#
+echo # Skip the line
+
+available_ram=""
+while [ -z $available_ram ]; do
+    read -p "Set available server RAM (ex. 1G or 51.5): " available_ram
+done
+echo "available_ram = \"$available_ram\"" | sudo tee -a $CONFIG_NAME > /dev/null
+
 #* --- Create server user (mysql) and user database --- *#
 echo # Skip the line
 

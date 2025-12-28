@@ -38,6 +38,7 @@ func NewApplicationConfig() appconfig.ApplicationConfig {
 	}
 
 	slog.Info("Configuration loaded.")
+	slog.Info(fmt.Sprintf("Available server ram: %s", cfg.AvailableRAM))
 	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
 	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", DATABASE_NAME))
 	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
@@ -106,7 +107,7 @@ func (app *Application) runMain() error {
 	data_client := di.GetDataClient(connections["files"])
 
 	auth_service := di.SetupAuthService(app.cfg, app.db, user_catalogs)
-	data_service := di.SetupDataService(app.cfg, data_client)
+	data_service := di.SetupDataService(data_client)
 
 	srv := server.Server{
 		AuthService: auth_service,

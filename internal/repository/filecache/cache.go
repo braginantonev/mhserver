@@ -36,7 +36,7 @@ func NewCachedFile(file *os.File) *CachedFile {
 	}
 }
 
-type Cache struct {
+type FileCache struct {
 	files map[string]*CachedFile
 	mux   sync.RWMutex
 
@@ -44,8 +44,8 @@ type Cache struct {
 	ctx        context.Context
 }
 
-func NewCache(ctx context.Context) *Cache {
-	cache := &Cache{
+func NewFileCache(ctx context.Context) *FileCache {
+	cache := &FileCache{
 		files:      make(map[string]*CachedFile),
 		mux:        sync.RWMutex{},
 		clean_time: CACHE_CLEAN_TIME,
@@ -56,7 +56,7 @@ func NewCache(ctx context.Context) *Cache {
 	return cache
 }
 
-func (c *Cache) clean() {
+func (c *FileCache) clean() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
@@ -68,7 +68,7 @@ func (c *Cache) clean() {
 	}
 }
 
-func (c *Cache) startCleaner() {
+func (c *FileCache) startCleaner() {
 	ticker := time.NewTicker(c.clean_time)
 	defer ticker.Stop()
 
@@ -82,14 +82,14 @@ func (c *Cache) startCleaner() {
 	}
 }
 
-func (c *Cache) Push(key string, file *os.File) {
+func (c *FileCache) Push(key string, file *os.File) {
 	c.mux.Lock()
 	c.files[key] = NewCachedFile(file)
 	c.mux.Unlock()
 }
 
 // Return true if file exist
-func (c *Cache) Get(key string) (*os.File, bool) {
+func (c *FileCache) Get(key string) (*os.File, bool) {
 	c.mux.RLock()
 	cc_file, ok := c.files[key]
 	c.mux.RUnlock()
@@ -99,4 +99,10 @@ func (c *Cache) Get(key string) (*os.File, bool) {
 		return cc_file.file, true
 	}
 	return nil, false
+}
+
+func (c *FileCache) GetFilesCount() int {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	return len(c.files)
 }

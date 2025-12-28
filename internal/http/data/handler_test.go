@@ -31,18 +31,12 @@ type TestCase struct {
 }
 
 const (
-	TEST_USERNAME string = "okabe"
+	TEST_WORKSPACE_PATH string = "/tmp/mhserver_tests/"
+	TEST_USERNAME       string = "okabe"
+	TEST_CHUNK_SIZE     uint64 = 20
 )
 
 var (
-	HandlerConfig = dataconfig.DataHandlerConfig{
-		ServiceConfig: dataconfig.DataServiceConfig{
-			WorkspacePath: "/tmp/mhserver_tests/",
-			ChunkSize:     25,
-		},
-		MaxRequestsCount: 25,
-		// Data service client will be init
-	}
 	TestFileBody = []byte("hello world")
 )
 
@@ -76,15 +70,17 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 }
 
 func TestSaveData(t *testing.T) {
-	hand_cfg := HandlerConfig
-
-	err := createWorkdir(hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME)
+	err := createWorkdir(TEST_WORKSPACE_PATH, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.ServiceConfig))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8100")
 	if err != nil {
@@ -105,12 +101,12 @@ func TestSaveData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(hand_cfg, nil).SaveData, http.MethodPost, server.GET_DATA_ENDPOINT)
+	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).SaveData, http.MethodPost, server.SAVE_DATA_ENDPOINT)
 	if err != nil {
 		t.Error(err)
 	}
 
-	handler := datahandler.NewDataHandler(hand_cfg, data_client)
+	handler := datahandler.NewDataHandler(data_client)
 
 	filename := "test_save_data.txt"
 
@@ -162,6 +158,9 @@ func TestSaveData(t *testing.T) {
 				Info: &pb.DataInfo{
 					Type: pb.DataType_File,
 					File: filename,
+					Size: &pb.FileSize{
+						Chunk: TEST_CHUNK_SIZE,
+					},
 				},
 				Part: &pb.FilePart{
 					Body:   TestFileBody,
@@ -228,15 +227,17 @@ func TestSaveData(t *testing.T) {
 }
 
 func TestGetData(t *testing.T) {
-	hand_cfg := HandlerConfig
-
-	err := createWorkdir(hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME)
+	err := createWorkdir(TEST_WORKSPACE_PATH, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), hand_cfg.ServiceConfig))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8101")
 	if err != nil {
@@ -257,16 +258,16 @@ func TestGetData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(hand_cfg, nil).GetData, http.MethodGet, server.SAVE_DATA_ENDPOINT)
+	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).GetData, http.MethodGet, server.GET_DATA_ENDPOINT)
 	if err != nil {
 		t.Error(err)
 	}
 
-	handler := datahandler.NewDataHandler(hand_cfg, data_client)
+	handler := datahandler.NewDataHandler(data_client)
 
 	// Create test file
 	filename := "test_get_data_handler.txt"
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", hand_cfg.ServiceConfig.WorkspacePath, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,6 +305,9 @@ func TestGetData(t *testing.T) {
 				data: &pb.Data{
 					Info: &pb.DataInfo{
 						File: filename,
+						Size: &pb.FileSize{
+							Chunk: TEST_CHUNK_SIZE,
+						},
 					},
 					Part: &pb.FilePart{
 						Offset: 0,
@@ -355,6 +359,119 @@ func TestGetData(t *testing.T) {
 
 			if string(got_body) != test.expected_body {
 				t.Errorf("expected body: `%s`\nbut got: `%s`", test.expected_body, string(got_body))
+			}
+		})
+	}
+}
+
+func TestGetChunkSize(t *testing.T) {
+	var available_ram uint64 = 1024 * 1024 * 1024
+
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: available_ram,
+	})))
+
+	lis, err := net.Listen("tcp", "localhost:8101")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8101", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data_client := pb.NewDataServiceClient(grpc_connection)
+
+	// Test without connection to service
+	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).GetData, http.MethodGet, server.GET_FILE_CHUNK_SIZE_ENDPOINT)
+	if err != nil {
+		t.Error(err)
+	}
+
+	handler := datahandler.NewDataHandler(data_client)
+
+	cases := []struct {
+		name          string
+		method        string
+		info          *pb.DataInfo
+		expected_code int
+		expected_err  error
+	}{
+		{
+			name:          "wrong method",
+			method:        http.MethodPost,
+			info:          nil,
+			expected_code: http.StatusMethodNotAllowed,
+		},
+		{
+			name:          "empty request",
+			method:        http.MethodGet,
+			info:          nil,
+			expected_code: http.StatusBadRequest,
+			expected_err:  datahandler.ErrRequestBodyEmpty,
+		},
+		{
+			name:          "empty file size",
+			method:        http.MethodGet,
+			info:          &pb.DataInfo{},
+			expected_code: http.StatusBadRequest,
+			expected_err:  datahandler.ErrNullFileSize,
+		},
+		{
+			name:   "good size",
+			method: http.MethodGet,
+			info: &pb.DataInfo{
+				Size: &pb.FileSize{
+					Size: available_ram - 1,
+				},
+			},
+			expected_code: http.StatusOK,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			body := []byte("")
+			if test.info != nil {
+				body, err = json.Marshal(test.info)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			req := httptest.NewRequest(test.method, server.GET_FILE_CHUNK_SIZE_ENDPOINT, bytes.NewReader(body))
+			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
+			w := httptest.NewRecorder()
+
+			handler.GetChunkSize(w, req)
+			res := w.Result()
+			defer func() { _ = res.Body.Close() }()
+
+			if res.StatusCode != test.expected_code {
+				t.Errorf("expected code %d, but got %d", test.expected_code, res.StatusCode)
+			}
+
+			body, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Errorf("Bad body: %v", err)
+			}
+
+			if test.expected_err == nil {
+				return
+			}
+
+			if string(body) != test.expected_err.Error() {
+				t.Errorf("expected err %s, but got %s", test.expected_err, string(body))
 			}
 		})
 	}

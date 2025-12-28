@@ -30,11 +30,8 @@ func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_cata
 	return domain.NewAuthService(handler, middleware)
 }
 
-func SetupDataService(app_cfg appconfig.ApplicationConfig, client data_pb.DataServiceClient) *domain.HttpDataService {
-	return domain.NewDataService(datahandler.NewDataHandler(dataconfig.DataHandlerConfig{
-		ServiceConfig:    dataconfig.NewDataServerConfig(app_cfg.WorkspacePath, 50), //Todo: Change const chunk size to app.ChunkSize
-		MaxRequestsCount: 100,                                                       //Todo: Change const value to app.MaxRequestsCount
-	}, client))
+func SetupDataService(client data_pb.DataServiceClient) *domain.HttpDataService {
+	return domain.NewDataService(datahandler.NewDataHandler(client))
 }
 
 //* GRPC
@@ -48,7 +45,11 @@ var (
 func RegisterDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) {
 	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, dataconfig.DataServiceConfig{
 		WorkspacePath: app_cfg.WorkspacePath,
-		ChunkSize:     50, //Todo: Change const chunk size to app.ChunkSize
+		Memory: dataconfig.DataMemoryConfig{
+			MaxChunkSize: 512 * 1024 * 1024,
+			MinChunkSize: 4 * 1024,
+			AvailableRAM: 1024 * 1024 * 1024,
+		},
 	}))
 }
 

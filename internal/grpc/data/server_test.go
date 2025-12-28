@@ -52,7 +52,7 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *
 
 	// Push file parts
 	for i := 0; ; i++ {
-		send_data := make([]byte, CHUNK_SIZE)
+		send_data := make([]byte, data_info.GetSize().Chunk)
 		n, err := reader.Read(send_data)
 		if err == io.EOF {
 			break
@@ -67,7 +67,7 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *
 				Info:   data_info,
 				Part: &pb.FilePart{
 					Body:   data,
-					Offset: int64(ch_id * CHUNK_SIZE),
+					Offset: int64(ch_id * int(data_info.GetSize().Chunk)),
 				},
 			})
 
@@ -118,7 +118,11 @@ func TestSaveData(t *testing.T) {
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8081")
 	if err != nil {
@@ -142,6 +146,9 @@ func TestSaveData(t *testing.T) {
 		Type: pb.DataType_File,
 		User: TEST_USER,
 		File: test_file_name,
+		Size: &pb.FileSize{
+			Chunk: uint64(CHUNK_SIZE),
+		},
 	}
 
 	//* Test wrong action
@@ -183,7 +190,11 @@ func TestGetData(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8082")
 	if err != nil {
@@ -226,6 +237,9 @@ func TestGetData(t *testing.T) {
 				Type: pb.DataType_File,
 				User: TEST_USER,
 				File: test_file_name,
+				Size: &pb.FileSize{
+					Chunk: uint64(CHUNK_SIZE),
+				},
 			},
 			Action: pb.Action_Get,
 			Part: &pb.FilePart{
@@ -261,7 +275,11 @@ func TestGetSum(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, CHUNK_SIZE)))
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 512 * 1024 * 1024,
+		MinChunkSize: 4 * 1024,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
 
 	lis, err := net.Listen("tcp", "localhost:8083")
 	if err != nil {
@@ -316,6 +334,9 @@ func TestGetSum(t *testing.T) {
 				Type: pb.DataType_File,
 				User: TEST_USER,
 				File: "500b.txt",
+				Size: &pb.FileSize{
+					Chunk: 500 / 50,
+				},
 			},
 			file_body:    genRandomFile(500),
 			expected_err: fmt.Errorf(""),
@@ -326,6 +347,9 @@ func TestGetSum(t *testing.T) {
 				Type: pb.DataType_File,
 				User: TEST_USER,
 				File: "10kb.txt",
+				Size: &pb.FileSize{
+					Chunk: 10 * 1024 / 50,
+				},
 			},
 			file_body:    genRandomFile(10 * 1024),
 			expected_err: fmt.Errorf(""),
@@ -336,6 +360,9 @@ func TestGetSum(t *testing.T) {
 				Type: pb.DataType_File,
 				User: TEST_USER,
 				File: "500kb.txt",
+				Size: &pb.FileSize{
+					Chunk: 500 * 1024 / 50,
+				},
 			},
 			file_body:    genRandomFile(500 * 1024),
 			expected_err: fmt.Errorf(""),
@@ -346,6 +373,9 @@ func TestGetSum(t *testing.T) {
 				Type: pb.DataType_File,
 				User: TEST_USER,
 				File: "5mb.txt",
+				Size: &pb.FileSize{
+					Chunk: 5 * 1024 * 1024 / 50,
+				},
 			},
 			file_body:    genRandomFile(5 * 1024 * 1024),
 			expected_err: fmt.Errorf(""),
@@ -356,6 +386,9 @@ func TestGetSum(t *testing.T) {
 				Type: pb.DataType_File,
 				User: TEST_USER,
 				File: "50mb.txt",
+				Size: &pb.FileSize{
+					Chunk: 1024 * 1024,
+				},
 			},
 			file_body:    genRandomFile(50 * 1024 * 1024),
 			expected_err: fmt.Errorf(""),
@@ -366,6 +399,9 @@ func TestGetSum(t *testing.T) {
 				Type: pb.DataType_File,
 				User: TEST_USER,
 				File: "100mb.txt",
+				Size: &pb.FileSize{
+					Chunk: 2 * 1024 * 1024,
+				},
 			},
 			file_body:    genRandomFile(100 * 1024 * 1024),
 			expected_err: fmt.Errorf(""),
@@ -376,6 +412,9 @@ func TestGetSum(t *testing.T) {
 				Type: pb.DataType_File,
 				User: TEST_USER,
 				File: "bad_sum.txt",
+				Size: &pb.FileSize{
+					Chunk: 25,
+				},
 			},
 			bad_sum_wanted: true,
 			file_body:      genRandomFile(500),
@@ -418,6 +457,7 @@ func TestGetSum(t *testing.T) {
 
 			for i, n := range got_sum.Sum {
 				if n != expected_sum[i] && !test.bad_sum_wanted {
+					t.Logf("expected last 250 bytes %s", test.file_body[len(test.file_body)-250:])
 					t.Fatalf("expected sum: %x, but got: %x", expected_sum, got_sum.Sum)
 				}
 			}

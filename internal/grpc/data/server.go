@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"os"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/repository/filecache"
+	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -18,13 +20,13 @@ import (
 type DataServer struct {
 	pb.DataServiceServer
 	cfg   dataconfig.DataServiceConfig
-	cache *filecache.Cache
+	cache *filecache.FileCache
 }
 
 func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
 	return &DataServer{
 		cfg:   cfg,
-		cache: filecache.NewCache(ctx),
+		cache: filecache.NewFileCache(ctx),
 	}
 }
 
@@ -65,7 +67,7 @@ func (s *DataServer) GetData(ctx context.Context, data *pb.Data) (*pb.FilePart, 
 		return nil, err
 	}
 
-	read_data := make([]byte, s.cfg.ChunkSize)
+	read_data := make([]byte, data.Info.GetSize().Chunk)
 	n, err := file.ReadAt(read_data, data.Part.Offset)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
@@ -151,5 +153,19 @@ func (s *DataServer) GetSum(ctx context.Context, info *pb.DataInfo) (*pb.SHASum,
 	sha := sha256.Sum256(body)
 	return &pb.SHASum{
 		Sum: sha[:],
+	}, nil
+}
+
+func (s *DataServer) GetChunkSize(ctx context.Context, info *pb.DataInfo) (*pb.FileSize, error) {
+	file_size := info.Size.Size
+	available_ram := min(s.cfg.Memory.AvailableRAM, freemem.GetAvailableMemory())
+
+	ram_based := available_ram / uint64(s.cache.GetFilesCount()+1)
+	file_based := dataconfig.BASE_CHUNK_SIZE * uint64(math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
+	chunk_size := (max(s.cfg.Memory.MinChunkSize, min(min(ram_based, file_based), s.cfg.Memory.MaxChunkSize)) / 4096) * 4096
+
+	return &pb.FileSize{
+		Size:  file_size,
+		Chunk: chunk_size,
 	}, nil
 }

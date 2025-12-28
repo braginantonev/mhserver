@@ -1,29 +1,23 @@
 package dataconfig
 
-const STANDARD_CHUNK_SIZE = 1024
+const (
+	BASE_CHUNK_SIZE uint64 = 8 * 1024 * 1024 // 8 Mb
+)
+
+type DataMemoryConfig struct {
+	AvailableRAM uint64 `toml:"available_ram"` // Total memory which service can be use
+	MaxChunkSize uint64 `toml:"max_chunk_size"`
+	MinChunkSize uint64 `toml:"min_chunk_size"`
+}
 
 type DataServiceConfig struct {
-	// User files path
-	WorkspacePath string
-
-	// Chunk size is a size of one part file, which will be saved
-	ChunkSize int
-
-	//Todo: Upload semaphore
+	WorkspacePath string // User files path
+	Memory        DataMemoryConfig
 }
 
-func NewDataServerConfig(workspace_path string, chunk_size int) DataServiceConfig {
-	if chunk_size <= 0 {
-		chunk_size = STANDARD_CHUNK_SIZE
-	}
-
+func NewDataServerConfig(workspace_path string, data_memory_cfg DataMemoryConfig) DataServiceConfig {
 	return DataServiceConfig{
 		WorkspacePath: workspace_path,
-		ChunkSize:     chunk_size,
+		Memory:        data_memory_cfg,
 	}
-}
-
-type DataHandlerConfig struct {
-	ServiceConfig    DataServiceConfig
-	MaxRequestsCount int
 }
