@@ -4,43 +4,44 @@ option go_package = "github.com/braginantonev/mhserver/proto/data";
 
 import "google/protobuf/empty.proto";
 
-enum DataType {
+enum FileType {
     File = 0;
     Image = 1;
     Music = 2;
-    //Todo
 }
 
 enum Action {
-    Create = 0;
+    New = 0;
     Patch = 1;
-    Finish = 2;
-    Delete = 3;
-    Get = 4;
-}
-
-message FilePart {
-    bytes body = 1;
-    int64 offset = 2;
-    bool isLast = 3;
-}
-
-message FileSize {
-    uint64 size = 1;
-    uint64 chunk = 2;
+    Get = 2;
 }
 
 message DataInfo {
-    DataType type = 1;
-    string user = 2;
-    string file = 3;
-    FileSize size = 4;
+    string username = 1;
+    Action action = 2;
+    string filename = 3;
+    FileType filetype = 4;
+    uint64 size = 5;
 }
 
-message Data {
-    DataInfo info = 1;
-    Action action = 2;
-    FilePart part = 3;
+message Connection {
+    uint64 chunkSize = 1;
+    string uuid = 2;
+}
+
+message FilePart {
+    bytes chunk = 1;
+    int64 offset = 2;
+}
+
+message SaveChunk {
+    string uuid = 1;
+    FilePart data = 2;
+}
+
+message GetChunk {
+    string uuid = 1;
+    int32 chunkId = 2;
 }
 
 message SHASum {
@@ -48,8 +49,8 @@ message SHASum {
 }
 
 service DataService {
-    rpc SaveData (Data) returns (google.protobuf.Empty);
-    rpc GetData (Data) returns (FilePart);
+    rpc CreateConnection (DataInfo) returns (Connection);
+    rpc SaveData (SaveChunk) returns (google.protobuf.Empty);
+    rpc GetData (GetChunk) returns (FilePart);
     rpc GetSum (DataInfo) returns (SHASum);
-    rpc GetChunkSize (DataInfo) returns (FileSize);
 }
