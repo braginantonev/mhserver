@@ -19,7 +19,7 @@ message DataInfo {
 
 message Connection {
     uint64 chunkSize = 1;
-    string uuid = 2;
+    string UUID = 2;
 }
 
 message FilePart {
@@ -28,12 +28,12 @@ message FilePart {
 }
 
 message SaveChunk {
-    string uuid = 1;
+    string UUID = 1;
     FilePart data = 2;
 }
 
 message GetChunk {
-    string uuid = 1;
+    string UUID = 1;
     int32 chunkId = 2;
 }
 

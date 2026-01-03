@@ -142,7 +142,7 @@ func (x *DataInfo) GetSize() uint64 {
 type Connection struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ChunkSize     uint64                 `protobuf:"varint,1,opt,name=chunkSize,proto3" json:"chunkSize,omitempty"`
-	Uuid          string                 `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	UUID          string                 `protobuf:"bytes,2,opt,name=UUID,proto3" json:"UUID,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -184,9 +184,9 @@ func (x *Connection) GetChunkSize() uint64 {
 	return 0
 }
 
-func (x *Connection) GetUuid() string {
+func (x *Connection) GetUUID() string {
 	if x != nil {
-		return x.Uuid
+		return x.UUID
 	}
 	return ""
 }
@@ -245,7 +245,7 @@ func (x *FilePart) GetOffset() int64 {
 
 type SaveChunk struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	UUID          string                 `protobuf:"bytes,1,opt,name=UUID,proto3" json:"UUID,omitempty"`
 	Data          *FilePart              `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -281,9 +281,9 @@ func (*SaveChunk) Descriptor() ([]byte, []int) {
 	return file_data_data_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *SaveChunk) GetUuid() string {
+func (x *SaveChunk) GetUUID() string {
 	if x != nil {
-		return x.Uuid
+		return x.UUID
 	}
 	return ""
 }
@@ -297,7 +297,7 @@ func (x *SaveChunk) GetData() *FilePart {
 
 type GetChunk struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	UUID          string                 `protobuf:"bytes,1,opt,name=UUID,proto3" json:"UUID,omitempty"`
 	ChunkId       int32                  `protobuf:"varint,2,opt,name=chunkId,proto3" json:"chunkId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -333,9 +333,9 @@ func (*GetChunk) Descriptor() ([]byte, []int) {
 	return file_data_data_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *GetChunk) GetUuid() string {
+func (x *GetChunk) GetUUID() string {
 	if x != nil {
-		return x.Uuid
+		return x.UUID
 	}
 	return ""
 }
@@ -404,15 +404,15 @@ const file_data_data_proto_rawDesc = "" +
 	"\n" +
 	"Connection\x12\x1c\n" +
 	"\tchunkSize\x18\x01 \x01(\x04R\tchunkSize\x12\x12\n" +
-	"\x04uuid\x18\x02 \x01(\tR\x04uuid\"8\n" +
+	"\x04UUID\x18\x02 \x01(\tR\x04UUID\"8\n" +
 	"\bFilePart\x12\x14\n" +
 	"\x05chunk\x18\x01 \x01(\fR\x05chunk\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x03R\x06offset\"C\n" +
 	"\tSaveChunk\x12\x12\n" +
-	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\"\n" +
+	"\x04UUID\x18\x01 \x01(\tR\x04UUID\x12\"\n" +
 	"\x04data\x18\x02 \x01(\v2\x0e.data.FilePartR\x04data\"8\n" +
 	"\bGetChunk\x12\x12\n" +
-	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x18\n" +
+	"\x04UUID\x18\x01 \x01(\tR\x04UUID\x12\x18\n" +
 	"\achunkId\x18\x02 \x01(\x05R\achunkId\"\x1a\n" +
 	"\x06SHASum\x12\x10\n" +
 	"\x03sum\x18\x01 \x01(\fR\x03sum**\n" +
