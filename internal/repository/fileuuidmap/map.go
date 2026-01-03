@@ -9,44 +9,64 @@ import (
 )
 
 const (
-	FILE_UUID_LIFETIME time.Duration = 1 * time.Minute
-	CLEAN_DURATION     time.Duration = 5 * time.Second
+	FILE_INFO_UUID_LIFETIME time.Duration = 5 * time.Minute
+	CLEAN_DURATION          time.Duration = 10 * time.Second
 )
 
-type FilePath struct {
-	path       string
+type FileInfo struct {
+	path         string
+	chunkSize    uint64
+	chunksCount  int
+	loadedChunks int
+
 	expiration int64
 }
 
-func NewFilePath(path string) FilePath {
-	return FilePath{
+func NewFileInfo(path string) *FileInfo {
+	return &FileInfo{
 		path:       path,
-		expiration: time.Now().Add(FILE_UUID_LIFETIME).Unix(),
+		expiration: time.Now().Add(FILE_INFO_UUID_LIFETIME).Unix(),
 	}
 }
 
-func (p FilePath) isExpired() bool {
+func (p *FileInfo) isExpired() bool {
 	return time.Now().Unix() > p.expiration
 }
 
-func (p *FilePath) updateExpiration() {
-	p.expiration = time.Now().Add(FILE_UUID_LIFETIME).Unix()
+func (p *FileInfo) updateExpiration() {
+	p.expiration = time.Now().Add(FILE_INFO_UUID_LIFETIME).Unix()
+}
+
+func (p *FileInfo) GetPath() string {
+	return p.path
+}
+
+func (p *FileInfo) GetChunkSize() uint64 {
+	return p.chunkSize
+}
+
+func (p *FileInfo) GetChunksCount() int {
+	return p.chunksCount
+}
+
+func (p *FileInfo) GetLoadedChunks() int {
+	return p.loadedChunks
 }
 
 type FileUUIDMap struct {
-	paths map[uuid.UUID]FilePath
+	infos map[uuid.UUID]*FileInfo
 	mux   *sync.RWMutex
 
-	ctx            context.Context
-	clean_duration time.Duration
+	ctx           context.Context
+	cleanDuration time.Duration
 }
 
 func NewFileUUIDMap(ctx context.Context) *FileUUIDMap {
 	m := &FileUUIDMap{
-		paths:          make(map[uuid.UUID]FilePath),
-		mux:            &sync.RWMutex{},
-		ctx:            ctx,
-		clean_duration: CLEAN_DURATION,
+		infos:         make(map[uuid.UUID]*FileInfo),
+		mux:           &sync.RWMutex{},
+		ctx:           ctx,
+		cleanDuration: CLEAN_DURATION,
 	}
 	go m.startCleaner()
 
@@ -57,15 +77,15 @@ func (m *FileUUIDMap) clean() {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
-	for key, path := range m.paths {
+	for key, path := range m.infos {
 		if path.isExpired() {
-			delete(m.paths, key)
+			delete(m.infos, key)
 		}
 	}
 }
 
 func (m *FileUUIDMap) startCleaner() {
-	ticker := time.NewTicker(m.clean_duration)
+	ticker := time.NewTicker(m.cleanDuration)
 	defer ticker.Stop()
 
 	for {
@@ -82,21 +102,36 @@ func (m *FileUUIDMap) Add(path string) uuid.UUID {
 	uuid := uuid.New()
 
 	m.mux.Lock()
-	m.paths[uuid] = NewFilePath(path)
+	m.infos[uuid] = NewFileInfo(path)
 	m.mux.Unlock()
 
 	return uuid
 }
 
-func (m *FileUUIDMap) Get(uuid uuid.UUID) (string, bool) {
+func (m *FileUUIDMap) Get(uuid uuid.UUID) (*FileInfo, bool) {
 	m.mux.RLock()
-	got, ok := m.paths[uuid]
-	m.mux.RUnlock()
+	defer m.mux.RUnlock()
 
+	info, ok := m.infos[uuid]
 	if !ok {
-		return "", false
+		return nil, false
 	}
 
-	got.updateExpiration()
-	return got.path, true
+	info.updateExpiration()
+	return info, true
+}
+
+func (m *FileUUIDMap) UpdateLoadedChunks(uuid uuid.UUID) bool {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+
+	info, ok := m.infos[uuid]
+	if !ok {
+		return false
+	}
+
+	info.loadedChunks += 1
+	info.updateExpiration()
+
+	return true
 }
