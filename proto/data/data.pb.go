@@ -71,59 +71,9 @@ func (FileType) EnumDescriptor() ([]byte, []int) {
 	return file_data_data_proto_rawDescGZIP(), []int{0}
 }
 
-type Action int32
-
-const (
-	Action_New   Action = 0
-	Action_Patch Action = 1
-	Action_Get   Action = 2
-)
-
-// Enum value maps for Action.
-var (
-	Action_name = map[int32]string{
-		0: "New",
-		1: "Patch",
-		2: "Get",
-	}
-	Action_value = map[string]int32{
-		"New":   0,
-		"Patch": 1,
-		"Get":   2,
-	}
-)
-
-func (x Action) Enum() *Action {
-	p := new(Action)
-	*p = x
-	return p
-}
-
-func (x Action) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (Action) Descriptor() protoreflect.EnumDescriptor {
-	return file_data_data_proto_enumTypes[1].Descriptor()
-}
-
-func (Action) Type() protoreflect.EnumType {
-	return &file_data_data_proto_enumTypes[1]
-}
-
-func (x Action) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use Action.Descriptor instead.
-func (Action) EnumDescriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{1}
-}
-
 type DataInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	Action        Action                 `protobuf:"varint,2,opt,name=action,proto3,enum=data.Action" json:"action,omitempty"`
 	Filename      string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`
 	Filetype      FileType               `protobuf:"varint,4,opt,name=filetype,proto3,enum=data.FileType" json:"filetype,omitempty"`
 	Size          uint64                 `protobuf:"varint,5,opt,name=size,proto3" json:"size,omitempty"`
@@ -166,13 +116,6 @@ func (x *DataInfo) GetUsername() string {
 		return x.Username
 	}
 	return ""
-}
-
-func (x *DataInfo) GetAction() Action {
-	if x != nil {
-		return x.Action
-	}
-	return Action_New
 }
 
 func (x *DataInfo) GetFilename() string {
@@ -452,10 +395,9 @@ var File_data_data_proto protoreflect.FileDescriptor
 
 const file_data_data_proto_rawDesc = "" +
 	"\n" +
-	"\x0fdata/data.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"\xa8\x01\n" +
+	"\x0fdata/data.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"\x82\x01\n" +
 	"\bDataInfo\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12$\n" +
-	"\x06action\x18\x02 \x01(\x0e2\f.data.ActionR\x06action\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bfilename\x18\x03 \x01(\tR\bfilename\x12*\n" +
 	"\bfiletype\x18\x04 \x01(\x0e2\x0e.data.FileTypeR\bfiletype\x12\x12\n" +
 	"\x04size\x18\x05 \x01(\x04R\x04size\">\n" +
@@ -477,11 +419,7 @@ const file_data_data_proto_rawDesc = "" +
 	"\bFileType\x12\b\n" +
 	"\x04File\x10\x00\x12\t\n" +
 	"\x05Image\x10\x01\x12\t\n" +
-	"\x05Music\x10\x02*%\n" +
-	"\x06Action\x12\a\n" +
-	"\x03New\x10\x00\x12\t\n" +
-	"\x05Patch\x10\x01\x12\a\n" +
-	"\x03Get\x10\x022\xcb\x01\n" +
+	"\x05Music\x10\x022\xcb\x01\n" +
 	"\vDataService\x124\n" +
 	"\x10CreateConnection\x12\x0e.data.DataInfo\x1a\x10.data.Connection\x123\n" +
 	"\bSaveData\x12\x0f.data.SaveChunk\x1a\x16.google.protobuf.Empty\x12)\n" +
@@ -500,36 +438,34 @@ func file_data_data_proto_rawDescGZIP() []byte {
 	return file_data_data_proto_rawDescData
 }
 
-var file_data_data_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_data_data_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_data_data_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_data_data_proto_goTypes = []any{
 	(FileType)(0),         // 0: data.FileType
-	(Action)(0),           // 1: data.Action
-	(*DataInfo)(nil),      // 2: data.DataInfo
-	(*Connection)(nil),    // 3: data.Connection
-	(*FilePart)(nil),      // 4: data.FilePart
-	(*SaveChunk)(nil),     // 5: data.SaveChunk
-	(*GetChunk)(nil),      // 6: data.GetChunk
-	(*SHASum)(nil),        // 7: data.SHASum
-	(*emptypb.Empty)(nil), // 8: google.protobuf.Empty
+	(*DataInfo)(nil),      // 1: data.DataInfo
+	(*Connection)(nil),    // 2: data.Connection
+	(*FilePart)(nil),      // 3: data.FilePart
+	(*SaveChunk)(nil),     // 4: data.SaveChunk
+	(*GetChunk)(nil),      // 5: data.GetChunk
+	(*SHASum)(nil),        // 6: data.SHASum
+	(*emptypb.Empty)(nil), // 7: google.protobuf.Empty
 }
 var file_data_data_proto_depIdxs = []int32{
-	1, // 0: data.DataInfo.action:type_name -> data.Action
-	0, // 1: data.DataInfo.filetype:type_name -> data.FileType
-	4, // 2: data.SaveChunk.data:type_name -> data.FilePart
-	2, // 3: data.DataService.CreateConnection:input_type -> data.DataInfo
-	5, // 4: data.DataService.SaveData:input_type -> data.SaveChunk
-	6, // 5: data.DataService.GetData:input_type -> data.GetChunk
-	2, // 6: data.DataService.GetSum:input_type -> data.DataInfo
-	3, // 7: data.DataService.CreateConnection:output_type -> data.Connection
-	8, // 8: data.DataService.SaveData:output_type -> google.protobuf.Empty
-	4, // 9: data.DataService.GetData:output_type -> data.FilePart
-	7, // 10: data.DataService.GetSum:output_type -> data.SHASum
-	7, // [7:11] is the sub-list for method output_type
-	3, // [3:7] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0, // 0: data.DataInfo.filetype:type_name -> data.FileType
+	3, // 1: data.SaveChunk.data:type_name -> data.FilePart
+	1, // 2: data.DataService.CreateConnection:input_type -> data.DataInfo
+	4, // 3: data.DataService.SaveData:input_type -> data.SaveChunk
+	5, // 4: data.DataService.GetData:input_type -> data.GetChunk
+	1, // 5: data.DataService.GetSum:input_type -> data.DataInfo
+	2, // 6: data.DataService.CreateConnection:output_type -> data.Connection
+	7, // 7: data.DataService.SaveData:output_type -> google.protobuf.Empty
+	3, // 8: data.DataService.GetData:output_type -> data.FilePart
+	6, // 9: data.DataService.GetSum:output_type -> data.SHASum
+	6, // [6:10] is the sub-list for method output_type
+	2, // [2:6] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_data_data_proto_init() }
@@ -542,7 +478,7 @@ func file_data_data_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_data_data_proto_rawDesc), len(file_data_data_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      1,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,

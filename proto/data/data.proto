@@ -10,15 +10,8 @@ enum FileType {
     Music = 2;
 }
 
-enum Action {
-    New = 0;
-    Patch = 1;
-    Get = 2;
-}
-
 message DataInfo {
     string username = 1;
-    Action action = 2;
     string filename = 3;
     FileType filetype = 4;
     uint64 size = 5;
