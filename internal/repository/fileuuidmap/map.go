@@ -144,13 +144,13 @@ func (m *FileUUIDMap) UpdateLoadedChunks(uuid uuid.UUID) error {
 		return ErrFileNotFound
 	}
 
-	if info.chunks.Count >= info.chunks.Loaded {
+	info.chunks.Loaded += 1
+	info.updateExpiration()
+
+	if info.chunks.Loaded == info.chunks.Count {
 		delete(m.infos, uuid)
 		return EOC
 	}
-
-	info.chunks.Loaded += 1
-	info.updateExpiration()
 
 	return nil
 }
