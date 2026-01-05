@@ -18,8 +18,9 @@ message DataInfo {
 }
 
 message Connection {
-    uint64 chunkSize = 1;
-    string UUID = 2;
+    string UUID = 1;
+    uint64 chunkSize = 2;
+    int32 chunksCount = 3;
 }
 
 message FilePart {

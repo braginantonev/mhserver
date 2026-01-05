@@ -141,8 +141,9 @@ func (x *DataInfo) GetSize() uint64 {
 
 type Connection struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ChunkSize     uint64                 `protobuf:"varint,1,opt,name=chunkSize,proto3" json:"chunkSize,omitempty"`
-	UUID          string                 `protobuf:"bytes,2,opt,name=UUID,proto3" json:"UUID,omitempty"`
+	UUID          string                 `protobuf:"bytes,1,opt,name=UUID,proto3" json:"UUID,omitempty"`
+	ChunkSize     uint64                 `protobuf:"varint,2,opt,name=chunkSize,proto3" json:"chunkSize,omitempty"`
+	ChunksCount   int32                  `protobuf:"varint,3,opt,name=chunksCount,proto3" json:"chunksCount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -177,6 +178,13 @@ func (*Connection) Descriptor() ([]byte, []int) {
 	return file_data_data_proto_rawDescGZIP(), []int{1}
 }
 
+func (x *Connection) GetUUID() string {
+	if x != nil {
+		return x.UUID
+	}
+	return ""
+}
+
 func (x *Connection) GetChunkSize() uint64 {
 	if x != nil {
 		return x.ChunkSize
@@ -184,11 +192,11 @@ func (x *Connection) GetChunkSize() uint64 {
 	return 0
 }
 
-func (x *Connection) GetUUID() string {
+func (x *Connection) GetChunksCount() int32 {
 	if x != nil {
-		return x.UUID
+		return x.ChunksCount
 	}
-	return ""
+	return 0
 }
 
 type FilePart struct {
@@ -400,11 +408,12 @@ const file_data_data_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bfilename\x18\x03 \x01(\tR\bfilename\x12*\n" +
 	"\bfiletype\x18\x04 \x01(\x0e2\x0e.data.FileTypeR\bfiletype\x12\x12\n" +
-	"\x04size\x18\x05 \x01(\x04R\x04size\">\n" +
+	"\x04size\x18\x05 \x01(\x04R\x04size\"`\n" +
 	"\n" +
-	"Connection\x12\x1c\n" +
-	"\tchunkSize\x18\x01 \x01(\x04R\tchunkSize\x12\x12\n" +
-	"\x04UUID\x18\x02 \x01(\tR\x04UUID\"8\n" +
+	"Connection\x12\x12\n" +
+	"\x04UUID\x18\x01 \x01(\tR\x04UUID\x12\x1c\n" +
+	"\tchunkSize\x18\x02 \x01(\x04R\tchunkSize\x12 \n" +
+	"\vchunksCount\x18\x03 \x01(\x05R\vchunksCount\"8\n" +
 	"\bFilePart\x12\x14\n" +
 	"\x05chunk\x18\x01 \x01(\fR\x05chunk\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x03R\x06offset\"C\n" +
