@@ -1,7 +1,8 @@
 package dataconfig
 
 const (
-	BASE_CHUNK_SIZE uint64 = 8 * 1024 * 1024 // 8 Mb
+	BASE_CHUNK_SIZE            uint64 = 32 * 1024 // 32 kb
+	STANDARD_MAX_SAVE_REQUESTS int    = 125
 )
 
 type DataMemoryConfig struct {

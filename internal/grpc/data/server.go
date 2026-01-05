@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"math"
 	"os"
@@ -24,6 +25,7 @@ type DataServer struct {
 	cfg         dataconfig.DataServiceConfig
 	cache       *filecache.FileCache
 	activeFiles *fileuuidmap.FileUUIDMap
+	sem         chan any
 }
 
 func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
@@ -31,6 +33,7 @@ func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataS
 		cfg:         cfg,
 		cache:       filecache.NewFileCache(ctx),
 		activeFiles: fileuuidmap.NewFileUUIDMap(ctx),
+		sem:         make(chan any, dataconfig.STANDARD_MAX_SAVE_REQUESTS),
 	}
 }
 
@@ -57,7 +60,9 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	available_ram := min(s.cfg.Memory.AvailableRAM, freemem.GetAvailableMemory())
 
 	ram_based := available_ram / uint64(s.activeFiles.Length())
-	file_based := dataconfig.BASE_CHUNK_SIZE * uint64(math.Log2(float64(info.Size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
+	file_based := uint64(float64(dataconfig.BASE_CHUNK_SIZE) * math.Log2(float64(info.Size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
+
+	log.Println(info.Size, math.Log2(float64(info.Size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
 
 	var chunk_size uint64
 	if info.Size < s.cfg.Memory.MinChunkSize {
@@ -117,6 +122,12 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 }
 
 func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*emptypb.Empty, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
 	uuid, err := uuid.Parse(save_chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
