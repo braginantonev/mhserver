@@ -293,10 +293,12 @@ func TestGetSum(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	max_GRPC_message := 50 * 1024 * 1024
+
 	// Create data grpc client
-	grpc_server := grpc.NewServer()
+	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_GRPC_message), grpc.MaxSendMsgSize(max_GRPC_message))
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
-		MaxChunkSize: 512 * 1024 * 1024,
+		MaxChunkSize: uint64(max_GRPC_message) / 2,
 		MinChunkSize: 4 * 1024,
 		AvailableRAM: 1024 * 1024 * 1024,
 	})))
@@ -335,7 +337,6 @@ func TestGetSum(t *testing.T) {
 	cases := [...]struct {
 		name           string
 		data_info      *pb.DataInfo
-		file_body      string
 		bad_sum_wanted bool
 		expected_err   error
 	}{
@@ -345,7 +346,6 @@ func TestGetSum(t *testing.T) {
 				Username: TEST_USER,
 				Filetype: pb.FileType_File,
 			},
-			file_body:    TEST_FILE_BODY,
 			expected_err: data.ErrEmptyFilename,
 		},
 		{
@@ -356,7 +356,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     500,
 			},
-			file_body:    genRandomFile(500),
 			expected_err: fmt.Errorf(""),
 		},
 		{
@@ -367,7 +366,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     10 * 1024,
 			},
-			file_body:    genRandomFile(10 * 1024),
 			expected_err: fmt.Errorf(""),
 		},
 		{
@@ -378,7 +376,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     500 * 1024,
 			},
-			file_body:    genRandomFile(500 * 1024),
 			expected_err: fmt.Errorf(""),
 		},
 		{
@@ -389,7 +386,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     5 * 1024 * 1024,
 			},
-			file_body:    genRandomFile(5 * 1024 * 1024),
 			expected_err: fmt.Errorf(""),
 		},
 		{
@@ -400,7 +396,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     50 * 1024 * 1024,
 			},
-			file_body:    genRandomFile(50 * 1024 * 1024),
 			expected_err: fmt.Errorf(""),
 		},
 		{
@@ -411,7 +406,26 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     100 * 1024 * 1024,
 			},
-			file_body:    genRandomFile(100 * 1024 * 1024),
+			expected_err: fmt.Errorf(""),
+		},
+		{
+			name: "file 500mb",
+			data_info: &pb.DataInfo{
+				Username: TEST_USER,
+				Filename: "500mb.txt",
+				Filetype: pb.FileType_File,
+				Size:     500 * 1024 * 1024,
+			},
+			expected_err: fmt.Errorf(""),
+		},
+		{
+			name: "file 750mb",
+			data_info: &pb.DataInfo{
+				Username: TEST_USER,
+				Filename: "750mb.txt",
+				Filetype: pb.FileType_File,
+				Size:     750 * 1024 * 1024,
+			},
 			expected_err: fmt.Errorf(""),
 		},
 		{
@@ -423,7 +437,6 @@ func TestGetSum(t *testing.T) {
 				Size:     500,
 			},
 			bad_sum_wanted: true,
-			file_body:      genRandomFile(500),
 			expected_err:   fmt.Errorf(""),
 		},
 	}
@@ -432,12 +445,14 @@ func TestGetSum(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			expected_sum := sha256.Sum256([]byte(test.file_body))
+			file_body := genRandomFile(test.data_info.Size)
+
+			expected_sum := sha256.Sum256([]byte(file_body))
 			if test.bad_sum_wanted {
 				expected_sum[0] = 0
 			}
 
-			if err := saveFile(t.Context(), data_client, test.data_info, strings.NewReader(test.file_body)); err != nil {
+			if err := saveFile(t.Context(), data_client, test.data_info, strings.NewReader(file_body)); err != nil {
 				if mess := getRPCErrorMessage(err); mess != test.expected_err.Error() {
 					t.Fatalf("expected error %s, but got %s", test.expected_err, mess)
 				}
@@ -465,7 +480,7 @@ func TestGetSum(t *testing.T) {
 
 			for i, n := range got_sum.Sum {
 				if n != expected_sum[i] && !test.bad_sum_wanted {
-					t.Logf("expected last 250 bytes %s", test.file_body[len(test.file_body)-250:])
+					t.Logf("expected last 250 bytes %s", file_body[test.data_info.Size-250:])
 					t.Fatalf("expected sum: %x, but got: %x", expected_sum, got_sum.Sum)
 				}
 			}
