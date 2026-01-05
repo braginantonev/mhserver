@@ -8,6 +8,13 @@ import (
 var (
 	EOF error = io.EOF
 
+	// File find
+	ErrBadUUID              error = errors.New("bad uuid")
+	ErrUnexpectedFileChange error = errors.New("unexpected file change")
+
+	// Chunks
+	ErrIncorrectChunkSize error = errors.New("incorrect chunk size")
+
 	ErrEmptyFilename      error = errors.New("file name is empty")
 	ErrWrongAction        error = errors.New("wrong action")
 	ErrUnexpectedFileType error = errors.New("unexpected file type")
