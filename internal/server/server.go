@@ -14,10 +14,10 @@ const (
 	REGISTER_ENDPOINT string = "/api/users/register"
 
 	// Data
-	SAVE_DATA_ENDPOINT           string = "/api/files/save"
-	GET_DATA_ENDPOINT            string = "/api/files/get"
-	GET_DATA_SUM_ENDPOINT        string = "/api/files/sum"
-	GET_FILE_CHUNK_SIZE_ENDPOINT string = "/api/files/chunksize"
+	CREATE_CONNECTION_ENDPOINT string = "/api/files/conn"
+	SAVE_DATA_ENDPOINT         string = "/api/files/save"
+	GET_DATA_ENDPOINT          string = "/api/files/get"
+	GET_DATA_SUM_ENDPOINT      string = "/api/files/sum"
 )
 
 type Server struct {
@@ -33,10 +33,10 @@ func (s Server) Serve(ip, port string) error {
 	mux.HandleFunc(REGISTER_ENDPOINT, s.AuthService.Handlers.Register)
 
 	// Data
+	mux.HandleFunc(CREATE_CONNECTION_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.CreateConnection))
 	mux.HandleFunc(GET_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetData))
 	mux.HandleFunc(SAVE_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.SaveData))
 	mux.HandleFunc(GET_DATA_SUM_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetSum))
-	mux.HandleFunc(GET_FILE_CHUNK_SIZE_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetChunkSize))
 
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", ip, port), mux); err != nil {
 		slog.Error(err.Error())

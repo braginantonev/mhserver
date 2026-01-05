@@ -3,23 +3,16 @@ package datahandler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
+	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 	pb "github.com/braginantonev/mhserver/proto/data"
 )
 
 var (
-	saveActions = map[string]pb.Action{
-		http.MethodPatch: pb.Action_Patch,
-		http.MethodPost:  pb.Action_Create,
-		http.MethodPut:   pb.Action_Finish,
-	}
-
 	RequestTimeout = 5 * time.Second
 )
 
@@ -34,11 +27,10 @@ func NewDataHandler(grpc_client pb.DataServiceClient) Handler {
 }
 
 // Use only with auth_middlewares.WithAuth()
-func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
-	slog.Info("SaveData request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Create connection request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	action, ok := saveActions[r.Method]
-	if !ok {
+	if r.Method != http.MethodOptions {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -48,48 +40,67 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("Handlers.SaveData.io.ReadAll").Write(w)
+	var req_info pb.DataInfo
+	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.SaveData"); err.StatusCode != 0 {
+		err.Write(w)
 		return
 	}
-
-	if len(body) == 0 {
-		ErrRequestBodyEmpty.Write(w)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	var save_data pb.Data
-	if err = json.Unmarshal(body, &save_data); err != nil {
-		ErrBadJsonBody.Append(err).Write(w)
-		return
-	}
-
-	save_data.Action = action
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
 		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
 		return
 	}
-	save_data.Info.User = username
+	req_info.Username = username
 
-	if r.Method == http.MethodPatch && len(save_data.GetPart().GetBody()) == 0 {
-		ErrEmptyFilePart.Write(w)
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
+
+	conn, err := h.dataServiceClient.CreateConnection(ctx, &req_info)
+	if err != nil {
+		handleServiceError(err, w, "data.SaveData")
+	}
+
+	json_conn, err := json.Marshal(conn)
+	if err != nil {
+		ErrInternal.Append(err).WithFuncName("Handlers.CreateConnection.Marshal").Write(w)
 		return
 	}
 
-	_, err = h.dataServiceClient.SaveData(ctx, &save_data)
+	_, _ = w.Write(json_conn)
+}
+
+// Use only with auth_middlewares.WithAuth()
+func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Save data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	var save_chunk pb.SaveChunk
+	if err := httpjsonutils.ConvertJsonToStruct(&save_chunk, r.Body, "Handlers.SaveData"); err.StatusCode != 0 {
+		err.Write(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
+
+	_, err := h.dataServiceClient.SaveData(ctx, &save_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.SaveData")
 	}
 }
 
 func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
-	slog.Info("GetData request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+	slog.Info("Get data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -101,36 +112,16 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("Handlers.GetData.io.ReadAll").Write(w)
-		return
-	}
-
-	if len(body) == 0 {
-		ErrRequestBodyEmpty.Write(w)
+	var req_chunk pb.GetChunk
+	if err := httpjsonutils.ConvertJsonToStruct(&req_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
+		err.Write(w)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 
-	var req_data pb.Data
-	if err = json.Unmarshal(body, &req_data); err != nil {
-		ErrBadJsonBody.Append(err).Write(w)
-		return
-	}
-
-	req_data.Action = pb.Action_Get
-
-	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
-	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.GetData").Write(w)
-		return
-	}
-	req_data.Info.User = username
-
-	part, err := h.dataServiceClient.GetData(ctx, &req_data)
+	part, err := h.dataServiceClient.GetData(ctx, &req_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.GetData")
 		return
@@ -146,7 +137,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
-	slog.Info("GetSum request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+	slog.Info("Get sum request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -158,89 +149,20 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("Handlers.GetSum.io.ReadAll").Write(w)
-		return
-	}
-
-	if len(body) == 0 {
-		ErrRequestBodyEmpty.Write(w)
+	var req_info pb.DataInfo
+	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.GetSum"); err.StatusCode != 0 {
+		err.Write(w)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 
-	req_info := &pb.DataInfo{}
-	if err = json.Unmarshal(body, &req_info); err != nil {
-		ErrBadJsonBody.Append(err).Write(w)
-		return
-	}
-
-	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
-	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.GetSum").Write(w)
-		return
-	}
-	req_info.User = username
-
-	sum, err := h.dataServiceClient.GetSum(ctx, req_info)
+	sum, err := h.dataServiceClient.GetSum(ctx, &req_info)
 	if err != nil {
 		handleServiceError(err, w, "data.GetSum")
 		return
 	}
 
 	_, _ = w.Write(sum.Sum)
-}
-
-func (h Handler) GetChunkSize(w http.ResponseWriter, r *http.Request) {
-	slog.Info("GetChunkSize request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
-
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	if h.dataServiceClient == nil {
-		ErrUnavailable.Write(w)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("Handlers.GetChunkSize.io.ReadAll").Write(w)
-		return
-	}
-
-	if len(body) == 0 {
-		ErrRequestBodyEmpty.Write(w)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	req_info := &pb.DataInfo{}
-	if err = json.Unmarshal(body, &req_info); err != nil {
-		ErrBadJsonBody.Append(err).Write(w)
-		return
-	}
-
-	if req_info.Size == nil {
-		ErrNullFileSize.Write(w)
-		return
-	}
-
-	if req_info.Size.Size == 0 {
-		ErrNullFileSize.Write(w)
-		return
-	}
-
-	chunk_size, err := h.dataServiceClient.GetChunkSize(ctx, req_info)
-	if err != nil {
-		handleServiceError(err, w, "DataService.GetChunkSize")
-	}
-
-	_, _ = fmt.Fprint(w, chunk_size.Chunk)
 }
