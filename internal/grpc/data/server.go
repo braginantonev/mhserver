@@ -172,32 +172,29 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 	return nil, ErrUnexpectedFileChange
 }
 
-// Todo: Добавить систему чанков для сумм, т.к. при текущем подходе огромный файл просто копируется в ОЗУ, что потенциально может привести к её переполнению
-func (s *DataServer) GetSum(ctx context.Context, info *pb.DataInfo) (*pb.SHASum, error) {
-	file_type, ok := catalogs[info.Filetype]
+func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SHASum, error) {
+	uuid, err := uuid.Parse(get_chunk.UUID)
+	if err != nil {
+		return nil, ErrBadUUID
+	}
+
+	file_info, ok := s.activeFiles.Get(uuid)
 	if !ok {
-		return nil, ErrUnexpectedFileType
+		return nil, ErrUnexpectedFileChange
 	}
 
-	if info.Filename == "" {
-		return nil, ErrEmptyFilename
-	}
-
-	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.Username, file_type, info.Filename)
-
-	file, err := s.openFile(file_path, os.O_RDONLY, 0440)
+	file, err := s.openFile(file_info.GetPath(), os.O_RDONLY, 0440)
 	if err != nil {
 		return nil, err
 	}
 
-	// Todo: <<< Здесь стоит рассмотреть возможность чтения отрывка файла и его последующую передачу в виде контрольной суммы
-	body, err := io.ReadAll(file)
+	body := make([]byte, file_info.GetChunkSize())
+	n, err := file.ReadAt(body, int64(file_info.GetChunkSize())*int64(get_chunk.ChunkId))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrInternal, err.Error())
 	}
 
-	sha := sha256.Sum256(body)
+	sha := sha256.Sum256(body[:n])
 	return &pb.SHASum{
 		Sum: sha[:],
 	}, nil
