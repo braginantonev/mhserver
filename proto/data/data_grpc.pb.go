@@ -33,7 +33,7 @@ type DataServiceClient interface {
 	CreateConnection(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*Connection, error)
 	SaveData(ctx context.Context, in *SaveChunk, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetData(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*FilePart, error)
-	GetSum(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*SHASum, error)
+	GetSum(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*SHASum, error)
 }
 
 type dataServiceClient struct {
@@ -74,7 +74,7 @@ func (c *dataServiceClient) GetData(ctx context.Context, in *GetChunk, opts ...g
 	return out, nil
 }
 
-func (c *dataServiceClient) GetSum(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*SHASum, error) {
+func (c *dataServiceClient) GetSum(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*SHASum, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SHASum)
 	err := c.cc.Invoke(ctx, DataService_GetSum_FullMethodName, in, out, cOpts...)
@@ -91,7 +91,7 @@ type DataServiceServer interface {
 	CreateConnection(context.Context, *DataInfo) (*Connection, error)
 	SaveData(context.Context, *SaveChunk) (*emptypb.Empty, error)
 	GetData(context.Context, *GetChunk) (*FilePart, error)
-	GetSum(context.Context, *DataInfo) (*SHASum, error)
+	GetSum(context.Context, *GetChunk) (*SHASum, error)
 	mustEmbedUnimplementedDataServiceServer()
 }
 
@@ -111,7 +111,7 @@ func (UnimplementedDataServiceServer) SaveData(context.Context, *SaveChunk) (*em
 func (UnimplementedDataServiceServer) GetData(context.Context, *GetChunk) (*FilePart, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetData not implemented")
 }
-func (UnimplementedDataServiceServer) GetSum(context.Context, *DataInfo) (*SHASum, error) {
+func (UnimplementedDataServiceServer) GetSum(context.Context, *GetChunk) (*SHASum, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSum not implemented")
 }
 func (UnimplementedDataServiceServer) mustEmbedUnimplementedDataServiceServer() {}
@@ -190,7 +190,7 @@ func _DataService_GetData_Handler(srv interface{}, ctx context.Context, dec func
 }
 
 func _DataService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DataInfo)
+	in := new(GetChunk)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func _DataService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: DataService_GetSum_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).GetSum(ctx, req.(*DataInfo))
+		return srv.(DataServiceServer).GetSum(ctx, req.(*GetChunk))
 	}
 	return interceptor(ctx, in, info, handler)
 }

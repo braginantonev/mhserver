@@ -433,7 +433,7 @@ const file_data_data_proto_rawDesc = "" +
 	"\x10CreateConnection\x12\x0e.data.DataInfo\x1a\x10.data.Connection\x123\n" +
 	"\bSaveData\x12\x0f.data.SaveChunk\x1a\x16.google.protobuf.Empty\x12)\n" +
 	"\aGetData\x12\x0e.data.GetChunk\x1a\x0e.data.FilePart\x12&\n" +
-	"\x06GetSum\x12\x0e.data.DataInfo\x1a\f.data.SHASumB.Z,github.com/braginantonev/mhserver/proto/datab\x06proto3"
+	"\x06GetSum\x12\x0e.data.GetChunk\x1a\f.data.SHASumB.Z,github.com/braginantonev/mhserver/proto/datab\x06proto3"
 
 var (
 	file_data_data_proto_rawDescOnce sync.Once
@@ -465,7 +465,7 @@ var file_data_data_proto_depIdxs = []int32{
 	1, // 2: data.DataService.CreateConnection:input_type -> data.DataInfo
 	4, // 3: data.DataService.SaveData:input_type -> data.SaveChunk
 	5, // 4: data.DataService.GetData:input_type -> data.GetChunk
-	1, // 5: data.DataService.GetSum:input_type -> data.DataInfo
+	5, // 5: data.DataService.GetSum:input_type -> data.GetChunk
 	2, // 6: data.DataService.CreateConnection:output_type -> data.Connection
 	7, // 7: data.DataService.SaveData:output_type -> google.protobuf.Empty
 	3, // 8: data.DataService.GetData:output_type -> data.FilePart

@@ -46,5 +46,5 @@ service DataService {
     rpc CreateConnection (DataInfo) returns (Connection);
     rpc SaveData (SaveChunk) returns (google.protobuf.Empty);
     rpc GetData (GetChunk) returns (FilePart);
-    rpc GetSum (DataInfo) returns (SHASum);
+    rpc GetSum (GetChunk) returns (SHASum);
 }
