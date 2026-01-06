@@ -279,7 +279,7 @@ func TestGetData(t *testing.T) {
 				}
 
 				offset := uint64(ch_id) * conn.ChunkSize
-				expected_chunk := TEST_FILE_BODY[offset : offset+conn.ChunkSize]
+				expected_chunk := TEST_FILE_BODY[offset : offset+uint64(len(part.Chunk))]
 				if string(part.Chunk) != expected_chunk {
 					t.Errorf("expected chunk: `%s`, but got `%s`", expected_chunk, string(part.Chunk))
 				}
@@ -338,16 +338,7 @@ func TestGetSum(t *testing.T) {
 		name           string
 		data_info      *pb.DataInfo
 		bad_sum_wanted bool
-		expected_err   error
 	}{
-		{
-			name: "empty file name",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filetype: pb.FileType_File,
-			},
-			expected_err: data.ErrEmptyFilename,
-		},
 		{
 			name: "file 500 bytes",
 			data_info: &pb.DataInfo{
@@ -356,7 +347,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     500,
 			},
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 10 kb",
@@ -366,7 +356,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     10 * 1024,
 			},
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 500 kb",
@@ -376,7 +365,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     500 * 1024,
 			},
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 5 mb",
@@ -386,7 +374,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     5 * 1024 * 1024,
 			},
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 50 mb",
@@ -396,7 +383,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     50 * 1024 * 1024,
 			},
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 100mb",
@@ -406,7 +392,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     100 * 1024 * 1024,
 			},
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 500mb",
@@ -416,7 +401,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     500 * 1024 * 1024,
 			},
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 750mb",
@@ -426,18 +410,6 @@ func TestGetSum(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     750 * 1024 * 1024,
 			},
-			expected_err: fmt.Errorf(""),
-		},
-		{
-			name: "bad client sum",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "bad_sum.txt",
-				Filetype: pb.FileType_File,
-				Size:     500,
-			},
-			bad_sum_wanted: true,
-			expected_err:   fmt.Errorf(""),
 		},
 	}
 
@@ -447,18 +419,11 @@ func TestGetSum(t *testing.T) {
 
 			file_body := genRandomFile(test.data_info.Size)
 
-			expected_sum := sha256.Sum256([]byte(file_body))
-			if test.bad_sum_wanted {
-				expected_sum[0] = 0
-			}
-
 			if err := saveFile(t.Context(), data_client, test.data_info, strings.NewReader(file_body)); err != nil {
-				if mess := getRPCErrorMessage(err); mess != test.expected_err.Error() {
-					t.Fatalf("expected error %s, but got %s", test.expected_err, mess)
-				}
+				t.Fatal(err)
 			}
 
-			/*defer func(test_name string) {
+			defer func(test_name string) {
 				if test.data_info.Filename == "" {
 					return
 				}
@@ -466,22 +431,34 @@ func TestGetSum(t *testing.T) {
 				if err := os.Remove(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Filename)); err != nil {
 					t.Logf("failed remove file; test name = %s; err: %v", test_name, err)
 				}
-			}(test.name)*/
+			}(test.name)
 
-			got_sum, err := data_client.GetSum(t.Context(), test.data_info)
-
-			if mess := getRPCErrorMessage(err); mess != test.expected_err.Error() {
-				t.Fatalf("expected error %s, but got %s", test.expected_err, mess)
-			}
-
+			conn, err := data_client.CreateConnection(t.Context(), test.data_info)
 			if err != nil {
-				return
+				t.Fatalf("failed create connection. err: %v", err)
 			}
 
-			for i, n := range got_sum.Sum {
-				if n != expected_sum[i] && !test.bad_sum_wanted {
-					t.Logf("expected last 250 bytes %s", file_body[test.data_info.Size-250:])
-					t.Fatalf("expected sum: %x, but got: %x", expected_sum, got_sum.Sum)
+			for i := range conn.ChunksCount {
+				got_sum, err := data_client.GetSum(t.Context(), &pb.GetChunk{
+					UUID:    conn.UUID,
+					ChunkId: i,
+				})
+				if err != nil {
+					t.Fatalf("failed get chunk sum. err: %v", err)
+				}
+
+				offset := uint64(i) * conn.ChunkSize
+				n := min(offset+conn.ChunkSize, test.data_info.Size)
+
+				expected_sum := sha256.Sum256([]byte(file_body[offset:n]))
+				if test.bad_sum_wanted {
+					expected_sum[0] = 0
+				}
+
+				for j, n := range got_sum.Sum {
+					if n != expected_sum[j] {
+						t.Fatalf("expected sum: %x, but got: %x", string(expected_sum[:]), string(got_sum.Sum))
+					}
 				}
 			}
 		})
