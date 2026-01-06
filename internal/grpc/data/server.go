@@ -115,10 +115,15 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
 	}
 
+	// The worst thing I've ever written
+	if n != 0 && err == io.EOF {
+		err = nil
+	}
+
 	return &pb.FilePart{
 		Chunk:  read_data[:n],
 		Offset: offset,
-	}, nil
+	}, err
 }
 
 func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*emptypb.Empty, error) {
@@ -190,12 +195,17 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 
 	body := make([]byte, file_info.GetChunkSize())
 	n, err := file.ReadAt(body, int64(file_info.GetChunkSize())*int64(get_chunk.ChunkId))
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("%w: %s", ErrInternal, err.Error())
+	}
+
+	// The worst thing I've ever written
+	if n != 0 && err == io.EOF {
+		err = nil
 	}
 
 	sha := sha256.Sum256(body[:n])
 	return &pb.SHASum{
 		Sum: sha[:],
-	}, nil
+	}, err
 }
