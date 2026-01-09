@@ -17,8 +17,7 @@ var (
 	ErrWrongContextUsername = httperror.NewInternalHttpError(errors.New("context username from jwt is not string"), "")
 
 	// Data info errors
-	ErrEmptyFilePart = httperror.NewExternalHttpError(errors.New("empty file part"), http.StatusBadRequest)
-	ErrNullFileSize  = httperror.NewExternalHttpError(errors.New("file size is null"), http.StatusBadRequest)
+	ErrNullFileSize = httperror.NewExternalHttpError(errors.New("file size is null"), http.StatusBadRequest)
 )
 
 func handleServiceError(err error, w http.ResponseWriter, func_name string) {
