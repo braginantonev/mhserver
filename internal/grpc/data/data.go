@@ -9,10 +9,10 @@ import (
 
 var (
 	// Так себе, но ладно. Потом что-нибудь придумаю
-	DataFolders = map[pb.DataType]string{
-		pb.DataType_File:  "files",
-		pb.DataType_Image: "images",
-		pb.DataType_Music: "music",
+	catalogs = map[pb.FileType]string{
+		pb.FileType_File:  "files",
+		pb.FileType_Image: "images",
+		pb.FileType_Music: "music",
 	}
 )
 

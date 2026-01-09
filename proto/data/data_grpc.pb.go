@@ -20,20 +20,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DataService_SaveData_FullMethodName     = "/data.DataService/SaveData"
-	DataService_GetData_FullMethodName      = "/data.DataService/GetData"
-	DataService_GetSum_FullMethodName       = "/data.DataService/GetSum"
-	DataService_GetChunkSize_FullMethodName = "/data.DataService/GetChunkSize"
+	DataService_CreateConnection_FullMethodName = "/data.DataService/CreateConnection"
+	DataService_SaveData_FullMethodName         = "/data.DataService/SaveData"
+	DataService_GetData_FullMethodName          = "/data.DataService/GetData"
+	DataService_GetSum_FullMethodName           = "/data.DataService/GetSum"
 )
 
 // DataServiceClient is the client API for DataService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DataServiceClient interface {
-	SaveData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*FilePart, error)
-	GetSum(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*SHASum, error)
-	GetChunkSize(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*FileSize, error)
+	CreateConnection(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*Connection, error)
+	SaveData(ctx context.Context, in *SaveChunk, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetData(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*FilePart, error)
+	GetSum(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*SHASum, error)
 }
 
 type dataServiceClient struct {
@@ -44,7 +44,17 @@ func NewDataServiceClient(cc grpc.ClientConnInterface) DataServiceClient {
 	return &dataServiceClient{cc}
 }
 
-func (c *dataServiceClient) SaveData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *dataServiceClient) CreateConnection(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*Connection, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Connection)
+	err := c.cc.Invoke(ctx, DataService_CreateConnection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dataServiceClient) SaveData(ctx context.Context, in *SaveChunk, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DataService_SaveData_FullMethodName, in, out, cOpts...)
@@ -54,7 +64,7 @@ func (c *dataServiceClient) SaveData(ctx context.Context, in *Data, opts ...grpc
 	return out, nil
 }
 
-func (c *dataServiceClient) GetData(ctx context.Context, in *Data, opts ...grpc.CallOption) (*FilePart, error) {
+func (c *dataServiceClient) GetData(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*FilePart, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(FilePart)
 	err := c.cc.Invoke(ctx, DataService_GetData_FullMethodName, in, out, cOpts...)
@@ -64,20 +74,10 @@ func (c *dataServiceClient) GetData(ctx context.Context, in *Data, opts ...grpc.
 	return out, nil
 }
 
-func (c *dataServiceClient) GetSum(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*SHASum, error) {
+func (c *dataServiceClient) GetSum(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*SHASum, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SHASum)
 	err := c.cc.Invoke(ctx, DataService_GetSum_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *dataServiceClient) GetChunkSize(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*FileSize, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(FileSize)
-	err := c.cc.Invoke(ctx, DataService_GetChunkSize_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +88,10 @@ func (c *dataServiceClient) GetChunkSize(ctx context.Context, in *DataInfo, opts
 // All implementations must embed UnimplementedDataServiceServer
 // for forward compatibility.
 type DataServiceServer interface {
-	SaveData(context.Context, *Data) (*emptypb.Empty, error)
-	GetData(context.Context, *Data) (*FilePart, error)
-	GetSum(context.Context, *DataInfo) (*SHASum, error)
-	GetChunkSize(context.Context, *DataInfo) (*FileSize, error)
+	CreateConnection(context.Context, *DataInfo) (*Connection, error)
+	SaveData(context.Context, *SaveChunk) (*emptypb.Empty, error)
+	GetData(context.Context, *GetChunk) (*FilePart, error)
+	GetSum(context.Context, *GetChunk) (*SHASum, error)
 	mustEmbedUnimplementedDataServiceServer()
 }
 
@@ -102,17 +102,17 @@ type DataServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedDataServiceServer struct{}
 
-func (UnimplementedDataServiceServer) SaveData(context.Context, *Data) (*emptypb.Empty, error) {
+func (UnimplementedDataServiceServer) CreateConnection(context.Context, *DataInfo) (*Connection, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateConnection not implemented")
+}
+func (UnimplementedDataServiceServer) SaveData(context.Context, *SaveChunk) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SaveData not implemented")
 }
-func (UnimplementedDataServiceServer) GetData(context.Context, *Data) (*FilePart, error) {
+func (UnimplementedDataServiceServer) GetData(context.Context, *GetChunk) (*FilePart, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetData not implemented")
 }
-func (UnimplementedDataServiceServer) GetSum(context.Context, *DataInfo) (*SHASum, error) {
+func (UnimplementedDataServiceServer) GetSum(context.Context, *GetChunk) (*SHASum, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSum not implemented")
-}
-func (UnimplementedDataServiceServer) GetChunkSize(context.Context, *DataInfo) (*FileSize, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetChunkSize not implemented")
 }
 func (UnimplementedDataServiceServer) mustEmbedUnimplementedDataServiceServer() {}
 func (UnimplementedDataServiceServer) testEmbeddedByValue()                     {}
@@ -135,8 +135,26 @@ func RegisterDataServiceServer(s grpc.ServiceRegistrar, srv DataServiceServer) {
 	s.RegisterService(&DataService_ServiceDesc, srv)
 }
 
+func _DataService_CreateConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DataInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DataServiceServer).CreateConnection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DataService_CreateConnection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DataServiceServer).CreateConnection(ctx, req.(*DataInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DataService_SaveData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Data)
+	in := new(SaveChunk)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -148,13 +166,13 @@ func _DataService_SaveData_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: DataService_SaveData_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).SaveData(ctx, req.(*Data))
+		return srv.(DataServiceServer).SaveData(ctx, req.(*SaveChunk))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _DataService_GetData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Data)
+	in := new(GetChunk)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -166,13 +184,13 @@ func _DataService_GetData_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: DataService_GetData_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).GetData(ctx, req.(*Data))
+		return srv.(DataServiceServer).GetData(ctx, req.(*GetChunk))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _DataService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DataInfo)
+	in := new(GetChunk)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -184,25 +202,7 @@ func _DataService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: DataService_GetSum_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).GetSum(ctx, req.(*DataInfo))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _DataService_GetChunkSize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DataInfo)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DataServiceServer).GetChunkSize(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DataService_GetChunkSize_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).GetChunkSize(ctx, req.(*DataInfo))
+		return srv.(DataServiceServer).GetSum(ctx, req.(*GetChunk))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -215,6 +215,10 @@ var DataService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*DataServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "CreateConnection",
+			Handler:    _DataService_CreateConnection_Handler,
+		},
+		{
 			MethodName: "SaveData",
 			Handler:    _DataService_SaveData_Handler,
 		},
@@ -225,10 +229,6 @@ var DataService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSum",
 			Handler:    _DataService_GetSum_Handler,
-		},
-		{
-			MethodName: "GetChunkSize",
-			Handler:    _DataService_GetChunkSize_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

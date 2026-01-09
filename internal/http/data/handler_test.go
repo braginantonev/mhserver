@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
@@ -17,27 +18,24 @@ import (
 	datahandler "github.com/braginantonev/mhserver/internal/http/data"
 	"github.com/braginantonev/mhserver/internal/server"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
+	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type TestCase struct {
-	name          string
-	method        string
-	data          *pb.Data
-	expected_code int
-	expected_body string
+	name                  string
+	method                string
+	expected_content_type string
+	expected_code         int
+	expected_body         string
 }
 
 const (
 	TEST_WORKSPACE_PATH string = "/tmp/mhserver_tests/"
 	TEST_USERNAME       string = "okabe"
-	TEST_CHUNK_SIZE     uint64 = 20
-)
-
-var (
-	TestFileBody = []byte("hello world")
+	TEST_FILE_BODY      string = "hello world!"
 )
 
 func createWorkdir(workspace_path, username string) error {
@@ -101,128 +99,98 @@ func TestSaveData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).SaveData, http.MethodPost, server.SAVE_DATA_ENDPOINT)
-	if err != nil {
-		t.Error(err)
-	}
+	t.Run("service unavailable", func(t *testing.T) {
+		err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).SaveData, http.MethodPost, server.SAVE_DATA_ENDPOINT)
+		if err != nil {
+			t.Error(err)
+		}
+	})
 
 	handler := datahandler.NewDataHandler(data_client)
 
-	filename := "test_save_data.txt"
-
-	parallel_cases := [...]TestCase{
+	cases := [...]struct {
+		TestCase
+		filename  string
+		save_body []byte
+	}{
 		{
-			name:          "wrong method",
-			method:        http.MethodDelete,
-			data:          nil,
-			expected_code: http.StatusMethodNotAllowed,
-			expected_body: "",
-		},
-		{
-			name:          "empty body",
-			method:        http.MethodPost,
-			data:          nil,
-			expected_code: http.StatusBadRequest,
-			expected_body: datahandler.ErrRequestBodyEmpty.Error(),
-		},
-		{
-			name:   "empty file part",
-			method: http.MethodPatch,
-			data: &pb.Data{
-				Info: &pb.DataInfo{
-					File: filename,
-				},
+			TestCase: TestCase{
+				name:          "wrong method",
+				method:        http.MethodDelete,
+				expected_code: http.StatusMethodNotAllowed,
 			},
-			expected_code: http.StatusBadRequest,
-			expected_body: datahandler.ErrEmptyFilePart.Error(),
+		},
+		{
+			TestCase: TestCase{
+				name:                  "empty body",
+				method:                http.MethodPost,
+				expected_code:         http.StatusBadRequest,
+				expected_content_type: "text/plain",
+				expected_body:         httpjsonutils.ErrRequestBodyEmpty.Error(),
+			},
+		},
+		{
+			TestCase: TestCase{
+				name:          "normal save",
+				method:        http.MethodPost,
+				expected_code: http.StatusOK,
+			},
+			filename:  "sht normal save.txt",
+			save_body: []byte(TEST_FILE_BODY),
 		},
 	}
 
-	save_file_cases := [...]TestCase{
-		{
-			name:   "create file",
-			method: http.MethodPost,
-			data: &pb.Data{
-				Info: &pb.DataInfo{
-					Type: pb.DataType_File,
-					File: filename,
-				},
-			},
-			expected_code: http.StatusOK,
-			expected_body: "",
-		},
-		{
-			name:   "save data to file",
-			method: http.MethodPatch,
-			data: &pb.Data{
-				Info: &pb.DataInfo{
-					Type: pb.DataType_File,
-					File: filename,
-					Size: &pb.FileSize{
-						Chunk: TEST_CHUNK_SIZE,
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
+				Username: TEST_USERNAME,
+				Filename: test.filename,
+				Filetype: pb.FileType_File,
+				Size:     uint64(len(test.save_body)),
+			})
+			if err != nil {
+				t.Fatalf("failed create connection; err: %v", err)
+			}
+
+			body := []byte("")
+			if test.save_body != nil {
+				body, err = json.Marshal(pb.SaveChunk{
+					UUID: conn.UUID,
+					Data: &pb.FilePart{
+						Chunk: test.save_body,
 					},
-				},
-				Part: &pb.FilePart{
-					Body:   TestFileBody,
-					Offset: 0,
-				},
-			},
-			expected_code: http.StatusOK,
-			expected_body: "",
-		},
-		{
-			name:   "finish rename file",
-			method: http.MethodPut,
-			data: &pb.Data{
-				Info: &pb.DataInfo{
-					Type: pb.DataType_File,
-					File: filename,
-				},
-			},
-			expected_code: http.StatusOK,
-			expected_body: "",
-		},
-	}
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 
-	test_func := func(test TestCase, t *testing.T) {
-		body := []byte("")
-		if test.data != nil {
-			body, err = json.Marshal(test.data)
+			req := httptest.NewRequest(test.method, server.SAVE_DATA_ENDPOINT, bytes.NewReader(body))
+			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
+			w := httptest.NewRecorder()
+
+			handler.SaveData(w, req)
+			res := w.Result()
+			defer func() { _ = res.Body.Close() }()
+
+			if res.StatusCode != test.expected_code {
+				t.Errorf("expected code %d, but got %d\ntest name: %s", test.expected_code, res.StatusCode, test.name)
+			}
+
+			content_type := res.Header.Get("Content-Type")
+			if !strings.Contains(content_type, test.expected_content_type) {
+				t.Errorf("expected content-type `%s`, but got `%s`", test.expected_content_type, content_type)
+			}
+
+			got_body, err := io.ReadAll(res.Body)
 			if err != nil {
 				t.Fatal(err)
 			}
-		}
 
-		req := httptest.NewRequest(test.method, server.SAVE_DATA_ENDPOINT, bytes.NewReader(body))
-		req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
-		w := httptest.NewRecorder()
-
-		handler.SaveData(w, req)
-		res := w.Result()
-		defer func() { _ = res.Body.Close() }()
-
-		if res.StatusCode != test.expected_code {
-			t.Errorf("expected code %d, but got %d\ntest name: %s", test.expected_code, res.StatusCode, test.name)
-		}
-
-		got_body, err := io.ReadAll(res.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if string(got_body) != test.expected_body {
-			t.Errorf("expected body: `%s`\nbut got: `%s`\ntest name: %s", test.expected_body, string(got_body), test.name)
-		}
-	}
-
-	for _, test := range parallel_cases {
-		t.Run(test.name, func(t *testing.T) {
-			test_func(test, t)
+			if string(got_body) != test.expected_body {
+				t.Errorf("expected body: `%s`\nbut got: `%s`\ntest name: %s", test.expected_body, string(got_body), test.name)
+			}
 		})
-	}
-
-	for _, test := range save_file_cases {
-		test_func(test, t)
 	}
 }
 
@@ -258,10 +226,12 @@ func TestGetData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Test without connection to service
-	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).GetData, http.MethodGet, server.GET_DATA_ENDPOINT)
-	if err != nil {
-		t.Error(err)
-	}
+	t.Run("service unavailable", func(t *testing.T) {
+		err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).GetData, http.MethodGet, server.GET_DATA_ENDPOINT)
+		if err != nil {
+			t.Error(err)
+		}
+	})
 
 	handler := datahandler.NewDataHandler(data_client)
 
@@ -272,60 +242,58 @@ func TestGetData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = file.Write(TestFileBody)
+	defer func() {
+		_ = file.Close()
+		_ = os.Remove(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename))
+	}()
+
+	_, err = file.Write([]byte(TEST_FILE_BODY))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cases := [...]struct {
-		TestCase
-		body_is_json bool // If true - convert TestFileBody to JSON
-	}{
+	cases := [...]TestCase{
 		{
-			TestCase: TestCase{
-				name:          "wrong method",
-				method:        http.MethodDelete,
-				data:          nil,
-				expected_code: http.StatusMethodNotAllowed,
-			},
+			name:          "wrong method",
+			method:        http.MethodDelete,
+			expected_code: http.StatusMethodNotAllowed,
 		},
 		{
-			TestCase: TestCase{
-				name:          "empty body",
-				method:        http.MethodGet,
-				data:          nil,
-				expected_code: http.StatusBadRequest,
-				expected_body: datahandler.ErrRequestBodyEmpty.Error(),
-			},
+			name:                  "empty body",
+			method:                http.MethodGet,
+			expected_code:         http.StatusBadRequest,
+			expected_body:         httpjsonutils.ErrRequestBodyEmpty.Error(),
+			expected_content_type: "text/plain",
 		},
 		{
-			TestCase: TestCase{
-				name:   "good get",
-				method: http.MethodGet,
-				data: &pb.Data{
-					Info: &pb.DataInfo{
-						File: filename,
-						Size: &pb.FileSize{
-							Chunk: TEST_CHUNK_SIZE,
-						},
-					},
-					Part: &pb.FilePart{
-						Offset: 0,
-					},
-				},
-				expected_code: http.StatusOK,
-			},
-			body_is_json: true,
+			// Compare with TEST_FILE_BODY
+			name:                  "normal get",
+			method:                http.MethodGet,
+			expected_code:         http.StatusOK,
+			expected_content_type: "application/json",
 		},
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
+				Username: TEST_USERNAME,
+				Filename: filename,
+				Filetype: pb.FileType_File,
+				Size:     uint64(len(TEST_FILE_BODY)),
+			})
+			if err != nil {
+				t.Fatalf("failed create connection; err: %v", err)
+			}
+
 			body := []byte("")
-			if test.data != nil {
-				body, err = json.Marshal(test.data)
+			if test.expected_body != httpjsonutils.ErrRequestBodyEmpty.Error() {
+				body, err = json.Marshal(pb.GetChunk{
+					UUID:    conn.UUID,
+					ChunkId: 0,
+				})
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("failed marshal pb.GetChunk; err: %v", err)
 				}
 			}
 
@@ -341,15 +309,9 @@ func TestGetData(t *testing.T) {
 				t.Errorf("expected code %d, but got %d", test.expected_code, res.StatusCode)
 			}
 
-			if test.body_is_json {
-				parsed, err := json.Marshal(pb.FilePart{
-					Body:   TestFileBody,
-					IsLast: true,
-				})
-				if err != nil {
-					t.Error(err)
-				}
-				test.expected_body = string(parsed)
+			content_type := res.Header.Get("Content-Type")
+			if !strings.Contains(content_type, test.expected_content_type) {
+				t.Errorf("expected content-type `%s`, but got `%s`", test.expected_content_type, content_type)
 			}
 
 			got_body, err := io.ReadAll(res.Body)
@@ -357,121 +319,20 @@ func TestGetData(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if string(got_body) != test.expected_body {
-				t.Errorf("expected body: `%s`\nbut got: `%s`", test.expected_body, string(got_body))
-			}
-		})
-	}
-}
-
-func TestGetChunkSize(t *testing.T) {
-	var available_ram uint64 = 1024 * 1024 * 1024
-
-	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
-		MaxChunkSize: 512 * 1024 * 1024,
-		MinChunkSize: 4 * 1024,
-		AvailableRAM: available_ram,
-	})))
-
-	lis, err := net.Listen("tcp", "localhost:8101")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go func() {
-		if err := grpc_server.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	grpc_connection, err := grpc.NewClient("localhost:8101", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	data_client := pb.NewDataServiceClient(grpc_connection)
-
-	// Test without connection to service
-	err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).GetData, http.MethodGet, server.GET_FILE_CHUNK_SIZE_ENDPOINT)
-	if err != nil {
-		t.Error(err)
-	}
-
-	handler := datahandler.NewDataHandler(data_client)
-
-	cases := []struct {
-		name          string
-		method        string
-		info          *pb.DataInfo
-		expected_code int
-		expected_err  error
-	}{
-		{
-			name:          "wrong method",
-			method:        http.MethodPost,
-			info:          nil,
-			expected_code: http.StatusMethodNotAllowed,
-		},
-		{
-			name:          "empty request",
-			method:        http.MethodGet,
-			info:          nil,
-			expected_code: http.StatusBadRequest,
-			expected_err:  datahandler.ErrRequestBodyEmpty,
-		},
-		{
-			name:          "empty file size",
-			method:        http.MethodGet,
-			info:          &pb.DataInfo{},
-			expected_code: http.StatusBadRequest,
-			expected_err:  datahandler.ErrNullFileSize,
-		},
-		{
-			name:   "good size",
-			method: http.MethodGet,
-			info: &pb.DataInfo{
-				Size: &pb.FileSize{
-					Size: available_ram - 1,
-				},
-			},
-			expected_code: http.StatusOK,
-		},
-	}
-
-	for _, test := range cases {
-		t.Run(test.name, func(t *testing.T) {
-			body := []byte("")
-			if test.info != nil {
-				body, err = json.Marshal(test.info)
+			if content_type == "application/json" {
+				var got_part pb.FilePart
+				err = json.Unmarshal(got_body, &got_part)
 				if err != nil {
-					t.Fatal(err)
+					t.Errorf("bad got json; err: %v", err)
 				}
-			}
 
-			req := httptest.NewRequest(test.method, server.GET_FILE_CHUNK_SIZE_ENDPOINT, bytes.NewReader(body))
-			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
-			w := httptest.NewRecorder()
-
-			handler.GetChunkSize(w, req)
-			res := w.Result()
-			defer func() { _ = res.Body.Close() }()
-
-			if res.StatusCode != test.expected_code {
-				t.Errorf("expected code %d, but got %d", test.expected_code, res.StatusCode)
-			}
-
-			body, err := io.ReadAll(res.Body)
-			if err != nil {
-				t.Errorf("Bad body: %v", err)
-			}
-
-			if test.expected_err == nil {
-				return
-			}
-
-			if string(body) != test.expected_err.Error() {
-				t.Errorf("expected err %s, but got %s", test.expected_err, string(body))
+				if string(got_part.Chunk) != TEST_FILE_BODY {
+					t.Errorf("expected chunk `%s`, but got `%s`", TEST_FILE_BODY, string(got_part.Chunk))
+				}
+			} else {
+				if string(got_body) != test.expected_body {
+					t.Errorf("expected body: `%s`\nbut got: `%s`", test.expected_body, string(got_body))
+				}
 			}
 		})
 	}

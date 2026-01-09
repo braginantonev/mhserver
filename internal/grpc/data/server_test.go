@@ -1,11 +1,11 @@
 package data_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -16,6 +16,7 @@ import (
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	pb "github.com/braginantonev/mhserver/proto/data"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
@@ -28,31 +29,29 @@ const (
 
 	TEST_FILE_BODY string = `Антон Чигур никого не убивал!
 Антон Чигур никого не покарал!
-Антон Чигур ничего не уничтожж!`
+Антон Чигур ничего не уничтожал!`
 )
 
 // Create server workspace in to test files with `File` type only
-func createWorkspaceFolders(WorkspacePath, username string) error {
-	return os.MkdirAll(fmt.Sprintf("%s%s/files", WorkspacePath, username), 0700)
+func createWorkspaceFolders(workspace_path, username string) error {
+	return os.MkdirAll(fmt.Sprintf("%s%s/files", workspace_path, username), 0700)
 }
 
 // Client simulation
 func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *pb.DataInfo, reader io.Reader) error {
-	// Create request
-	_, err := data_client.SaveData(ctx, &pb.Data{
-		Action: pb.Action_Create,
-		Info:   data_info,
-	})
+	conn, err := data_client.CreateConnection(ctx, data_info)
 	if err != nil {
 		return err
 	}
+
+	log.Printf("save file (%s) with size %d; chunk size = %d, count = %d", data_info.Filename, data_info.Size, conn.ChunkSize, conn.ChunksCount)
 
 	wg := sync.WaitGroup{}
 	errs := make(chan error, 1)
 
 	// Push file parts
 	for i := 0; ; i++ {
-		send_data := make([]byte, data_info.GetSize().Chunk)
+		send_data := make([]byte, conn.ChunkSize)
 		n, err := reader.Read(send_data)
 		if err == io.EOF {
 			break
@@ -62,12 +61,11 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *
 		func(ch_id int, data []byte) {
 			defer wg.Done()
 
-			_, err = data_client.SaveData(ctx, &pb.Data{
-				Action: pb.Action_Patch,
-				Info:   data_info,
-				Part: &pb.FilePart{
-					Body:   data,
-					Offset: int64(ch_id * int(data_info.GetSize().Chunk)),
+			_, err = data_client.SaveData(ctx, &pb.SaveChunk{
+				UUID: conn.UUID,
+				Data: &pb.FilePart{
+					Chunk:  data,
+					Offset: int64(ch_id * int(conn.ChunkSize)),
 				},
 			})
 
@@ -80,21 +78,7 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *
 	wg.Wait()
 	close(errs)
 
-	err = <-errs
-	if err != nil {
-		return err
-	}
-
-	// Finish request
-	_, err = data_client.SaveData(ctx, &pb.Data{
-		Action: pb.Action_Finish,
-		Info:   data_info,
-	})
-	if err != nil {
-		return fmt.Errorf("failed finish save file: %w", err)
-	}
-
-	return nil
+	return <-errs
 }
 
 func getRPCErrorMessage(err error) string {
@@ -119,9 +103,9 @@ func TestSaveData(t *testing.T) {
 
 	grpc_server := grpc.NewServer()
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
-		MaxChunkSize: 512 * 1024 * 1024,
-		MinChunkSize: 4 * 1024,
-		AvailableRAM: 1024 * 1024 * 1024,
+		MaxChunkSize: 25,                 //byte
+		MinChunkSize: 5,                  //byte
+		AvailableRAM: 1024 * 1024 * 1024, //byte
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8081")
@@ -142,43 +126,73 @@ func TestSaveData(t *testing.T) {
 
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
-	data_info := &pb.DataInfo{
-		Type: pb.DataType_File,
-		User: TEST_USER,
-		File: test_file_name,
-		Size: &pb.FileSize{
-			Chunk: uint64(CHUNK_SIZE),
-		},
-	}
+	t.Run("save without connection", func(t *testing.T) {
+		random_uuid := uuid.New()
+		_, err := data_client.SaveData(t.Context(), &pb.SaveChunk{
+			UUID: random_uuid.String(),
+			Data: &pb.FilePart{
+				Chunk: []byte("be be be"),
+			},
+		})
 
-	//* Test wrong action
-	_, err = data_client.SaveData(t.Context(), &pb.Data{Action: pb.Action_Get, Info: data_info})
-	if err != nil {
-		s, _ := status.FromError(err)
-		if s.Message() != data.ErrWrongAction.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrWrongAction, s.Message())
+		if m := getRPCErrorMessage(err); m != data.ErrUnexpectedFileChange.Error() {
+			t.Errorf("expected error %s, but got %s", data.ErrUnexpectedFileChange.Error(), m)
 		}
-	}
+	})
 
-	err = saveFile(t.Context(), data_client, data_info, strings.NewReader(TEST_FILE_BODY))
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Run("incorrect chunk size", func(t *testing.T) {
+		test_data_info := &pb.DataInfo{
+			Username: TEST_USER,
+			Filename: "incorrect size.txt",
+			Filetype: pb.FileType_File,
+			Size:     uint64(len(TEST_FILE_BODY)),
+		}
 
-	//! for files `file` type only
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_RDONLY, 0660)
-	if err != nil {
-		t.Fatal(err)
-	}
+		conn, err := data_client.CreateConnection(t.Context(), test_data_info)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	got_body_file, err := io.ReadAll(file)
-	if err != nil {
-		t.Fatal(err)
-	}
+		_, err = data_client.SaveData(t.Context(), &pb.SaveChunk{
+			UUID: conn.UUID,
+			Data: &pb.FilePart{
+				Chunk: []byte(TEST_FILE_BODY + "garbage"),
+			},
+		})
 
-	if string(got_body_file) != TEST_FILE_BODY {
-		t.Error("got file body not implement expected")
-	}
+		if m := getRPCErrorMessage(err); m != data.ErrIncorrectChunkSize.Error() {
+			t.Errorf("expected error %s, but got %s", data.ErrIncorrectChunkSize.Error(), m)
+		}
+	})
+
+	t.Run("normal save", func(t *testing.T) {
+		data_info := &pb.DataInfo{
+			Username: TEST_USER,
+			Filename: test_file_name,
+			Filetype: pb.FileType_File,
+			Size:     uint64(len(TEST_FILE_BODY)),
+		}
+
+		err = saveFile(t.Context(), data_client, data_info, strings.NewReader(TEST_FILE_BODY))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Check file type only
+		file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_RDONLY, 0660)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		got_body_file, err := io.ReadAll(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if string(got_body_file) != TEST_FILE_BODY {
+			t.Error("got file body not implement expected")
+		}
+	})
 }
 
 func TestGetData(t *testing.T) {
@@ -191,9 +205,9 @@ func TestGetData(t *testing.T) {
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
-		MaxChunkSize: 512 * 1024 * 1024,
-		MinChunkSize: 4 * 1024,
-		AvailableRAM: 1024 * 1024 * 1024,
+		MaxChunkSize: 1024,               //byte
+		MinChunkSize: 5,                  //byte
+		AvailableRAM: 1024 * 1024 * 1024, //byte
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8082")
@@ -226,46 +240,52 @@ func TestGetData(t *testing.T) {
 	}
 	_ = file.Close()
 
-	// Test
-	got_file := bytes.NewBuffer(make([]byte, 0, len(TEST_FILE_BODY)))
-
-	//! Real clients wants a speed, so in real request we use a parallels treads
-	// len(TEST_FILE_BODY)/CHUNK_SIZE - imitation DataHandler.GetFileSize()
-	for i := 0; i < 10; i++ {
-		part, err := data_client.GetData(t.Context(), &pb.Data{
-			Info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-				File: test_file_name,
-				Size: &pb.FileSize{
-					Chunk: uint64(CHUNK_SIZE),
-				},
-			},
-			Action: pb.Action_Get,
-			Part: &pb.FilePart{
-				Offset: int64(i * CHUNK_SIZE),
-			},
+	t.Run("get without connection", func(t *testing.T) {
+		random_uuid := uuid.New()
+		_, err := data_client.GetData(t.Context(), &pb.GetChunk{
+			UUID:    random_uuid.String(),
+			ChunkId: 0,
 		})
 
+		if m := getRPCErrorMessage(err); m != data.ErrUnexpectedFileChange.Error() {
+			t.Errorf("expected error %s, but got %s", data.ErrUnexpectedFileChange.Error(), m)
+		}
+	})
+
+	// Test
+	test_file_info := &pb.DataInfo{
+		Username: TEST_USER,
+		Filename: test_file_name,
+		Filetype: pb.FileType_File,
+		Size:     uint64(len(TEST_FILE_BODY)),
+	}
+
+	t.Run("normal get", func(t *testing.T) {
+		conn, err := data_client.CreateConnection(t.Context(), test_file_info)
 		if err != nil {
-			st, _ := status.FromError(err)
-			if st.Message() != data.EOF.Error() {
-				t.Error(st.Message())
-			}
+			t.Fatal(err)
 		}
 
-		if _, loc_err := got_file.Write(part.GetBody()); loc_err != nil {
-			t.Error(loc_err)
-		}
+		for i := int32(0); i < conn.ChunksCount; i += 1 {
+			t.Run(fmt.Sprintf("get chunk %d", i), func(t *testing.T) {
+				ch_id := i
 
-		if part.IsLast {
-			break
-		}
-	}
+				part, err := data_client.GetData(t.Context(), &pb.GetChunk{
+					UUID:    conn.UUID,
+					ChunkId: ch_id,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
 
-	if got_file.String() != TEST_FILE_BODY {
-		t.Errorf("expected file body: `%s`\nbut got: `%s`", TEST_FILE_BODY, got_file.String())
-	}
+				offset := uint64(ch_id) * conn.ChunkSize
+				expected_chunk := TEST_FILE_BODY[offset : offset+uint64(len(part.Chunk))]
+				if string(part.Chunk) != expected_chunk {
+					t.Errorf("expected chunk: `%s`, but got `%s`", expected_chunk, string(part.Chunk))
+				}
+			})
+		}
+	})
 }
 
 func TestGetSum(t *testing.T) {
@@ -273,10 +293,12 @@ func TestGetSum(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	max_GRPC_message := 50 * 1024 * 1024
+
 	// Create data grpc client
-	grpc_server := grpc.NewServer()
+	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_GRPC_message), grpc.MaxSendMsgSize(max_GRPC_message))
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
-		MaxChunkSize: 512 * 1024 * 1024,
+		MaxChunkSize: uint64(max_GRPC_message) / 2,
 		MinChunkSize: 4 * 1024,
 		AvailableRAM: 1024 * 1024 * 1024,
 	})))
@@ -315,150 +337,128 @@ func TestGetSum(t *testing.T) {
 	cases := [...]struct {
 		name           string
 		data_info      *pb.DataInfo
-		file_body      string
 		bad_sum_wanted bool
-		expected_err   error
 	}{
-		{
-			name: "empty file name",
-			data_info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-			},
-			file_body:    TEST_FILE_BODY,
-			expected_err: data.ErrEmptyFilename,
-		},
 		{
 			name: "file 500 bytes",
 			data_info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-				File: "500b.txt",
-				Size: &pb.FileSize{
-					Chunk: 500 / 50,
-				},
+				Username: TEST_USER,
+				Filename: "500b.txt",
+				Filetype: pb.FileType_File,
+				Size:     500,
 			},
-			file_body:    genRandomFile(500),
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 10 kb",
 			data_info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-				File: "10kb.txt",
-				Size: &pb.FileSize{
-					Chunk: 10 * 1024 / 50,
-				},
+				Username: TEST_USER,
+				Filename: "10kb.txt",
+				Filetype: pb.FileType_File,
+				Size:     10 * 1024,
 			},
-			file_body:    genRandomFile(10 * 1024),
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 500 kb",
 			data_info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-				File: "500kb.txt",
-				Size: &pb.FileSize{
-					Chunk: 500 * 1024 / 50,
-				},
+				Username: TEST_USER,
+				Filename: "500kb.txt",
+				Filetype: pb.FileType_File,
+				Size:     500 * 1024,
 			},
-			file_body:    genRandomFile(500 * 1024),
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 5 mb",
 			data_info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-				File: "5mb.txt",
-				Size: &pb.FileSize{
-					Chunk: 5 * 1024 * 1024 / 50,
-				},
+				Username: TEST_USER,
+				Filename: "5mb.txt",
+				Filetype: pb.FileType_File,
+				Size:     5 * 1024 * 1024,
 			},
-			file_body:    genRandomFile(5 * 1024 * 1024),
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 50 mb",
 			data_info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-				File: "50mb.txt",
-				Size: &pb.FileSize{
-					Chunk: 1024 * 1024,
-				},
+				Username: TEST_USER,
+				Filename: "50mb.txt",
+				Filetype: pb.FileType_File,
+				Size:     50 * 1024 * 1024,
 			},
-			file_body:    genRandomFile(50 * 1024 * 1024),
-			expected_err: fmt.Errorf(""),
 		},
 		{
 			name: "file 100mb",
 			data_info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-				File: "100mb.txt",
-				Size: &pb.FileSize{
-					Chunk: 2 * 1024 * 1024,
-				},
+				Username: TEST_USER,
+				Filename: "100mb.txt",
+				Filetype: pb.FileType_File,
+				Size:     100 * 1024 * 1024,
 			},
-			file_body:    genRandomFile(100 * 1024 * 1024),
-			expected_err: fmt.Errorf(""),
 		},
 		{
-			name: "bad client sum",
+			name: "file 500mb",
 			data_info: &pb.DataInfo{
-				Type: pb.DataType_File,
-				User: TEST_USER,
-				File: "bad_sum.txt",
-				Size: &pb.FileSize{
-					Chunk: 25,
-				},
+				Username: TEST_USER,
+				Filename: "500mb.txt",
+				Filetype: pb.FileType_File,
+				Size:     500 * 1024 * 1024,
 			},
-			bad_sum_wanted: true,
-			file_body:      genRandomFile(500),
-			expected_err:   fmt.Errorf(""),
+		},
+		{
+			name: "file 750mb",
+			data_info: &pb.DataInfo{
+				Username: TEST_USER,
+				Filename: "750mb.txt",
+				Filetype: pb.FileType_File,
+				Size:     750 * 1024 * 1024,
+			},
 		},
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			expected_sum := sha256.Sum256([]byte(test.file_body))
-			if test.bad_sum_wanted {
-				expected_sum[0] = 0
-			}
+			t.Parallel()
 
-			if err := saveFile(t.Context(), data_client, test.data_info, strings.NewReader(test.file_body)); err != nil {
-				if mess := getRPCErrorMessage(err); mess != test.expected_err.Error() {
-					t.Fatalf("expected error %s, but got %s", test.expected_err, mess)
-				}
+			file_body := genRandomFile(test.data_info.Size)
+
+			if err := saveFile(t.Context(), data_client, test.data_info, strings.NewReader(file_body)); err != nil {
+				t.Fatal(err)
 			}
 
 			defer func(test_name string) {
-				if test.data_info.File == "" {
+				if test.data_info.Filename == "" {
 					return
 				}
 
-				if err := os.Remove(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, test.data_info.User, test.data_info.File)); err != nil {
-					t.Logf("failed remove file; test name = %s", test_name)
+				if err := os.Remove(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Filename)); err != nil {
+					t.Logf("failed remove file; test name = %s; err: %v", test_name, err)
 				}
 			}(test.name)
 
-			got_sum, err := data_client.GetSum(t.Context(), test.data_info)
-
-			if mess := getRPCErrorMessage(err); mess != test.expected_err.Error() {
-				t.Fatalf("expected error %s, but got %s", test.expected_err, mess)
-			}
-
+			conn, err := data_client.CreateConnection(t.Context(), test.data_info)
 			if err != nil {
-				return
+				t.Fatalf("failed create connection. err: %v", err)
 			}
 
-			for i, n := range got_sum.Sum {
-				if n != expected_sum[i] && !test.bad_sum_wanted {
-					t.Logf("expected last 250 bytes %s", test.file_body[len(test.file_body)-250:])
-					t.Fatalf("expected sum: %x, but got: %x", expected_sum, got_sum.Sum)
+			for i := range conn.ChunksCount {
+				got_sum, err := data_client.GetSum(t.Context(), &pb.GetChunk{
+					UUID:    conn.UUID,
+					ChunkId: i,
+				})
+				if err != nil {
+					t.Fatalf("failed get chunk sum. err: %v", err)
+				}
+
+				offset := uint64(i) * conn.ChunkSize
+				n := min(offset+conn.ChunkSize, test.data_info.Size)
+
+				expected_sum := sha256.Sum256([]byte(file_body[offset:n]))
+				if test.bad_sum_wanted {
+					expected_sum[0] = 0
+				}
+
+				for j, n := range got_sum.Sum {
+					if n != expected_sum[j] {
+						t.Fatalf("expected sum: %x, but got: %x", string(expected_sum[:]), string(got_sum.Sum))
+					}
 				}
 			}
 		})

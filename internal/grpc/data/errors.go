@@ -2,11 +2,15 @@ package data
 
 import (
 	"errors"
-	"io"
 )
 
 var (
-	EOF error = io.EOF
+	// File find
+	ErrBadUUID              error = errors.New("bad file uuid")
+	ErrUnexpectedFileChange error = errors.New("unexpected file change")
+
+	// Chunks
+	ErrIncorrectChunkSize error = errors.New("incorrect chunk size")
 
 	ErrEmptyFilename      error = errors.New("file name is empty")
 	ErrWrongAction        error = errors.New("wrong action")
