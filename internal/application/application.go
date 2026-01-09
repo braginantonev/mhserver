@@ -118,7 +118,7 @@ func (app *Application) runMain() error {
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {
-	grpc_server := grpc.NewServer()
+	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize)))
 	var grpc_ip, grpc_port string
 
 	wg := sync.WaitGroup{}
