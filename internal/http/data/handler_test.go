@@ -148,6 +148,9 @@ func TestSaveData(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     uint64(len(test.save_body)),
 			})
+			if err != nil {
+				t.Fatalf("failed create connection; err: %v", err)
+			}
 
 			body := []byte("")
 			if test.save_body != nil {
@@ -240,7 +243,7 @@ func TestGetData(t *testing.T) {
 	}
 
 	defer func() {
-		file.Close()
+		_ = file.Close()
 		_ = os.Remove(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename))
 	}()
 
@@ -279,6 +282,9 @@ func TestGetData(t *testing.T) {
 				Filetype: pb.FileType_File,
 				Size:     uint64(len(TEST_FILE_BODY)),
 			})
+			if err != nil {
+				t.Fatalf("failed create connection; err: %v", err)
+			}
 
 			body := []byte("")
 			if test.expected_body != httpjsonutils.ErrRequestBodyEmpty.Error() {
