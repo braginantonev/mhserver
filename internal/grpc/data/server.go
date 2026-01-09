@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"math"
 	"os"
@@ -61,8 +60,6 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 
 	ram_based := available_ram / uint64(s.activeFiles.Length())
 	file_based := uint64(float64(dataconfig.BASE_CHUNK_SIZE) * math.Log2(float64(info.Size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
-
-	log.Println(info.Size, math.Log2(float64(info.Size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
 
 	var chunk_size uint64
 	if info.Size < s.cfg.Memory.MinChunkSize {
