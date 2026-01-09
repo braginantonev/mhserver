@@ -2,14 +2,11 @@ package data
 
 import (
 	"errors"
-	"io"
 )
 
 var (
-	EOF error = io.EOF
-
 	// File find
-	ErrBadUUID              error = errors.New("bad uuid")
+	ErrBadUUID              error = errors.New("bad file uuid")
 	ErrUnexpectedFileChange error = errors.New("unexpected file change")
 
 	// Chunks

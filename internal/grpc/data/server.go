@@ -73,8 +73,13 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 		chunk_size = (chunk_size / 4096) * 4096
 	}
 
+	filetype, ok := catalogs[info.Filetype]
+	if !ok {
+		return nil, ErrUnexpectedFileType
+	}
+
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.Username, catalogs[info.Filetype], info.Filename)
+	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.Username, filetype, info.Filename)
 
 	chunks_count := int(math.Ceil(float64(info.Size) / float64(chunk_size)))
 
