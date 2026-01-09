@@ -6,6 +6,9 @@ CONFIG_NAME=mhserver.conf
 TEMP_PATH=/tmp/mhserver_setup
 SUB_SERVERS=(main files music images llm)
 
+MAX_CHUNK_SIZE=262144000
+MIN_CHUNK_SIZE=4096
+
 if [[ !(-e $CONFIG_PATH) ]]; then
     sudo mkdir $CONFIG_PATH
 fi
@@ -15,7 +18,7 @@ fi
 if [[ !(-e $TEMP_PATH) ]]; then
     mkdir $TEMP_PATH
 fi
-cp -r sql $TEMP_PATH
+cp -r ../sql $TEMP_PATH
 
 cd $CONFIG_PATH
 
@@ -83,15 +86,6 @@ done
 
 echo "db_pass = \"$db_pass\"" | sudo tee -a $CONFIG_NAME > /dev/null
 
-#* --- Set available ram --- *#
-echo # Skip the line
-
-available_ram=""
-while [ -z $available_ram ]; do
-    read -p "Set available server RAM (ex. 1G or 51.5): " available_ram
-done
-echo "available_ram = \"$available_ram\"" | sudo tee -a $CONFIG_NAME > /dev/null
-
 #* --- Create server user (mysql) and user database --- *#
 echo # Skip the line
 
@@ -131,6 +125,20 @@ if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
 fi
+
+#* ---- Memory setup --- *#
+echo # Skip the line
+
+available_ram=""
+while [ -z $available_ram ] || [ $available_ram -gt 100 ] || [ $available_ram -le 0 ]; do
+    read -p "Available server RAM percentage: " available_ram
+done
+
+echo -e "\n[memory]" | sudo tee -a $CONFIG_NAME > /dev/null
+total_memory=$(($(free | grep "Mem" | awk '{print $2}') * 1024 * available_ram / 100))
+echo "available_ram = $total_memory # bytes" | sudo tee -a $CONFIG_NAME > /dev/null
+echo "max_chunk_size = $MAX_CHUNK_SIZE # bytes" | sudo tee -a $CONFIG_NAME > /dev/null
+echo "min_chunk_size = $MIN_CHUNK_SIZE # bytes" | sudo tee -a $CONFIG_NAME > /dev/null
 
 for server in ${SUB_SERVERS[*]}
 do
