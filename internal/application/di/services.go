@@ -45,11 +45,7 @@ var (
 func RegisterDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) {
 	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, dataconfig.DataServiceConfig{
 		WorkspacePath: app_cfg.WorkspacePath,
-		Memory: dataconfig.DataMemoryConfig{
-			MaxChunkSize: 512 * 1024 * 1024,
-			MinChunkSize: 4 * 1024,
-			AvailableRAM: 1024 * 1024 * 1024,
-		},
+		Memory:        app_cfg.Memory,
 	}))
 }
 

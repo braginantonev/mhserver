@@ -1,10 +1,12 @@
 package appconfig
 
+import dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+
 type ApplicationConfig struct {
-	WorkspacePath string `toml:"workspace_path"`
-	JWTSignature  string `toml:"jwt_signature"`
-	DB_Pass       string `toml:"db_pass"`
-	AvailableRAM  string `toml:"available_ram"`
+	WorkspacePath string                      `toml:"workspace_path"`
+	JWTSignature  string                      `toml:"jwt_signature"`
+	DB_Pass       string                      `toml:"db_pass"`
+	Memory        dataconfig.DataMemoryConfig `toml:"memory"`
 	SubServers    map[string]SubServer
 }
 
