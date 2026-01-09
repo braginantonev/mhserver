@@ -35,6 +35,8 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Add("Content-Type", "text/plain")
+
 	if h.dataServiceClient == nil {
 		ErrUnavailable.Write(w)
 		return
@@ -67,6 +69,7 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(json_conn)
 }
 
@@ -78,6 +81,8 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
+	w.Header().Add("Content-Type", "text/plain")
 
 	if h.dataServiceClient == nil {
 		ErrUnavailable.Write(w)
@@ -107,6 +112,8 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Add("Content-Type", "text/plain")
+
 	if h.dataServiceClient == nil {
 		ErrUnavailable.Write(w)
 		return
@@ -133,6 +140,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(json_part)
 }
 
@@ -144,13 +152,15 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Add("Content-Type", "text/plain")
+
 	if h.dataServiceClient == nil {
 		ErrUnavailable.Write(w)
 		return
 	}
 
-	var req_info pb.DataInfo
-	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.GetSum"); err.StatusCode != 0 {
+	var get_chunk pb.GetChunk
+	if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetSum"); err.StatusCode != 0 {
 		err.Write(w)
 		return
 	}
@@ -158,11 +168,13 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 
-	sum, err := h.dataServiceClient.GetSum(ctx, &req_info)
+	sum, err := h.dataServiceClient.GetSum(ctx, &get_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.GetSum")
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
 
 	_, _ = w.Write(sum.Sum)
 }
