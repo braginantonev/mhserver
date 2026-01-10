@@ -53,7 +53,7 @@ func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if claims, ok := parsed_token.Claims.(jwt.MapClaims); ok {
-			r = r.WithContext(context.WithValue(context.Background(), httpcontextkeys.USERNAME, claims["name"].(string)))
+			r = r.WithContext(context.WithValue(r.Context(), httpcontextkeys.USERNAME, claims["name"].(string)))
 		} else {
 			//Todo: Internal error
 			return
