@@ -132,7 +132,11 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json_part, err := json.Marshal(part)
+	resp_file_part := struct {
+		Chunk string `json:"chunk"`
+	}{Chunk: string(part.Chunk)}
+
+	json_part, err := json.Marshal(resp_file_part)
 	if err != nil {
 		ErrInternal.Append(err).WithFuncName("Handlers.GetData.Marshal").Write(w)
 		return
