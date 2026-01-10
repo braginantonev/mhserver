@@ -10,6 +10,7 @@ import (
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 	pb "github.com/braginantonev/mhserver/proto/data"
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -85,6 +86,12 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If !ok use uuid from json. It's using for tests
+	uuid, ok := mux.Vars(r)["uuid"]
+	if ok {
+		save_chunk.UUID = uuid
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 
@@ -104,16 +111,22 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req_chunk pb.GetChunk
-	if err := httpjsonutils.ConvertJsonToStruct(&req_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
+	var get_chunk pb.GetChunk
+	if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
 		err.Write(w)
 		return
+	}
+
+	// If !ok use uuid from json. It's using for tests
+	uuid, ok := mux.Vars(r)["uuid"]
+	if ok {
+		get_chunk.UUID = uuid
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 
-	part, err := h.dataServiceClient.GetData(ctx, &req_chunk)
+	part, err := h.dataServiceClient.GetData(ctx, &get_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.GetData")
 		return
@@ -143,6 +156,12 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetSum"); err.StatusCode != 0 {
 		err.Write(w)
 		return
+	}
+
+	// If !ok use uuid from json. It's using for tests
+	uuid, ok := mux.Vars(r)["uuid"]
+	if ok {
+		get_chunk.UUID = uuid
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
