@@ -14,4 +14,8 @@ cp -r scripts/ build/
 cp -r sql/ build/
 cp mhserver.service build/
 
-rm build/scripts/build.sh
+cd build
+
+rm scripts/build.sh
+
+tar -czvf mhserver.tar.gz scripts sql mhserver mhserver.service
