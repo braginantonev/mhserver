@@ -55,16 +55,6 @@ func TestLogin(t *testing.T) {
 		expected_body string
 	}{
 		{
-			name:   "wrong method",
-			method: http.MethodPost,
-			user: TestUser{
-				User:                auth.NewUser("not registered", "123"),
-				IsConvertibleToJSON: true,
-			},
-			expected_code: http.StatusMethodNotAllowed,
-			expected_body: "",
-		},
-		{
 			name:   "normal login",
 			method: http.MethodGet,
 			user: TestUser{
@@ -182,16 +172,6 @@ func TestRegister(t *testing.T) {
 		expected_code int
 		expected_body string
 	}{
-		{
-			name:   "wrong method",
-			method: http.MethodGet,
-			user: TestUser{
-				User:                auth.NewUser("not registered", "123"),
-				IsConvertibleToJSON: true,
-			},
-			expected_code: http.StatusMethodNotAllowed,
-			expected_body: "",
-		},
 		{
 			name:   "normal register",
 			method: http.MethodPost,

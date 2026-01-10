@@ -1,7 +1,7 @@
 package httpcontextkeys
 
-type HTTPContextKey int
+type HTTPContextKey string
 
 const (
-	USERNAME HTTPContextKey = 0
+	USERNAME HTTPContextKey = "username"
 )
