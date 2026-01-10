@@ -3,12 +3,15 @@
 
 if [[ !(-e build) ]]; then
     mkdir build
+else
+    rm -rf build/*
 fi
 
-go build -C cmd/ -o main
-mv cmd/main build/
+go build -C cmd/ -o mhserver
+mv cmd/mhserver build/
 
 cp -r scripts/ build/
 cp -r sql/ build/
+cp mhserver.service build/
 
 rm build/scripts/build.sh

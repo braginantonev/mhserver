@@ -9,8 +9,35 @@ SUB_SERVERS=(main files music images llm)
 MAX_CHUNK_SIZE=262144000
 MIN_CHUNK_SIZE=4096
 
+cd ..
+
+if [[ -e mhserver ]]; then
+    if [[ !(-e /opt/mhserver) ]]; then
+        sudo mkdir /opt/mhserver
+    fi
+
+    echo -e "\nReplace executable file to /opt/mhserver ..."
+    sudo cp mhserver /opt/mhserver
+fi
+
+echo # Skip line
+
 if [[ !(-e $CONFIG_PATH) ]]; then
     sudo mkdir $CONFIG_PATH
+fi
+
+if [[ -e mhserver.service ]]; then
+    user_input=""
+    while !([ "$user_input" == 'y' ] || [ "$user_input" == 'n' ]); do
+        read -p "Create mhserver systemd service? (y/n): " user_input
+    done
+
+    if [[ $user_input == 'y' ]]; then
+        sudo cp mhserver.service $CONFIG_PATH
+        sudo cp ${CONFIG_PATH}mhserver.service /etc/systemd/system
+
+        sudo systemctl daemon-reload
+    fi
 fi
 
 #* --- Copy sql commands to /tmp/ --- *#
@@ -174,4 +201,16 @@ do
 
 done
 
-echo "MHServer has been configured"
+user_input=""
+while !([ "$user_input" == 'y' ] || [ "$user_input" == 'n' ]); do
+    read -p "Start mhserver right now? (y/n): " user_input
+done
+
+if [[ $user_input == 'y' ]]; then
+    sudo systemctl enable mhserver
+    sudo systemctl start mhserver
+    echo -e "MHServer will been configured and started successfully"
+    exit 0
+fi
+
+echo -e "MHServer will be configured successfully"
