@@ -1,0 +1,23 @@
+[Unit]
+Description=My home server
+After=network.target
+After=mariadb.service
+Requires=mariadb.service
+
+[Service]
+Type=simple
+PIDFile=/tmp/mhserver.pid
+
+User=root
+Group=root 
+
+OOMScoreAdjust=-100
+
+ExecStart=/opt/mhserver/mhserver
+ExecReload=/opt/mhserver/mhserver
+
+TimeoutSec=300
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
