@@ -30,11 +30,6 @@ func NewDataHandler(grpc_client pb.DataServiceClient) Handler {
 func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Create connection request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	if r.Method != http.MethodOptions {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	w.Header().Add("Content-Type", "text/plain")
 
 	if h.dataServiceClient == nil {
@@ -77,11 +72,6 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Save data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	w.Header().Add("Content-Type", "text/plain")
 
 	if h.dataServiceClient == nil {
@@ -106,11 +96,6 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Get data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
-
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 
 	w.Header().Add("Content-Type", "text/plain")
 
@@ -146,11 +131,6 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Get sum request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
-
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 
 	w.Header().Add("Content-Type", "text/plain")
 

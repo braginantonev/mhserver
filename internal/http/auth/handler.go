@@ -25,11 +25,6 @@ func NewAuthHandler(cfg authconfig.AuthHandlerConfig) Handler {
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Login request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		ErrFailedReadBody.Append(err).WithFuncName("Handlers.Login.io.ReadAll").Write(w)
@@ -57,11 +52,6 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Register request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
-
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
