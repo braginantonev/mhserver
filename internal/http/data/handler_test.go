@@ -67,7 +67,7 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 	return nil
 }
 
-func TestSaveData(t *testing.T) {
+func TestSaveDataHandler(t *testing.T) {
 	err := createWorkdir(TEST_WORKSPACE_PATH, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
@@ -188,7 +188,7 @@ func TestSaveData(t *testing.T) {
 	}
 }
 
-func TestGetData(t *testing.T) {
+func TestGetDataHandler(t *testing.T) {
 	err := createWorkdir(TEST_WORKSPACE_PATH, TEST_USERNAME)
 	if err != nil {
 		t.Fatal(err)
@@ -309,13 +309,16 @@ func TestGetData(t *testing.T) {
 			}
 
 			if content_type == "application/json" {
-				var got_part pb.FilePart
-				err = json.Unmarshal(got_body, &got_part)
-				if err != nil {
-					t.Errorf("bad got json; err: %v", err)
+				var got_part struct {
+					Chunk string `json:"chunk"`
 				}
 
-				if string(got_part.Chunk) != TEST_FILE_BODY {
+				err = json.Unmarshal(got_body, &got_part)
+				if err != nil {
+					t.Fatalf("bad got json; err: %v", err)
+				}
+
+				if got_part.Chunk != TEST_FILE_BODY {
 					t.Errorf("expected chunk `%s`, but got `%s`", TEST_FILE_BODY, string(got_part.Chunk))
 				}
 			} else {
