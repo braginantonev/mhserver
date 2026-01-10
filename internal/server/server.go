@@ -16,9 +16,9 @@ const (
 
 	// Data
 	CREATE_CONNECTION_ENDPOINT string = "/api/v1/files/connect"
-	SAVE_DATA_ENDPOINT         string = "/api/v1/files/{uuid}/save"
-	GET_DATA_ENDPOINT          string = "/api/v1/files/{uuid}/get"
-	GET_DATA_SUM_ENDPOINT      string = "/api/v1/files/{uuid}/sum"
+	SAVE_DATA_ENDPOINT         string = "/api/v1/files/{uuid:[a-z0-9-]{36}}/save"
+	GET_DATA_ENDPOINT          string = "/api/v1/files/{uuid:[a-z0-9-]{36}}/get"
+	GET_DATA_SUM_ENDPOINT      string = "/api/v1/files/{uuid:[a-z0-9-]{36}}/sum"
 )
 
 type Server struct {
