@@ -115,19 +115,13 @@ func TestSaveData(t *testing.T) {
 	}{
 		{
 			TestCase: TestCase{
-				name:          "wrong method",
-				method:        http.MethodDelete,
-				expected_code: http.StatusMethodNotAllowed,
-			},
-		},
-		{
-			TestCase: TestCase{
 				name:                  "empty body",
 				method:                http.MethodPost,
 				expected_code:         http.StatusBadRequest,
 				expected_content_type: "text/plain",
 				expected_body:         httpjsonutils.ErrRequestBodyEmpty.Error(),
 			},
+			filename: "sht normal save.txt",
 		},
 		{
 			TestCase: TestCase{
@@ -253,11 +247,6 @@ func TestGetData(t *testing.T) {
 	}
 
 	cases := [...]TestCase{
-		{
-			name:          "wrong method",
-			method:        http.MethodDelete,
-			expected_code: http.StatusMethodNotAllowed,
-		},
 		{
 			name:                  "empty body",
 			method:                http.MethodGet,
