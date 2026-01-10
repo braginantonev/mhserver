@@ -52,25 +52,14 @@ func (s *DataServer) openFile(path string, flag int, perm os.FileMode) (file *os
 }
 
 func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*pb.Connection, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
 	if info.Filename == "" {
 		return nil, ErrEmptyFilename
-	}
-
-	available_ram := min(s.cfg.Memory.AvailableRAM, freemem.GetAvailableMemory())
-
-	ram_based := available_ram / uint64(s.activeFiles.Length())
-	file_based := uint64(float64(dataconfig.BASE_CHUNK_SIZE) * math.Log2(float64(info.Size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
-
-	var chunk_size uint64
-	if info.Size < s.cfg.Memory.MinChunkSize {
-		chunk_size = info.Size
-	} else {
-		chunk_size = max(s.cfg.Memory.MinChunkSize, min(min(ram_based, file_based), s.cfg.Memory.MaxChunkSize))
-	}
-
-	// Round to RAM page
-	if chunk_size > 4096 {
-		chunk_size = (chunk_size / 4096) * 4096
 	}
 
 	filetype, ok := catalogs[info.Filetype]
@@ -81,7 +70,29 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
 	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.Username, filetype, info.Filename)
 
-	chunks_count := int(math.Ceil(float64(info.Size) / float64(chunk_size)))
+	file_size := info.Size
+	if server_file_stat, err := os.Stat(file_path); err == nil && file_size == 0 {
+		file_size = uint64(server_file_stat.Size())
+	}
+
+	available_ram := min(s.cfg.Memory.AvailableRAM, freemem.GetAvailableMemory())
+
+	ram_based := available_ram / uint64(s.activeFiles.Length())
+	file_based := uint64(float64(dataconfig.BASE_CHUNK_SIZE) * math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
+
+	var chunk_size uint64
+	if file_size < s.cfg.Memory.MinChunkSize {
+		chunk_size = file_size
+	} else {
+		chunk_size = max(s.cfg.Memory.MinChunkSize, min(min(ram_based, file_based), s.cfg.Memory.MaxChunkSize))
+	}
+
+	// Round to RAM page
+	if chunk_size > 4096 {
+		chunk_size = (chunk_size / 4096) * 4096
+	}
+
+	chunks_count := int(math.Ceil(float64(file_size) / float64(chunk_size)))
 
 	// Create connection & register file changes
 	uuid := s.activeFiles.Add(file_path, fileuuidmap.NewChunksInfo(chunk_size, chunks_count))
@@ -94,6 +105,12 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 }
 
 func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.FilePart, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
 	uuid, err := uuid.Parse(get_chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
@@ -180,6 +197,12 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 }
 
 func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SHASum, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
 	uuid, err := uuid.Parse(get_chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
