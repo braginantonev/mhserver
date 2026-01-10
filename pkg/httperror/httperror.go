@@ -72,14 +72,24 @@ For example:
 
 	error "internal error" + error "fatal error" = error "internal error;\nfatal error"
 */
-func (herr HttpError) Append(new_err error) HttpError {
+func (herr HttpError) AppendStr(new_err_str string) HttpError {
 	if herr.description == "" {
-		herr.description = new_err.Error()
+		herr.description = new_err_str
 	} else {
-		herr.description += ";\n" + new_err.Error()
+		herr.description += ";\n" + new_err_str
 	}
 
 	return herr
+}
+
+/*
+Add new info to error description.
+For example:
+
+	error "internal error" + error "fatal error" = error "internal error;\nfatal error"
+*/
+func (herr HttpError) Append(new_err error) HttpError {
+	return herr.AppendStr(new_err.Error())
 }
 
 func (herr HttpError) Error() string {
