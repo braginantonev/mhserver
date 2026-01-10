@@ -2,10 +2,12 @@ package datahandler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	"github.com/braginantonev/mhserver/pkg/httperror"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -21,9 +23,19 @@ var (
 )
 
 func handleServiceError(err error, w http.ResponseWriter, func_name string) {
-	if errors.Is(errors.Unwrap(err), data.ErrInternal) {
-		ErrInternal.Append(err).WithFuncName(func_name).Write(w)
-	} else {
-		httperror.NewExternalHttpError(err, http.StatusBadRequest).Write(w)
+	st, ok := status.FromError(err)
+	if !ok {
+		return
 	}
+
+	mess := st.Message()
+
+	if len(mess) >= len(data.ErrInternal.Error()) {
+		if mess[:len(data.ErrInternal.Error())] == data.ErrInternal.Error() {
+			ErrInternal.AppendStr(mess).WithFuncName(func_name).Write(w)
+			return
+		}
+	}
+
+	httperror.NewExternalHttpError(fmt.Errorf("%s", mess), http.StatusBadRequest).Write(w)
 }
