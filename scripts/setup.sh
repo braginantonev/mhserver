@@ -6,10 +6,8 @@ CONFIG_NAME=mhserver.conf
 TEMP_PATH=/tmp/mhserver_setup
 SUB_SERVERS=(main files music images llm)
 
-MAX_CHUNK_SIZE=262144000
+MAX_CHUNK_SIZE=52428800
 MIN_CHUNK_SIZE=4096
-
-cd ..
 
 if [[ -e mhserver ]]; then
     if [[ !(-e /opt/mhserver) ]]; then
@@ -25,6 +23,8 @@ echo # Skip line
 if [[ !(-e $CONFIG_PATH) ]]; then
     sudo mkdir $CONFIG_PATH
 fi
+
+cd ..
 
 if [[ -e mhserver.service ]]; then
     user_input=""
@@ -45,7 +45,8 @@ fi
 if [[ !(-e $TEMP_PATH) ]]; then
     mkdir $TEMP_PATH
 fi
-cp -r ../sql $TEMP_PATH
+
+cp -r sql $TEMP_PATH
 
 cd $CONFIG_PATH
 
