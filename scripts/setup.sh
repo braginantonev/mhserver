@@ -12,14 +12,15 @@ SUB_SERVERS=(main files music images llm)
 MAX_CHUNK_SIZE=52428800 # bytes = 50 mb
 MIN_CHUNK_SIZE=4096 # bytes = 4 kb
 
+is_resetup_session=false
 
 #* --------------- Functions --------------- *#
 
 # $1 - prompt; Use $(yn_input) to get value
 yn_input() {
-    user_input=""
+    local user_input=""
     while !([ "$user_input" == 'y' ] || [ "$user_input" == 'n' ]); do
-        read -p "$1 (y/n): " user_input
+        read -e -p "$1 (y/n): " user_input
     done
     echo $user_input
 }
@@ -84,12 +85,22 @@ if [[ !(-e $CONFIG_NAME) ]]; then
 else
     echo "Server configuration is already exist"
 
-    if [[ $(yn_input "Do you want setup mhserver again?") == 'y' ]]; then
-        sudo rm $CONFIG_NAME
-        sudo touch $CONFIG_NAME
-    else
+    if [[ $(yn_input "Do you want setup mhserver again?") == 'n' ]]; then
         exit 0
     fi
+
+    echo -e "\a\n\033[0;33mWARNING! If you continue, old configuration will be deleted!"
+    echo -e "\033[0;33mIf you really want to continue, I strongly recommend that you keep your old database password and jwt signature.\n"
+    echo -e -n "\033[0;37m" 
+
+    if [[ $(yn_input "Do you really want continue?") == 'n' ]]; then
+        exit 0
+    fi 
+
+    is_resetup_session=true
+
+    sudo rm $CONFIG_NAME
+    sudo touch $CONFIG_NAME
 fi
 
 sudo chmod 600 $CONFIG_NAME
@@ -108,7 +119,7 @@ echo # Skip the line
 
 if [[ $(yn_input "Do you wan't set uniq server workspace path?") == 'y' ]]; then
     while [ -z $workspacePath ]; do
-        read -p "Enter your new path (use full path): " workspacePath
+        read -e -p "Enter your new path (use full path): " workspacePath
     done
 else
     workspacePath=~/.mhserver/
@@ -124,27 +135,58 @@ fi
 
 #* ---- Generate jwt secrete signature ----- *#
 
-echo "Generation JWT signature..."
-write_to_file "jwt_signature = \"$(openssl rand -base64 32)\"" $CONFIG_NAME
+echo # Skip the line
+
+jwt_signature=""
+
+if $is_resetup_session; then
+    if [[ $(yn_input "Do you want use old jwt signature?") == 'y' ]]; then
+        while [ -z $jwt_signature ]; do
+            read -e -p "Enter your old jwt signature: " jwt_signature
+        done
+    fi
+fi
+
+if [[ -z $jwt_signature ]]; then
+    echo "Generation JWT signature..."
+
+    jwt_signature=$(openssl rand -base64 32)
+fi
+
+write_to_file "jwt_signature = \"$jwt_signature\"" $CONFIG_NAME
 
 
 #* --- Set new password for server database --- *#
 
-db_pass=""
-echo -e "\nEnter a new password for server database"
+echo # Skip the line
 
-while true; do
-    read -p "Password: " -e -s db_pass
-    read -p "Confirm password: " -e -s confirm_pass
+if $is_resetup_session; then
+    if [[ $(yn_input "Do you want use old db password?") == 'y' ]]; then
+        while true; do
+            db_password=""
+            while [ -z $db_password ]; do
+                read -e -s -p "Enter your old db password: " db_password
+            done
 
-    if [[ $db_pass == $confirm_pass ]]; then
-        break
-    else
-        echo -e "Passwords do not match. Try again\n"
+            confirmed_db_password=""
+            while [ -z $confirmed_db_password ]; do
+                read -e -s -p "Confirm your old db password: " confirmed_db_password
+            done
+
+            if [[ $db_password == $confirmed_db_password ]]; then
+                break
+            else
+                echo -e "Passwords not ident\n"
+            fi
+        done
     fi
-done
+fi
 
-write_to_file "db_pass = \"$db_pass\"" $CONFIG_NAME
+if [[ -z $db_password ]]; then
+    db_password=$(openssl rand -base64 32)
+fi
+
+write_to_file "db_pass = \"$db_password\"" $CONFIG_NAME
 
 
 #* --- Create server user (MariaDB) and user database --- *#
@@ -152,7 +194,7 @@ write_to_file "db_pass = \"$db_pass\"" $CONFIG_NAME
 echo # Skip the line
 
 echo "Create mhserver db user..."
-sudo mariadb -u root -e "create user if not exists 'mhserver'@'localhost' identified by '$db_pass';"
+sudo mariadb -u root -e "create user if not exists 'mhserver'@'localhost' identified by '$db_password';"
 if [ $? -ne 0 ]; then
     echo -e "\aFailed create mariadb user"
     exit 1
@@ -176,7 +218,7 @@ fi
 #* ---------- Create users table ---------- *#
 
 echo -e "Create users table..."
-mariadb -u mhserver --password=$db_pass -D mhs_main < $EXECUTABLE_PATH/sql/tables.sql
+mariadb -u mhserver --password=$db_password -D mhs_main < $EXECUTABLE_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
@@ -196,7 +238,7 @@ echo # Skip the line
 
 available_ram=""
 while [ -z $available_ram ] || [ $available_ram -gt 100 ] || [ $available_ram -le 0 ]; do
-    read -p "Available server RAM percentage: " available_ram
+    read -e -p "Available server RAM percentage: " available_ram
 done
 
 write_to_file "\n[memory]" $CONFIG_NAME
@@ -223,7 +265,7 @@ do
     write_to_file "enabled = true" $CONFIG_NAME
 
     ip=""
-    read -p "Enter subserver IP (localhost by default): " ip
+    read -e -p "Enter subserver IP (localhost by default): " ip
 
     if [[ -z $ip ]]; then
         write_to_file "ip = \"localhost\"" $CONFIG_NAME
@@ -233,7 +275,7 @@ do
 
     port=""
     while [ -z $port ]; do
-        read -p "Enter subserver port (use a unique port): " port
+        read -e -p "Enter subserver port (use a unique port): " port
     done
     write_to_file "port = \"$port\"" $CONFIG_NAME
 done
@@ -248,7 +290,9 @@ sh /opt/mhserver/create-ssl-cert.sh
 
 #* -------- Enable server service ---------- *#
 
-if [[ $(yn_input "Start mhserver right now?") == 'y' ]]; then
+echo #Skip the line
+
+if [[ $(yn_input "Start mhserver service right now?") == 'y' ]]; then
     sudo systemctl enable mhserver
     sudo systemctl start mhserver
     echo -e "MHServer will been configured and started successfully"
