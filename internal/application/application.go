@@ -28,12 +28,15 @@ const (
 	DATABASE_NAME string = "mhserver"
 )
 
-const CONFIG_PATH string = "/usr/share/mhserver/mhserver.conf"
+const (
+	CONFIG_DIR  string = "/usr/share/mhserver/"
+	CONFIG_FILE string = CONFIG_DIR + "mhserver.conf"
+)
 
 func NewApplicationConfig() appconfig.ApplicationConfig {
 	var cfg appconfig.ApplicationConfig
 
-	if _, err := toml.DecodeFile(CONFIG_PATH, &cfg); err != nil {
+	if _, err := toml.DecodeFile(CONFIG_FILE, &cfg); err != nil {
 		panic(fmt.Errorf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
 	}
 
@@ -114,7 +117,7 @@ func (app *Application) runMain() error {
 		DataService: data_service,
 	}
 
-	return srv.Serve(app.cfg.SubServers["main"].IP, app.cfg.SubServers["main"].Port)
+	return srv.Serve(app.cfg.SubServers["main"].IP+":"+app.cfg.SubServers["main"].Port, CONFIG_DIR+"ssl/org.crt", CONFIG_DIR+"ssl/rootCA.key")
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {

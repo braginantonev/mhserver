@@ -1,8 +1,10 @@
 package server
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/braginantonev/mhserver/internal/domain"
@@ -26,7 +28,7 @@ type Server struct {
 	DataService *domain.HttpDataService
 }
 
-func (s *Server) Serve(ip, port string) error {
+func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 	r := mux.NewRouter()
 
 	// Auth service
@@ -43,12 +45,16 @@ func (s *Server) Serve(ip, port string) error {
 
 	http_srv := &http.Server{
 		Handler:      r,
-		Addr:         ip + ":" + port,
+		Addr:         addr,
 		WriteTimeout: 5 * time.Second,
 		ReadTimeout:  5 * time.Second,
 	}
 
-	if err := http_srv.ListenAndServe(); err != nil {
+	if err := http_srv.ListenAndServeTLS(tls_cert, tls_key); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ErrUnsafeProtocol
+		}
+
 		slog.Error(err.Error())
 		return ErrFailedStartServer
 	}

@@ -11,12 +11,16 @@ import (
 )
 
 var (
-	// GRPC errors
-	ErrInternal    = httperror.NewInternalHttpError(errors.New("internal error"), "")
-	ErrUnavailable = httperror.NewExternalHttpError(errors.New("service is off or unavailable"), http.StatusServiceUnavailable)
+	// Service errors
+	ErrInternal          = httperror.NewInternalHttpError(errors.New("internal error"), "")
+	ErrUnavailable       = httperror.NewExternalHttpError(errors.New("service is off or unavailable"), http.StatusServiceUnavailable)
+	SpecialServiceErrors = map[string]httperror.HttpError{
+		data.ErrNotEnoughDiskSpace.Error(): httperror.NewExternalHttpError(data.ErrNotEnoughDiskSpace, http.StatusRequestEntityTooLarge),
+	}
 
 	// Handler errors
 	ErrWrongContextUsername = httperror.NewInternalHttpError(errors.New("context username from jwt is not string"), "")
+	ErrBadQuery             = httperror.NewExternalHttpError(errors.New("bad query format"), http.StatusBadRequest)
 
 	// Data info errors
 	ErrNullFileSize = httperror.NewExternalHttpError(errors.New("file size is null"), http.StatusBadRequest)
@@ -35,6 +39,12 @@ func handleServiceError(err error, w http.ResponseWriter, func_name string) {
 			ErrInternal.AppendStr(mess).WithFuncName(func_name).Write(w)
 			return
 		}
+	}
+
+	herr, ok := SpecialServiceErrors[mess]
+	if ok {
+		herr.Write(w)
+		return
 	}
 
 	httperror.NewExternalHttpError(fmt.Errorf("%s", mess), http.StatusBadRequest).Write(w)

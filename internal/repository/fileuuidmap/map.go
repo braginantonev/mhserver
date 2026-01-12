@@ -168,3 +168,15 @@ func (m *FileUUIDMap) Length() int {
 
 	return map_ln
 }
+
+// Size of disk space, which will be saved. Calculate size unsaved chunks.
+func (m *FileUUIDMap) ExpectedSavedSpace() uint64 {
+	m.mux.RLock()
+	defer m.mux.RUnlock()
+
+	var res uint64
+	for _, info := range m.infos {
+		res += info.GetChunkSize() * uint64(info.GetChunksCount()-info.GetLoadedChunks())
+	}
+	return res
+}
