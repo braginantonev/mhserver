@@ -13,7 +13,6 @@ import (
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/repository/filecache"
 	"github.com/braginantonev/mhserver/internal/repository/fileuuidmap"
-	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -28,11 +27,15 @@ type DataServer struct {
 }
 
 func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
+	sem_size := int(cfg.Memory.AvailableRAM / cfg.Memory.MaxChunkSize)
+
+	slog.Info("Set semaphore size", "value", sem_size)
+
 	return &DataServer{
 		cfg:         cfg,
 		cache:       filecache.NewFileCache(ctx),
 		activeFiles: fileuuidmap.NewFileUUIDMap(ctx),
-		sem:         make(chan any, dataconfig.STANDARD_MAX_SAVE_REQUESTS),
+		sem:         make(chan any, sem_size),
 	}
 }
 
@@ -71,20 +74,18 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.Username, filetype, info.Filename)
 
 	file_size := info.Size
+
+	// For reading, not save
 	if server_file_stat, err := os.Stat(file_path); err == nil && file_size == 0 {
 		file_size = uint64(server_file_stat.Size())
 	}
-
-	available_ram := min(s.cfg.Memory.AvailableRAM, freemem.GetAvailableMemory())
-
-	ram_based := available_ram / uint64(s.activeFiles.Length())
-	file_based := uint64(float64(dataconfig.BASE_CHUNK_SIZE) * math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
 
 	var chunk_size uint64
 	if file_size < s.cfg.Memory.MinChunkSize {
 		chunk_size = file_size
 	} else {
-		chunk_size = max(s.cfg.Memory.MinChunkSize, min(min(ram_based, file_based), s.cfg.Memory.MaxChunkSize))
+		file_based := uint64(float64(dataconfig.BASE_CHUNK_SIZE) * math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
+		chunk_size = max(s.cfg.Memory.MinChunkSize, min(file_based, s.cfg.Memory.MaxChunkSize))
 	}
 
 	// Round to RAM page
