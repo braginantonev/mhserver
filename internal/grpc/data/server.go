@@ -13,6 +13,7 @@ import (
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/repository/filecache"
 	"github.com/braginantonev/mhserver/internal/repository/fileuuidmap"
+	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -68,6 +69,15 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	filetype, ok := catalogs[info.Filetype]
 	if !ok {
 		return nil, ErrUnexpectedFileType
+	}
+
+	disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if disk_space < info.Size || disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
+		return nil, ErrNotEnoughDiskSpace
 	}
 
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
