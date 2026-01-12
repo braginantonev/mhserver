@@ -1,6 +1,8 @@
 package appconfig
 
-import dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+import (
+	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+)
 
 type ApplicationConfig struct {
 	WorkspacePath string                      `toml:"workspace_path"`
