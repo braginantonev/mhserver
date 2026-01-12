@@ -26,6 +26,7 @@ if [[ -e mhserver ]]; then
 
     echo -e "\nReplace executable file to /opt/mhserver ..."
     sudo cp mhserver /opt/mhserver
+    sudo cp create-ssl-cert.sh /opt/mhserver
 fi
 
 echo # Skip line
@@ -210,6 +211,12 @@ do
 
 done
 
+#* --- HTTPS/TLS configuration --- *#
+
+./opt/mhserver/create-ssl-cert.sh
+
+#* --- Enable server service --- *#
+
 user_input=""
 while !([ "$user_input" == 'y' ] || [ "$user_input" == 'n' ]); do
     read -p "Start mhserver right now? (y/n): " user_input
@@ -223,3 +230,5 @@ if [[ $user_input == 'y' ]]; then
 fi
 
 echo -e "MHServer will be configured successfully"
+
+
