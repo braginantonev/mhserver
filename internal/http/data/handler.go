@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
@@ -112,9 +113,18 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var get_chunk pb.GetChunk
-	if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
-		err.Write(w)
-		return
+	if ch_id := r.URL.Query().Get("chunkID"); ch_id != "" {
+		res, err := strconv.Atoi(ch_id)
+		if err != nil {
+			ErrBadQuery.Write(w)
+			return
+		}
+		get_chunk.ChunkId = int32(res)
+	} else {
+		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
+			err.Write(w)
+			return
+		}
 	}
 
 	// If !ok use uuid from json. It's using for tests
@@ -157,9 +167,18 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var get_chunk pb.GetChunk
-	if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetSum"); err.StatusCode != 0 {
-		err.Write(w)
-		return
+	if ch_id := r.URL.Query().Get("chunkID"); ch_id != "" {
+		res, err := strconv.Atoi(ch_id)
+		if err != nil {
+			ErrBadQuery.Write(w)
+			return
+		}
+		get_chunk.ChunkId = int32(res)
+	} else {
+		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
+			err.Write(w)
+			return
+		}
 	}
 
 	// If !ok use uuid from json. It's using for tests
