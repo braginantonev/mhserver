@@ -9,6 +9,16 @@ SUB_SERVERS=(main files music images llm)
 MAX_CHUNK_SIZE=52428800
 MIN_CHUNK_SIZE=4096
 
+# Setup directory check
+if [[ -e setup.sh ]]; then
+    cd ..
+fi
+
+if [[ !(-e mhserver || -e go.mod) ]]; then
+    echo "Run mhserver setup script only in project or release tree!"
+    exit 1
+fi
+
 if [[ -e mhserver ]]; then
     if [[ !(-e /opt/mhserver) ]]; then
         sudo mkdir /opt/mhserver
@@ -23,8 +33,6 @@ echo # Skip line
 if [[ !(-e $CONFIG_PATH) ]]; then
     sudo mkdir $CONFIG_PATH
 fi
-
-cd ..
 
 if [[ -e mhserver.service ]]; then
     user_input=""
