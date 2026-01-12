@@ -10,12 +10,12 @@ fi
 go build -C cmd/ -o mhserver
 mv cmd/mhserver build/
 
-cp -r scripts/ build/
+cp -r scripts/* build/
 cp -r sql/ build/
 cp mhserver.service build/
 
 cd build
 
-rm scripts/build.sh
+rm build.sh
 
-tar -czvf mhserver.tar.gz scripts sql mhserver mhserver.service
+tar -czvf mhserver.tar.gz *
