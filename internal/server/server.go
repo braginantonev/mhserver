@@ -41,6 +41,8 @@ func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 	r.HandleFunc(GET_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetData)).Methods(http.MethodGet)
 	r.HandleFunc(GET_DATA_SUM_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetSum)).Methods(http.MethodGet)
 
+	r.HandleFunc("/api/v1/ping", func(w http.ResponseWriter, r *http.Request) {})
+
 	http.Handle("/api/", r)
 
 	http_srv := &http.Server{
