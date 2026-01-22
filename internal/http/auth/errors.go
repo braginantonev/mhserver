@@ -13,7 +13,7 @@ var (
 		auth.ErrNameIsEmpty:       httperror.NewExternalHttpError(auth.ErrNameIsEmpty, http.StatusBadRequest),
 		auth.ErrUserNotExist:      httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusBadRequest),
 		auth.ErrWrongPassword:     httperror.NewExternalHttpError(auth.ErrWrongPassword, http.StatusBadRequest),
-		auth.ErrUserAlreadyExists: httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusContinue),
+		auth.ErrUserAlreadyExists: httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusConflict),
 	}
 
 	// Handler
