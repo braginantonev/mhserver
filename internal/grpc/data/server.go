@@ -76,7 +76,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 		return nil, err
 	}
 
-	if disk_space < info.Size || disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
+	if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
 		return nil, ErrNotEnoughDiskSpace
 	}
 
