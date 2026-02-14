@@ -3,6 +3,7 @@ package datahandler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -199,4 +200,128 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 
 	_, _ = w.Write(sum.Sum)
+}
+
+func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Get files list request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
+
+	files, err := h.dataServiceClient.GetFiles(ctx, &pb.Direction{
+		User: username,
+		Dir:  r.URL.Query().Get("dir"),
+	})
+	if err != nil {
+		handleServiceError(err, w, "data.GetFiles")
+		return
+	}
+
+	resp, err := json.Marshal(files.Infos)
+	if err != nil {
+		ErrInternal.Append(err).WithFuncName("Handler.GetFiles.Marshal").Write(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(resp)
+}
+
+func (h Handler) GetAvailableDiskSpace(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Get available disk space request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		return
+	}
+
+	resp, err := h.dataServiceClient.GetAvailableDiskSpace(context.Background(), &pb.Direction{
+		User: username,
+		Dir:  r.URL.Query().Get("dir"),
+	})
+	if err != nil {
+		handleServiceError(err, w, "data.GetAvailableDiskSpace")
+		return
+	}
+
+	_, _ = fmt.Fprint(w, resp.Val)
+}
+
+func (h Handler) CreateDir(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Create dir request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		return
+	}
+
+	_, err := h.dataServiceClient.CreateDir(context.Background(), &pb.Direction{
+		User: username,
+		Dir:  r.URL.Query().Get("dir"),
+	})
+	if err != nil {
+		handleServiceError(err, w, "data.GetAvailableDiskSpace")
+		return
+	}
+
+	w.Header().Del("Content-Type")
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h Handler) RemoveDir(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Remove dir request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		return
+	}
+
+	_, err := h.dataServiceClient.RemoveDir(context.Background(), &pb.Direction{
+		User: username,
+		Dir:  r.URL.Query().Get("dir"),
+	})
+	if err != nil {
+		handleServiceError(err, w, "data.GetAvailableDiskSpace")
+		return
+	}
+
+	w.Header().Del("Content-Type")
+	w.WriteHeader(http.StatusOK)
 }
