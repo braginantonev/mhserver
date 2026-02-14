@@ -20,5 +20,8 @@ var (
 	// GetData errors
 	ErrFileNotExist error = errors.New("file not exist")
 
+	// Another errors
+	ErrDirectionNotFound error = errors.New("direction not found")
+
 	ErrInternal error = errors.New("internal error")
 )

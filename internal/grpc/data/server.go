@@ -245,3 +245,80 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 		Sum: sha[:],
 	}, err
 }
+
+func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Direction) (*pb.Size, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	space, err := freemem.GetAvailableDiskSpace(dir.GetDir())
+	if err != nil {
+		return nil, ErrDirectionNotFound
+	}
+
+	return &pb.Size{Val: space}, nil
+}
+
+func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Direction) (*pb.FilesList, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	files, err := os.ReadDir(dir.GetDir())
+	if err != nil {
+		return nil, ErrDirectionNotFound
+	}
+
+	list := &pb.FilesList{
+		Infos: make([]*pb.FileInfo, len(files)),
+	}
+
+	for i, file := range files {
+		list.Infos[i] = &pb.FileInfo{
+			Name:  file.Name(),
+			IsDir: file.IsDir(),
+		}
+
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+
+		list.Infos[i].Size = uint64(info.Size())
+		list.Infos[i].ModTime = info.ModTime().Unix()
+	}
+
+	return list, err
+}
+
+func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Direction) (*emptypb.Empty, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	if err := os.Mkdir(dir.GetDir(), 0600); err != nil {
+		return nil, ErrInternal
+	}
+
+	return nil, nil
+}
+
+func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Direction) (*emptypb.Empty, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	if err := os.RemoveAll(dir.GetDir()); err != nil {
+		return nil, ErrInternal
+	}
+
+	return nil, nil
+}
