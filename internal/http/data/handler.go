@@ -1,22 +1,16 @@
 package datahandler
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/gorilla/mux"
-)
-
-var (
-	RequestTimeout = 5 * time.Second
 )
 
 type Handler struct {
@@ -53,10 +47,7 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	req_info.Username = username
 
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	conn, err := h.dataServiceClient.CreateConnection(ctx, &req_info)
+	conn, err := h.dataServiceClient.CreateConnection(r.Context(), &req_info)
 	if err != nil {
 		handleServiceError(err, w, "data.SaveData")
 	}
@@ -94,10 +85,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		save_chunk.UUID = uuid
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	_, err := h.dataServiceClient.SaveData(ctx, &save_chunk)
+	_, err := h.dataServiceClient.SaveData(r.Context(), &save_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.SaveData")
 	}
@@ -134,10 +122,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		get_chunk.UUID = uuid
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	part, err := h.dataServiceClient.GetData(ctx, &get_chunk)
+	part, err := h.dataServiceClient.GetData(r.Context(), &get_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.GetData")
 		return
@@ -188,10 +173,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 		get_chunk.UUID = uuid
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	sum, err := h.dataServiceClient.GetSum(ctx, &get_chunk)
+	sum, err := h.dataServiceClient.GetSum(r.Context(), &get_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.GetSum")
 		return
@@ -218,10 +200,7 @@ func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	files, err := h.dataServiceClient.GetFiles(ctx, &pb.Direction{
+	files, err := h.dataServiceClient.GetFiles(r.Context(), &pb.Direction{
 		User: username,
 		Dir:  r.URL.Query().Get("dir"),
 	})
@@ -256,7 +235,7 @@ func (h Handler) GetAvailableDiskSpace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.dataServiceClient.GetAvailableDiskSpace(context.Background(), &pb.Direction{
+	resp, err := h.dataServiceClient.GetAvailableDiskSpace(r.Context(), &pb.Direction{
 		User: username,
 		Dir:  r.URL.Query().Get("dir"),
 	})
@@ -284,7 +263,7 @@ func (h Handler) CreateDir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.dataServiceClient.CreateDir(context.Background(), &pb.Direction{
+	_, err := h.dataServiceClient.CreateDir(r.Context(), &pb.Direction{
 		User: username,
 		Dir:  r.URL.Query().Get("dir"),
 	})
@@ -313,7 +292,7 @@ func (h Handler) RemoveDir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.dataServiceClient.RemoveDir(context.Background(), &pb.Direction{
+	_, err := h.dataServiceClient.RemoveDir(r.Context(), &pb.Direction{
 		User: username,
 		Dir:  r.URL.Query().Get("dir"),
 	})
