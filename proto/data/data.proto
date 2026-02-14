@@ -43,7 +43,8 @@ message SHASum {
 }
 
 message Direction {
-    string dir = 1;
+    string user = 1;
+    string dir = 2;
 }
 
 message FileInfo {

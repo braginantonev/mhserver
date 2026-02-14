@@ -55,6 +55,15 @@ func (s *DataServer) openFile(path string, flag int, perm os.FileMode) (file *os
 	return file, err
 }
 
+func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (string, error) {
+	filetype, ok := catalogs[data_type]
+	if !ok {
+		return "", ErrUnexpectedFileType
+	}
+
+	return fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, user, filetype, dir), nil
+}
+
 func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*pb.Connection, error) {
 	defer func() {
 		<-s.sem
@@ -64,11 +73,6 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 
 	if info.Filename == "" {
 		return nil, ErrEmptyFilename
-	}
-
-	filetype, ok := catalogs[info.Filetype]
-	if !ok {
-		return nil, ErrUnexpectedFileType
 	}
 
 	disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
@@ -81,7 +85,10 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	}
 
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.Username, filetype, info.Filename)
+	file_path, err := s.getDataPath(info.Username, info.Filename, info.Filetype)
+	if err != nil {
+		return nil, err
+	}
 
 	file_size := info.Size
 
@@ -246,14 +253,17 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 	}, err
 }
 
-func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Direction) (*pb.Size, error) {
+func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direction) (*pb.Size, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	space, err := freemem.GetAvailableDiskSpace(dir.GetDir())
+	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
+	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+
+	space, err := freemem.GetAvailableDiskSpace(dir)
 	if err != nil {
 		return nil, ErrDirectionNotFound
 	}
@@ -261,14 +271,16 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Directio
 	return &pb.Size{Val: space}, nil
 }
 
-func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Direction) (*pb.FilesList, error) {
+func (s *DataServer) GetFiles(ctx context.Context, in_dir *pb.Direction) (*pb.FilesList, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	files, err := os.ReadDir(dir.GetDir())
+	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, ErrDirectionNotFound
 	}
@@ -295,28 +307,32 @@ func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Direction) (*pb.Files
 	return list, err
 }
 
-func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Direction) (*emptypb.Empty, error) {
+func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*emptypb.Empty, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	if err := os.Mkdir(dir.GetDir(), 0600); err != nil {
+	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+
+	if err := os.Mkdir(dir, 0600); err != nil {
 		return nil, ErrInternal
 	}
 
 	return nil, nil
 }
 
-func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Direction) (*emptypb.Empty, error) {
+func (s *DataServer) RemoveDir(ctx context.Context, in_dir *pb.Direction) (*emptypb.Empty, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	if err := os.RemoveAll(dir.GetDir()); err != nil {
+	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+
+	if err := os.RemoveAll(dir); err != nil {
 		return nil, ErrInternal
 	}
 

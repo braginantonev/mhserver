@@ -401,7 +401,8 @@ func (x *SHASum) GetSum() []byte {
 
 type Direction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Dir           string                 `protobuf:"bytes,1,opt,name=dir,proto3" json:"dir,omitempty"`
+	User          string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Dir           string                 `protobuf:"bytes,2,opt,name=dir,proto3" json:"dir,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -434,6 +435,13 @@ func (x *Direction) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Direction.ProtoReflect.Descriptor instead.
 func (*Direction) Descriptor() ([]byte, []int) {
 	return file_data_data_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Direction) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
 }
 
 func (x *Direction) GetDir() string {
@@ -624,9 +632,10 @@ const file_data_data_proto_rawDesc = "" +
 	"\x04UUID\x18\x01 \x01(\tR\x04UUID\x12\x18\n" +
 	"\achunkId\x18\x02 \x01(\x05R\achunkId\"\x1a\n" +
 	"\x06SHASum\x12\x10\n" +
-	"\x03sum\x18\x01 \x01(\fR\x03sum\"\x1d\n" +
-	"\tDirection\x12\x10\n" +
-	"\x03dir\x18\x01 \x01(\tR\x03dir\"b\n" +
+	"\x03sum\x18\x01 \x01(\fR\x03sum\"1\n" +
+	"\tDirection\x12\x12\n" +
+	"\x04user\x18\x01 \x01(\tR\x04user\x12\x10\n" +
+	"\x03dir\x18\x02 \x01(\tR\x03dir\"b\n" +
 	"\bFileInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05isDir\x18\x02 \x01(\bR\x05isDir\x12\x12\n" +
