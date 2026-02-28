@@ -52,14 +52,10 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 		handleServiceError(err, w, "data.SaveData")
 	}
 
-	json_conn, err := json.Marshal(conn)
-	if err != nil {
-		ErrInternal.Append(err).WithFuncName("Handlers.CreateConnection.Marshal").Write(w)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(json_conn)
+	if err := json.NewEncoder(w).Encode(conn); err != nil {
+		ErrInternal.Append(err).WithFuncName("Handlers.CreateConnection.Marshal").Write(w)
+	}
 }
 
 // Use only with auth_middlewares.WithAuth()
@@ -132,14 +128,10 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		Chunk string `json:"chunk"`
 	}{Chunk: string(part.Chunk)}
 
-	json_part, err := json.Marshal(resp_file_part)
-	if err != nil {
-		ErrInternal.Append(err).WithFuncName("Handlers.GetData.Marshal").Write(w)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(json_part)
+	if err := json.NewEncoder(w).Encode(resp_file_part); err != nil {
+		ErrInternal.Append(err).WithFuncName("Handlers.GetData.Marshal").Write(w)
+	}
 }
 
 func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +172,6 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-
 	_, _ = w.Write(sum.Sum)
 }
 
@@ -209,14 +200,10 @@ func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := json.Marshal(files.Infos)
-	if err != nil {
-		ErrInternal.Append(err).WithFuncName("Handler.GetFiles.Marshal").Write(w)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(resp)
+	if err := json.NewEncoder(w).Encode(files.Infos); err != nil {
+		ErrInternal.Append(err).WithFuncName("Handler.GetFiles.Marshal").Write(w)
+	}
 }
 
 func (h Handler) GetAvailableDiskSpace(w http.ResponseWriter, r *http.Request) {
@@ -273,7 +260,6 @@ func (h Handler) CreateDir(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Del("Content-Type")
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h Handler) RemoveDir(w http.ResponseWriter, r *http.Request) {
@@ -302,5 +288,4 @@ func (h Handler) RemoveDir(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Del("Content-Type")
-	w.WriteHeader(http.StatusOK)
 }
