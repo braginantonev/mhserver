@@ -51,8 +51,8 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 	res := w.Result()
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode != datahandler.ErrUnavailable.StatusCode {
-		return fmt.Errorf("expected code %d, but got %d", datahandler.ErrUnavailable.StatusCode, res.StatusCode)
+	if res.StatusCode != datahandler.ErrUnavailable.Status() {
+		return fmt.Errorf("expected code %d, but got %d", datahandler.ErrUnavailable.Status(), res.StatusCode)
 	}
 
 	got_body, err := io.ReadAll(res.Body)
@@ -60,8 +60,8 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 		return err
 	}
 
-	if string(got_body) != datahandler.ErrUnavailable.Error() {
-		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", datahandler.ErrUnavailable.Error(), string(got_body))
+	if string(got_body) != datahandler.ErrUnavailable.Description() {
+		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", datahandler.ErrUnavailable.Description(), string(got_body))
 	}
 
 	return nil
@@ -119,7 +119,7 @@ func TestSaveDataHandler(t *testing.T) {
 				method:                http.MethodPost,
 				expected_code:         http.StatusBadRequest,
 				expected_content_type: "text/plain",
-				expected_body:         httpjsonutils.ErrRequestBodyEmpty.Error(),
+				expected_body:         httpjsonutils.ErrRequestBodyEmpty.Description(),
 			},
 			filename: "sht normal save.txt",
 		},
@@ -251,7 +251,7 @@ func TestGetDataHandler(t *testing.T) {
 			name:                  "empty body",
 			method:                http.MethodGet,
 			expected_code:         http.StatusBadRequest,
-			expected_body:         httpjsonutils.ErrRequestBodyEmpty.Error(),
+			expected_body:         httpjsonutils.ErrRequestBodyEmpty.Description(),
 			expected_content_type: "text/plain",
 		},
 		{
@@ -276,7 +276,7 @@ func TestGetDataHandler(t *testing.T) {
 			}
 
 			body := []byte("")
-			if test.expected_body != httpjsonutils.ErrRequestBodyEmpty.Error() {
+			if test.expected_body != httpjsonutils.ErrRequestBodyEmpty.Description() {
 				body, err = json.Marshal(pb.GetChunk{
 					UUID:    conn.UUID,
 					ChunkId: 0,

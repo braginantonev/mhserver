@@ -101,7 +101,7 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusUnauthorized,
-			expected_body: authmiddleware.ErrUserNotAuthorized.Error(),
+			expected_body: authmiddleware.ErrUserNotAuthorized.Description(),
 		},
 		{
 			name:  "wrong token signature",
@@ -110,7 +110,7 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: authmiddleware.ErrJwtSignatureInvalid.Error(),
+			expected_body: authmiddleware.ErrJwtSignatureInvalid.Description(),
 		},
 		{
 			name:  "expired token",
@@ -119,7 +119,7 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusUnauthorized,
-			expected_body: authmiddleware.ErrAuthorizationExpired.Error(),
+			expected_body: authmiddleware.ErrAuthorizationExpired.Description(),
 		},
 	}
 
