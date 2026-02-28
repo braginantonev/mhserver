@@ -19,7 +19,10 @@ const (
 	EXTERNAL
 )
 
-type HttpError struct {
+// This is alias for Error struct
+type HttpError = *Error
+
+type Error struct {
 	Type       HttpErrorType
 	StatusCode int
 
@@ -97,7 +100,7 @@ func (herr HttpError) Error() string {
 }
 
 func NewInternalHttpError(err error, func_name string) HttpError {
-	return HttpError{
+	return &Error{
 		Type:        INTERNAL,
 		StatusCode:  http.StatusInternalServerError,
 		description: err.Error(),
@@ -106,7 +109,7 @@ func NewInternalHttpError(err error, func_name string) HttpError {
 }
 
 func NewExternalHttpError(err error, status_code int) HttpError {
-	return HttpError{
+	return &Error{
 		Type:        EXTERNAL,
 		StatusCode:  status_code,
 		description: err.Error(),

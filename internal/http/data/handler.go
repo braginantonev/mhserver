@@ -35,7 +35,7 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req_info pb.DataInfo
-	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.SaveData"); err.StatusCode != 0 {
+	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.SaveData"); err != nil {
 		err.Write(w)
 		return
 	}
@@ -70,7 +70,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var save_chunk pb.SaveChunk
-	if err := httpjsonutils.ConvertJsonToStruct(&save_chunk, r.Body, "Handlers.SaveData"); err.StatusCode != 0 {
+	if err := httpjsonutils.ConvertJsonToStruct(&save_chunk, r.Body, "Handlers.SaveData"); err != nil {
 		err.Write(w)
 		return
 	}
@@ -106,7 +106,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		}
 		get_chunk.ChunkId = int32(res)
 	} else {
-		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
+		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err != nil {
 			err.Write(w)
 			return
 		}
@@ -153,7 +153,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 		}
 		get_chunk.ChunkId = int32(res)
 	} else {
-		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
+		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err != nil {
 			err.Write(w)
 			return
 		}

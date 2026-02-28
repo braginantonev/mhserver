@@ -29,5 +29,5 @@ func ConvertJsonToStruct[T any](s *T, body io.ReadCloser, handler_name string) h
 		return ErrBadJsonBody.Append(err)
 	}
 
-	return httperror.HttpError{}
+	return nil
 }
