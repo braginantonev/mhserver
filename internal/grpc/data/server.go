@@ -16,6 +16,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -40,7 +41,7 @@ func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataS
 	}
 }
 
-func (s *DataServer) openFile(path string, flag int, perm os.FileMode) (file *os.File, err error) {
+func (s *DataServer) openFile(ctx context.Context, path string, flag int, perm os.FileMode) (file *os.File, err error) {
 	file, ok := s.cache.Get(path)
 	if !ok {
 		file, err = os.OpenFile(path, flag, perm)
@@ -48,7 +49,9 @@ func (s *DataServer) openFile(path string, flag int, perm os.FileMode) (file *os
 			if errors.Is(err, os.ErrNotExist) {
 				return nil, ErrFileNotExist
 			}
-			return nil, fmt.Errorf("%w: %v", ErrInternal, err)
+
+			slog.ErrorContext(ctx, "failed open user file", slog.String("err", err.Error()))
+			return nil, ErrInternal
 		}
 		s.cache.Push(path, file)
 	}
@@ -61,6 +64,7 @@ func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (strin
 		return "", ErrUnexpectedFileType
 	}
 
+	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
 	return fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, user, filetype, dir), nil
 }
 
@@ -77,14 +81,18 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 
 	disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, unix.ENOENT) {
+			return nil, ErrDirectionNotFound
+		} else {
+			slog.ErrorContext(ctx, "failed get available disk space", slog.String("err", err.Error()))
+			return nil, ErrInternal
+		}
 	}
 
 	if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
 		return nil, ErrNotEnoughDiskSpace
 	}
 
-	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
 	file_path, err := s.getDataPath(info.Username, info.Filename, info.Filetype)
 	if err != nil {
 		return nil, err
@@ -139,7 +147,7 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 		return nil, ErrUnexpectedFileChange
 	}
 
-	file, err := s.openFile(file_info.GetPath(), os.O_RDONLY, 0440)
+	file, err := s.openFile(ctx, file_info.GetPath(), os.O_RDONLY, 0440)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +192,7 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		return nil, ErrIncorrectChunkSize
 	}
 
-	file, err := s.openFile(file_info.GetPath()+".part", os.O_CREATE|os.O_WRONLY, 0660)
+	file, err := s.openFile(ctx, file_info.GetPath()+".part", os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +213,6 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		if err != nil {
 			return nil, ErrFileNotExist
 		}
-		slog.InfoContext(ctx, "Rename - "+file_info.GetPath())
 
 		return nil, nil
 	}
@@ -231,7 +238,7 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 		return nil, ErrUnexpectedFileChange
 	}
 
-	file, err := s.openFile(file_info.GetPath(), os.O_RDONLY, 0440)
+	file, err := s.openFile(ctx, file_info.GetPath(), os.O_RDONLY, 0440)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +267,6 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direc
 
 	s.sem <- struct{}{}
 
-	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
 	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
 
 	space, err := freemem.GetAvailableDiskSpace(dir)
@@ -317,6 +323,7 @@ func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*empt
 	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
 
 	if err := os.Mkdir(dir, 0600); err != nil {
+		slog.ErrorContext(ctx, "failed create user direction", slog.String("err", err.Error()))
 		return nil, ErrInternal
 	}
 
@@ -333,6 +340,7 @@ func (s *DataServer) RemoveDir(ctx context.Context, in_dir *pb.Direction) (*empt
 	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
 
 	if err := os.RemoveAll(dir); err != nil {
+		slog.ErrorContext(ctx, "failed remove user direction", slog.String("err", err.Error()))
 		return nil, ErrInternal
 	}
 
