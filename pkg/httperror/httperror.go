@@ -11,9 +11,10 @@ type HttpErrorType int
 
 const (
 	// Errors messages
-	BAD_ERROR string = "error text doesn't match. Won't `%s`, but got `%s`"
-	BAD_CODE  string = "error code don't match. Won't `%d`, but got `%d`"
-	BAD_TYPE  string = "error type don't match. Won't `%v`, but got `%v`"
+	BAD_DESC   string = "error text doesn't match. Won't `%s`, but got `%s`"
+	BAD_CODE   string = "error code don't match. Won't `%d`, but got `%d`"
+	BAD_TYPE   string = "error type don't match. Won't `%v`, but got `%v`"
+	NIL_TARGET string = "target error is nil"
 
 	INTERNAL HttpErrorType = iota
 	EXTERNAL
@@ -31,17 +32,21 @@ type Error struct {
 }
 
 // Return nil, if errors not different
-func (herr HttpError) CompareWith(http_error HttpError) error {
-	if herr.Type != http_error.Type {
-		return fmt.Errorf(BAD_TYPE, herr.Type, http_error.Type)
+func (herr HttpError) CompareWith(target HttpError) error {
+	if target == nil {
+		return errors.New(NIL_TARGET)
 	}
 
-	if herr.StatusCode != http_error.StatusCode {
-		return fmt.Errorf(BAD_CODE, herr.StatusCode, http_error.StatusCode)
+	if herr.Type != target.Type {
+		return fmt.Errorf(BAD_TYPE, herr.Type, target.Type)
 	}
 
-	if !errors.Is(http_error, herr) {
-		return fmt.Errorf(BAD_ERROR, herr.description, http_error.description)
+	if herr.StatusCode != target.StatusCode {
+		return fmt.Errorf(BAD_CODE, herr.StatusCode, target.StatusCode)
+	}
+
+	if herr.Error() != target.Error() {
+		return fmt.Errorf(BAD_DESC, herr.description, target.description)
 	}
 
 	return nil
