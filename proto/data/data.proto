@@ -42,9 +42,33 @@ message SHASum {
     bytes sum = 1;
 }
 
+message Direction {
+    string user = 1;
+    string dir = 2;
+}
+
+message FileInfo {
+    string name = 1;
+    bool isDir = 2;
+    uint64 size = 3;
+    int64 modTime = 4;
+}
+
+message FilesList {
+    repeated FileInfo infos = 1;
+}
+
+message Size {
+    uint64 val = 1;
+}
+
 service DataService {
     rpc CreateConnection (DataInfo) returns (Connection);
     rpc SaveData (SaveChunk) returns (google.protobuf.Empty);
     rpc GetData (GetChunk) returns (FilePart);
     rpc GetSum (GetChunk) returns (SHASum);
+    rpc GetFiles (Direction) returns (FilesList);
+	rpc GetAvailableDiskSpace (Direction) returns (Size);
+	rpc CreateDir (Direction) returns (google.protobuf.Empty);
+	rpc RemoveDir (Direction) returns (google.protobuf.Empty);
 }

@@ -41,24 +41,23 @@ func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 			return []byte(mid.cfg.JWTSignature), nil
 		})
 		if err != nil {
-			switch {
-			case errors.Is(err, jwt.ErrTokenExpired):
+			if errors.Is(err, jwt.ErrTokenExpired) {
 				ErrAuthorizationExpired.Write(w)
-			case errors.Is(err, jwt.ErrSignatureInvalid):
+			} else if errors.Is(err, jwt.ErrSignatureInvalid) {
 				ErrJwtSignatureInvalid.Write(w)
-			default:
+			} else {
 				ErrBadJWTToken.Write(w)
 			}
 			return
 		}
 
-		if claims, ok := parsed_token.Claims.(jwt.MapClaims); ok {
-			r = r.WithContext(context.WithValue(r.Context(), httpcontextkeys.USERNAME, claims["name"].(string)))
-		} else {
-			//Todo: Internal error
+		claims, ok := parsed_token.Claims.(jwt.MapClaims)
+		if !ok {
+			ErrInternal.Write(w)
 			return
 		}
 
+		r = r.WithContext(context.WithValue(r.Context(), httpcontextkeys.USERNAME, claims["name"].(string)))
 		handler.ServeHTTP(w, r)
 	})
 }

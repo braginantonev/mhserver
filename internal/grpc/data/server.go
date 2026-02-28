@@ -16,6 +16,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -40,7 +41,7 @@ func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataS
 	}
 }
 
-func (s *DataServer) openFile(path string, flag int, perm os.FileMode) (file *os.File, err error) {
+func (s *DataServer) openFile(ctx context.Context, path string, flag int, perm os.FileMode) (file *os.File, err error) {
 	file, ok := s.cache.Get(path)
 	if !ok {
 		file, err = os.OpenFile(path, flag, perm)
@@ -48,11 +49,23 @@ func (s *DataServer) openFile(path string, flag int, perm os.FileMode) (file *os
 			if errors.Is(err, os.ErrNotExist) {
 				return nil, ErrFileNotExist
 			}
-			return nil, fmt.Errorf("%w: %v", ErrInternal, err)
+
+			slog.ErrorContext(ctx, "failed open user file", slog.Any("err", err))
+			return nil, ErrInternal
 		}
 		s.cache.Push(path, file)
 	}
 	return file, err
+}
+
+func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (string, error) {
+	filetype, ok := catalogs[data_type]
+	if !ok {
+		return "", ErrUnexpectedFileType
+	}
+
+	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
+	return fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, user, filetype, dir), nil
 }
 
 func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*pb.Connection, error) {
@@ -66,22 +79,24 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 		return nil, ErrEmptyFilename
 	}
 
-	filetype, ok := catalogs[info.Filetype]
-	if !ok {
-		return nil, ErrUnexpectedFileType
-	}
-
 	disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, unix.ENOENT) {
+			return nil, ErrDirectionNotFound
+		} else {
+			slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
+			return nil, ErrInternal
+		}
 	}
 
 	if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
 		return nil, ErrNotEnoughDiskSpace
 	}
 
-	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.Username, filetype, info.Filename)
+	file_path, err := s.getDataPath(info.Username, info.Filename, info.Filetype)
+	if err != nil {
+		return nil, err
+	}
 
 	file_size := info.Size
 
@@ -132,7 +147,7 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 		return nil, ErrUnexpectedFileChange
 	}
 
-	file, err := s.openFile(file_info.GetPath(), os.O_RDONLY, 0440)
+	file, err := s.openFile(ctx, file_info.GetPath(), os.O_RDONLY, 0440)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +157,8 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 	read_data := make([]byte, file_info.GetChunkSize())
 	n, err := file.ReadAt(read_data, offset)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
+		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
 	// The worst thing I've ever written
@@ -177,14 +193,15 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		return nil, ErrIncorrectChunkSize
 	}
 
-	file, err := s.openFile(file_info.GetPath()+".part", os.O_CREATE|os.O_WRONLY, 0660)
+	file, err := s.openFile(ctx, file_info.GetPath()+".part", os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = file.WriteAt(save_chunk.Data.Chunk, save_chunk.Data.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
+		slog.ErrorContext(ctx, "failed write chunk to file", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
 	err = s.activeFiles.UpdateLoadedChunks(uuid)
@@ -198,7 +215,6 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		if err != nil {
 			return nil, ErrFileNotExist
 		}
-		slog.InfoContext(ctx, "Rename - "+file_info.GetPath())
 
 		return nil, nil
 	}
@@ -224,7 +240,7 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 		return nil, ErrUnexpectedFileChange
 	}
 
-	file, err := s.openFile(file_info.GetPath(), os.O_RDONLY, 0440)
+	file, err := s.openFile(ctx, file_info.GetPath(), os.O_RDONLY, 0440)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +248,8 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 	body := make([]byte, file_info.GetChunkSize())
 	n, err := file.ReadAt(body, int64(file_info.GetChunkSize())*int64(get_chunk.ChunkId))
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("%w: %s", ErrInternal, err.Error())
+		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
 	// The worst thing I've ever written
@@ -244,4 +261,91 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 	return &pb.SHASum{
 		Sum: sha[:],
 	}, err
+}
+
+func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direction) (*pb.Size, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+
+	space, err := freemem.GetAvailableDiskSpace(dir)
+	if err != nil {
+		return nil, ErrDirectionNotFound
+	}
+
+	return &pb.Size{Val: space}, nil
+}
+
+func (s *DataServer) GetFiles(ctx context.Context, in_dir *pb.Direction) (*pb.FilesList, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, ErrDirectionNotFound
+	}
+
+	list := &pb.FilesList{
+		Infos: make([]*pb.FileInfo, len(files)),
+	}
+
+	for i, file := range files {
+		list.Infos[i] = &pb.FileInfo{
+			Name:  file.Name(),
+			IsDir: file.IsDir(),
+		}
+
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+
+		list.Infos[i].Size = uint64(info.Size())
+		list.Infos[i].ModTime = info.ModTime().Unix()
+	}
+
+	return list, err
+}
+
+func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*emptypb.Empty, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+
+	if err := os.Mkdir(dir, 0600); err != nil {
+		slog.ErrorContext(ctx, "failed create user direction", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
+	return nil, nil
+}
+
+func (s *DataServer) RemoveDir(ctx context.Context, in_dir *pb.Direction) (*emptypb.Empty, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+
+	if err := os.RemoveAll(dir); err != nil {
+		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
+	return nil, nil
 }
