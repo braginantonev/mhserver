@@ -2,7 +2,6 @@ package datahandler
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/braginantonev/mhserver/internal/grpc/data"
@@ -34,11 +33,9 @@ func handleServiceError(err error, w http.ResponseWriter, func_name string) {
 
 	mess := st.Message()
 
-	if len(mess) >= len(data.ErrInternal.Error()) {
-		if mess[:len(data.ErrInternal.Error())] == data.ErrInternal.Error() {
-			ErrInternal.AppendStr(mess).WithFuncName(func_name).Write(w)
-			return
-		}
+	if mess == data.ErrInternal.Error() {
+		ErrInternal.WithFuncName(func_name).Write(w)
+		return
 	}
 
 	herr, ok := SpecialServiceErrors[mess]
@@ -47,5 +44,5 @@ func handleServiceError(err error, w http.ResponseWriter, func_name string) {
 		return
 	}
 
-	httperror.NewExternalHttpError(fmt.Errorf("%s", mess), http.StatusBadRequest).Write(w)
+	httperror.NewExternalHttpError(errors.New(mess), http.StatusBadRequest).Write(w)
 }

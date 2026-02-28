@@ -50,7 +50,7 @@ func (s *DataServer) openFile(ctx context.Context, path string, flag int, perm o
 				return nil, ErrFileNotExist
 			}
 
-			slog.ErrorContext(ctx, "failed open user file", slog.String("err", err.Error()))
+			slog.ErrorContext(ctx, "failed open user file", slog.Any("err", err))
 			return nil, ErrInternal
 		}
 		s.cache.Push(path, file)
@@ -84,7 +84,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 		if errors.Is(err, unix.ENOENT) {
 			return nil, ErrDirectionNotFound
 		} else {
-			slog.ErrorContext(ctx, "failed get available disk space", slog.String("err", err.Error()))
+			slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
 			return nil, ErrInternal
 		}
 	}
@@ -157,7 +157,8 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 	read_data := make([]byte, file_info.GetChunkSize())
 	n, err := file.ReadAt(read_data, offset)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
+		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
 	// The worst thing I've ever written
@@ -199,7 +200,8 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 
 	_, err = file.WriteAt(save_chunk.Data.Chunk, save_chunk.Data.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
+		slog.ErrorContext(ctx, "failed write chunk to file", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
 	err = s.activeFiles.UpdateLoadedChunks(uuid)
@@ -246,7 +248,8 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 	body := make([]byte, file_info.GetChunkSize())
 	n, err := file.ReadAt(body, int64(file_info.GetChunkSize())*int64(get_chunk.ChunkId))
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("%w: %s", ErrInternal, err.Error())
+		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
 	// The worst thing I've ever written
@@ -323,7 +326,7 @@ func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*empt
 	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
 
 	if err := os.Mkdir(dir, 0600); err != nil {
-		slog.ErrorContext(ctx, "failed create user direction", slog.String("err", err.Error()))
+		slog.ErrorContext(ctx, "failed create user direction", slog.Any("err", err))
 		return nil, ErrInternal
 	}
 
@@ -340,7 +343,7 @@ func (s *DataServer) RemoveDir(ctx context.Context, in_dir *pb.Direction) (*empt
 	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
 
 	if err := os.RemoveAll(dir); err != nil {
-		slog.ErrorContext(ctx, "failed remove user direction", slog.String("err", err.Error()))
+		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
 		return nil, ErrInternal
 	}
 

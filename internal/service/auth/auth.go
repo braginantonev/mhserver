@@ -3,6 +3,7 @@ package auth
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -40,7 +41,8 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 			return "", ErrUserNotExist
 		}
 
-		return "", fmt.Errorf("%w: %s", ErrInternal, err)
+		slog.Error("failed scan sql rows", slog.Any("err", err))
+		return "", ErrInternal
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(user.Password)); err != nil {
@@ -57,7 +59,8 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 
 	token_str, err := token.SignedString([]byte(jwt_signature))
 	if err != nil {
-		return "", fmt.Errorf("%w: %s", ErrInternal, err)
+		slog.Error("failed complete signed jwt token", slog.Any("err", err))
+		return "", ErrInternal
 	}
 
 	return token_str, nil
@@ -76,11 +79,13 @@ func Register(user User, db *sql.DB) error {
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("%w: %s", ErrInternal, err)
+		slog.Error("failed generate hash from password", slog.Any("err", err))
+		return ErrInternal
 	}
 
 	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
-		return fmt.Errorf("%w: %s", ErrInternal, err)
+		slog.Error("failed insert user to sql", slog.Any("err", err))
+		return ErrInternal
 	}
 
 	return nil
