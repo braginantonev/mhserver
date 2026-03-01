@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"strings"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/repository/filecache"
@@ -68,8 +69,12 @@ func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (strin
 		return "", ErrEmptyDir
 	}
 
+	if dir[0] != '/' || strings.Contains(dir, "..") {
+		return "", ErrBadDirSyntax
+	}
+
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	return fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, user, filetype, dir), nil
+	return fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, dir), nil
 }
 
 func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*pb.Connection, error) {
@@ -340,7 +345,7 @@ func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*empt
 		return nil, err
 	}
 
-	if err := os.Mkdir(dir, 0600); err != nil {
+	if err := os.MkdirAll(dir, 0600); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return nil, ErrDirAlreadyExist
 		}

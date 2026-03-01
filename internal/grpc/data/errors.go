@@ -20,10 +20,11 @@ var (
 	// GetData errors
 	ErrFileNotExist error = errors.New("file not exist")
 
-	// Another errors
+	// Directory errors
 	ErrDirNotFound     error = errors.New("directory not found")
 	ErrEmptyDir        error = errors.New("directory is empty")
 	ErrDirAlreadyExist error = errors.New("directory already exist")
+	ErrBadDirSyntax    error = errors.New("directory have bad syntax")
 
 	ErrInternal error = errors.New("internal error")
 )
