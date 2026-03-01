@@ -11,7 +11,7 @@ import (
 
 var (
 	// Service errors
-	ErrInternal          = httperror.NewInternalHttpError(errors.New("internal error"), "")
+	ErrInternal          = httperror.NewInternalHttpError(errors.New(""), "")
 	ErrUnavailable       = httperror.NewExternalHttpError(errors.New("service is off or unavailable"), http.StatusServiceUnavailable)
 	SpecialServiceErrors = map[string]httperror.HttpError{
 		data.ErrNotEnoughDiskSpace.Error(): httperror.NewExternalHttpError(data.ErrNotEnoughDiskSpace, http.StatusRequestEntityTooLarge),

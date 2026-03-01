@@ -34,7 +34,7 @@ var (
 
 func handleServiceError(w http.ResponseWriter, err error, func_name string) {
 	if errors.Is(err, auth.ErrInternal) {
-		ErrInternal.Append(err).WithFuncName(func_name).Write(w)
+		ErrInternal.WithFuncName(func_name).Write(w)
 	} else {
 		authErrors[err].Write(w)
 	}
