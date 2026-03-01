@@ -6,18 +6,10 @@ import (
 	"net/http"
 )
 
-type HttpErrorType int
-
-const (
-	INTERNAL HttpErrorType = iota
-	EXTERNAL
-)
-
 // This is alias for Error struct
 type HttpError = *Error
 
 type Error struct {
-	typ         HttpErrorType
 	status_code int
 	description string
 	funcName    string // for internal errors only
@@ -26,21 +18,16 @@ type Error struct {
 func (err HttpError) Write(w http.ResponseWriter) {
 	if err == nil {
 		slog.Error("write to Writer a nil http error")
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	switch err.typ {
-	case INTERNAL:
-		slog.Error(err.description, slog.String("func", err.funcName))
-		w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(err.status_code)
 
-	case EXTERNAL:
-		w.WriteHeader(err.status_code)
-
-		_, err := w.Write([]byte(err.description))
-		if err != nil {
-			slog.Error("error write response", slog.String("error", err.Error()))
-		}
+	if err.status_code == http.StatusInternalServerError {
+		slog.Error("INTERNAL ERROR: ", slog.String("func", err.funcName), slog.String("desc", err.description))
+	} else {
+		_, _ = w.Write([]byte(err.description))
 	}
 }
 
@@ -111,7 +98,6 @@ func (err HttpError) Is(target error) bool {
 
 func NewInternalHttpError(err error, func_name string) HttpError {
 	return &Error{
-		typ:         INTERNAL,
 		status_code: http.StatusInternalServerError,
 		description: err.Error(),
 		funcName:    func_name,
@@ -120,7 +106,6 @@ func NewInternalHttpError(err error, func_name string) HttpError {
 
 func NewExternalHttpError(err error, status_code int) HttpError {
 	return &Error{
-		typ:         EXTERNAL,
 		status_code: status_code,
 		description: err.Error(),
 	}
