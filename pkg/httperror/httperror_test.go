@@ -8,7 +8,7 @@ import (
 	"github.com/braginantonev/mhserver/pkg/httperror"
 )
 
-var errTest error = errors.New("hi stranger")
+const TEST_ERROR_DESC string = "hi stranger"
 
 func TestCompareWith(t *testing.T) {
 	cases := [...]struct {
@@ -19,34 +19,34 @@ func TestCompareWith(t *testing.T) {
 	}{
 		{
 			name:          "Good external http error",
-			base_error:    httperror.NewExternalHttpError(errTest, http.StatusNotFound),
-			target_error:  httperror.NewExternalHttpError(errTest, http.StatusNotFound),
+			base_error:    httperror.NewExternalHttpError(TEST_ERROR_DESC, http.StatusNotFound),
+			target_error:  httperror.NewExternalHttpError(TEST_ERROR_DESC, http.StatusNotFound),
 			expected_same: true,
 		},
 		{
 			name:          "Good internal http error",
-			base_error:    httperror.NewInternalHttpError(errTest, "TestCompareWith"),
-			target_error:  httperror.NewInternalHttpError(errTest, "TestCompareWith"),
+			base_error:    httperror.NewInternalHttpError(TEST_ERROR_DESC, "TestCompareWith"),
+			target_error:  httperror.NewInternalHttpError(TEST_ERROR_DESC, "TestCompareWith"),
 			expected_same: true,
 		},
 		{
 			name:         "Bad http codes",
-			base_error:   httperror.NewExternalHttpError(errTest, http.StatusNotFound),
-			target_error: httperror.NewExternalHttpError(errTest, http.StatusMethodNotAllowed),
+			base_error:   httperror.NewExternalHttpError(TEST_ERROR_DESC, http.StatusNotFound),
+			target_error: httperror.NewExternalHttpError(TEST_ERROR_DESC, http.StatusMethodNotAllowed),
 		},
 		{
 			name:         "bad description",
-			base_error:   httperror.NewExternalHttpError(errors.New("i'm bad"), http.StatusBadGateway),
-			target_error: httperror.NewExternalHttpError(errTest, http.StatusBadGateway),
+			base_error:   httperror.NewExternalHttpError("i'm bad", http.StatusBadGateway),
+			target_error: httperror.NewExternalHttpError(TEST_ERROR_DESC, http.StatusBadGateway),
 		},
 		{
 			name:         "bad types",
-			base_error:   httperror.NewInternalHttpError(errTest, "some func"),
-			target_error: httperror.NewExternalHttpError(errTest, http.StatusBadRequest),
+			base_error:   httperror.NewInternalHttpError(TEST_ERROR_DESC, "some func"),
+			target_error: httperror.NewExternalHttpError(TEST_ERROR_DESC, http.StatusBadRequest),
 		},
 		{
 			name:         "compare with nil target",
-			base_error:   httperror.NewExternalHttpError(errTest, http.StatusBadRequest),
+			base_error:   httperror.NewExternalHttpError(TEST_ERROR_DESC, http.StatusBadRequest),
 			target_error: nil,
 		},
 		{

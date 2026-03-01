@@ -25,7 +25,7 @@ func (err HttpError) Write(w http.ResponseWriter) {
 	w.WriteHeader(err.status_code)
 
 	if err.status_code == http.StatusInternalServerError {
-		slog.Error("INTERNAL ERROR: ", slog.String("func", err.funcName), slog.String("desc", err.description))
+		slog.Error("INTERNAL", slog.String("func", err.funcName), slog.String("desc", err.description))
 	} else {
 		_, _ = w.Write([]byte(err.description))
 	}
@@ -96,17 +96,17 @@ func (err HttpError) Is(target error) bool {
 	return err.Error() == target.Error()
 }
 
-func NewInternalHttpError(err error, func_name string) HttpError {
+func NewInternalHttpError(desc string, func_name string) HttpError {
 	return &Error{
 		status_code: http.StatusInternalServerError,
-		description: err.Error(),
+		description: desc,
 		funcName:    func_name,
 	}
 }
 
-func NewExternalHttpError(err error, status_code int) HttpError {
+func NewExternalHttpError(desc string, status_code int) HttpError {
 	return &Error{
 		status_code: status_code,
-		description: err.Error(),
+		description: desc,
 	}
 }

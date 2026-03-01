@@ -1,7 +1,6 @@
 package datahandler
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/braginantonev/mhserver/internal/grpc/data"
@@ -11,18 +10,20 @@ import (
 
 var (
 	// Service errors
-	ErrInternal          = httperror.NewInternalHttpError(errors.New(""), "")
-	ErrUnavailable       = httperror.NewExternalHttpError(errors.New("service is off or unavailable"), http.StatusServiceUnavailable)
+	ErrInternal    = httperror.NewInternalHttpError("", "")
+	ErrUnavailable = httperror.NewExternalHttpError("service is off or unavailable", http.StatusServiceUnavailable)
+
+	// * I set empty desc for this errors, because they should be added in the error handler
 	SpecialServiceErrors = map[string]httperror.HttpError{
-		data.ErrNotEnoughDiskSpace.Error(): httperror.NewExternalHttpError(data.ErrNotEnoughDiskSpace, http.StatusRequestEntityTooLarge),
+		data.ErrNotEnoughDiskSpace.Error(): httperror.NewExternalHttpError("", http.StatusRequestEntityTooLarge),
 	}
 
 	// Handler errors
-	ErrWrongContextUsername = httperror.NewInternalHttpError(errors.New("context username from jwt is not string"), "")
-	ErrBadQuery             = httperror.NewExternalHttpError(errors.New("bad query format"), http.StatusBadRequest)
+	ErrWrongContextUsername = httperror.NewInternalHttpError("context username from jwt is not string", "")
+	ErrBadQuery             = httperror.NewExternalHttpError("bad query format", http.StatusBadRequest)
 
 	// Data info errors
-	ErrNullFileSize = httperror.NewExternalHttpError(errors.New("file size is null"), http.StatusBadRequest)
+	ErrNullFileSize = httperror.NewExternalHttpError("file size is null", http.StatusBadRequest)
 )
 
 func handleServiceError(err error, w http.ResponseWriter, func_name string) {
@@ -40,9 +41,9 @@ func handleServiceError(err error, w http.ResponseWriter, func_name string) {
 
 	herr, ok := SpecialServiceErrors[mess]
 	if ok {
-		herr.Write(w)
+		herr.AppendStr(mess).Write(w)
 		return
 	}
 
-	httperror.NewExternalHttpError(errors.New(mess), http.StatusBadRequest).Write(w)
+	httperror.NewExternalHttpError(mess, http.StatusBadRequest).Write(w)
 }
