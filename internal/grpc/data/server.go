@@ -64,6 +64,10 @@ func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (strin
 		return "", ErrUnexpectedFileType
 	}
 
+	if dir == "" {
+		return "", ErrEmptyDir
+	}
+
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
 	return fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, user, filetype, dir), nil
 }
@@ -82,7 +86,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
 	if err != nil {
 		if errors.Is(err, unix.ENOENT) {
-			return nil, ErrDirectionNotFound
+			return nil, ErrDirNotFound
 		} else {
 			slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
 			return nil, ErrInternal
@@ -270,11 +274,14 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direc
 
 	s.sem <- struct{}{}
 
-	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	dir, err := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	if err != nil {
+		return nil, err
+	}
 
 	space, err := freemem.GetAvailableDiskSpace(dir)
 	if err != nil {
-		return nil, ErrDirectionNotFound
+		return nil, ErrDirNotFound
 	}
 
 	return &pb.Size{Val: space}, nil
@@ -287,11 +294,16 @@ func (s *DataServer) GetFiles(ctx context.Context, in_dir *pb.Direction) (*pb.Fi
 
 	s.sem <- struct{}{}
 
-	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	dir, err := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	if err != nil {
+		return nil, err
+	}
+
+	slog.Info("read", slog.String("dir", dir))
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, ErrDirectionNotFound
+		return nil, ErrDirNotFound
 	}
 
 	list := &pb.FilesList{
@@ -323,9 +335,16 @@ func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*empt
 
 	s.sem <- struct{}{}
 
-	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	dir, err := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := os.Mkdir(dir, 0600); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return nil, ErrDirAlreadyExist
+		}
+
 		slog.ErrorContext(ctx, "failed create user direction", slog.Any("err", err))
 		return nil, ErrInternal
 	}
@@ -340,7 +359,10 @@ func (s *DataServer) RemoveDir(ctx context.Context, in_dir *pb.Direction) (*empt
 
 	s.sem <- struct{}{}
 
-	dir, _ := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	dir, err := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := os.RemoveAll(dir); err != nil {
 		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))

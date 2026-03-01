@@ -21,7 +21,9 @@ var (
 	ErrFileNotExist error = errors.New("file not exist")
 
 	// Another errors
-	ErrDirectionNotFound error = errors.New("direction not found")
+	ErrDirNotFound     error = errors.New("directory not found")
+	ErrEmptyDir        error = errors.New("directory is empty")
+	ErrDirAlreadyExist error = errors.New("directory already exist")
 
 	ErrInternal error = errors.New("internal error")
 )
