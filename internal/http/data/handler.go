@@ -35,21 +35,21 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req_info pb.DataInfo
-	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.SaveData"); err != nil {
+	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.CreateConnection"); err != nil {
 		err.Write(w)
 		return
 	}
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		ErrWrongContextUsername.WithFuncName("Handlers.CreateConnection").Write(w)
 		return
 	}
 	req_info.Username = username
 
 	conn, err := h.dataServiceClient.CreateConnection(r.Context(), &req_info)
 	if err != nil {
-		handleServiceError(err, w, "data.SaveData")
+		handleServiceError(err, w, "data.CreateConnection")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -153,7 +153,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 		}
 		get_chunk.ChunkId = int32(res)
 	} else {
-		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err != nil {
+		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetSum"); err != nil {
 			err.Write(w)
 			return
 		}
@@ -187,7 +187,7 @@ func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		ErrWrongContextUsername.WithFuncName("Handlers.GetFiles").Write(w)
 		return
 	}
 
@@ -218,7 +218,7 @@ func (h Handler) GetAvailableDiskSpace(w http.ResponseWriter, r *http.Request) {
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		ErrWrongContextUsername.WithFuncName("Handlers.GetAvailableDiskSpace").Write(w)
 		return
 	}
 
@@ -246,7 +246,7 @@ func (h Handler) CreateDir(w http.ResponseWriter, r *http.Request) {
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		ErrWrongContextUsername.WithFuncName("Handlers.CreateDir").Write(w)
 		return
 	}
 
@@ -255,7 +255,7 @@ func (h Handler) CreateDir(w http.ResponseWriter, r *http.Request) {
 		Dir:  r.URL.Query().Get("dir"),
 	})
 	if err != nil {
-		handleServiceError(err, w, "data.GetAvailableDiskSpace")
+		handleServiceError(err, w, "data.CreateDir")
 		return
 	}
 
@@ -274,7 +274,7 @@ func (h Handler) RemoveDir(w http.ResponseWriter, r *http.Request) {
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		ErrWrongContextUsername.WithFuncName("Handlers.RemoveDir").Write(w)
 		return
 	}
 
@@ -283,7 +283,7 @@ func (h Handler) RemoveDir(w http.ResponseWriter, r *http.Request) {
 		Dir:  r.URL.Query().Get("dir"),
 	})
 	if err != nil {
-		handleServiceError(err, w, "data.GetAvailableDiskSpace")
+		handleServiceError(err, w, "data.RemoveDir")
 		return
 	}
 
