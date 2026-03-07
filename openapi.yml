@@ -1,0 +1,143 @@
+openapi: '3.0.3'
+
+info:
+  title: MHServer API
+  version: '1.2.0'
+  description: API для работы с MHServer (My Home Server)
+  license:
+    name: MIT
+
+servers:
+  - url: https://{domain}/api/v1
+    variables:
+      domain:
+        default: my.best.server
+        description: Домен сервера
+
+  - url: https://{host}:{port}/api/v1
+    variables:
+      host:
+        default: localhost
+        description: Имя сервера или его IP
+      port:
+        default: "8080"
+        description: Порт сервера
+
+tags:
+  - name: Аутентификация
+    description: Аутентификация и авторизация пользователей
+  - name: Сервис
+    description: Операции отвечающие за определённый функционал
+  - name: Файлы
+    description: Работа с файлами
+
+paths:
+  /users/login:
+    get:
+      summary: Получение JWT пользователя
+      tags: ["Аутентификация", "Сервис"]
+
+      responses:
+        "200":
+          description: Получен JWT токен
+          content:
+            plain/text:
+              schema:
+                type: string
+              example:
+                value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzExODY5MjAsImlhdCI6MTc3MTEwMDUyMCwibmFtZSI6IlRlc3QxIiwibmJmIjoxNzcxMTAwNTIwfQ.rRD0ViwdgZxd9GG9RbW5lzThlnMN_5yX4ngcdWMSyhw
+        
+        "400":
+          description: Плохой запрос
+          content:
+            plain/text:
+              schema:
+                type: string
+              examples:
+                notRegistered:
+                  summary: Пользователь не зарегистрирован
+                  value:
+                    message: not registered
+                wrongPassword:
+                  summary: Введён неверный пароль
+                  value:
+                    message: wrong password
+                emptyUsername:
+                  $ref: "#/components/examples/EmptyUsername"
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
+                badJsonSyntax:
+                  $ref: "#/components/examples/BadJsonSyntax"
+        "404":
+          $ref: "#/components/responses/AuthServiceUnavailable"
+
+        "500":
+          $ref: "#/components/responses/InternalError" 
+
+  /users/register:
+    post:
+      summary: Регистрация пользователя
+      tags: ["Аутентификация", "Сервис"]
+
+      responses:
+        "100":
+          description: Пользователь уже зарегистрирован
+
+        "200":
+          description: Пользователь зарегистрирован
+        
+        "400":
+          description: Плохой запрос
+          content:
+            plain/text:
+              schema:
+                type: string
+              examples:
+                emptyUsername:
+                  $ref: "#/components/examples/EmptyUsername"
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
+                badJsonSyntax:
+                  $ref: "#/components/examples/BadJsonSyntax"
+        
+        "404":
+          $ref: "#/components/responses/AuthServiceUnavailable"
+
+        "500":
+          $ref: "#/components/responses/InternalError" 
+                
+components:
+  examples:
+    EmptyUsername:
+      summary: Поле с именем пользователя - пустое
+      value:
+        code: 400
+        message: username is empty
+
+    EmptyRequestBody:
+      summary: Поле запроса - пустое
+      value:
+        code: 400
+        message: request body empty
+
+    BadJsonSyntax:
+      summary: Ошибка в синтаксисе JSON
+      value:
+        code: 400
+        message: bad request json body
+
+  responses:
+    AuthServiceUnavailable:
+      description: Сервис аутентификации недоступен
+
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        plain/text:
+          schema:
+            type: string
+          example:
+            value: "internal error"
+    
+    
+ 
