@@ -125,6 +125,30 @@ components:
       value:
         code: 400
         message: bad request json body
+    
+    BadJwtSyntax:
+      description: JWT записан в неправильной форме
+      value:
+        code: 400
+        message: bad jwt token
+    
+    BadJwtSignature:
+      description: JWT имеет неверную сигнатуру
+      value:
+        code: 400
+        message: jwt signature is invalid
+    
+    EmptyAuthorizationField:
+      description: Поле `Authorization` отсутствует, либо пустое
+      value:
+        code: 401
+        message: user not authorized
+    
+    JwtIsExpired:
+      description: JWT просрочен
+      value:
+        code: 401
+        message: authorization expired
 
   responses:
     AuthServiceUnavailable:
