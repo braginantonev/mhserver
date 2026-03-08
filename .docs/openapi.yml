@@ -104,9 +104,37 @@ paths:
           $ref: "#/components/responses/AuthServiceUnavailable"
 
         "500":
-          $ref: "#/components/responses/InternalError" 
+          $ref: "#/components/responses/InternalError"
+  
+  /files/connect:
+    options:
+      security:
+        - BearerAuth: []
+      
+      summary: Получение параметров получения или отправки чанков
+      description: |
+        "Пропуск" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.
+
+        Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.
+
+        Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла)
+      
+      responses:
+        "200":
+          description: Соединение создано и получены его параметры
+          content:
+        
+        "400":
+          description: Плохой запрос
                 
 components:
+  schemas:
+    Connection:
+      type: object
+      required:
+        - 
+
+
   examples:
     EmptyUsername:
       summary: Поле с именем пользователя - пустое
@@ -161,7 +189,16 @@ components:
           schema:
             type: string
           example:
-            value: "internal error"
+            value: internal error
+    
+    ServiceUnavailable:
+      description: Сервис отключен или недоступен
+      content:
+        plain/text:
+          schema:
+            type: string
+          example:
+            value: service is off or unavailable
     
     
  
