@@ -26,8 +26,10 @@ servers:
 tags:
   - name: Аутентификация
     description: Аутентификация и авторизация пользователей
+
   - name: Сервис
     description: Операции отвечающие за определённый функционал
+
   - name: Файлы
     description: Работа с файлами
 
@@ -36,6 +38,9 @@ paths:
     get:
       summary: Получение JWT пользователя
       tags: ["Аутентификация", "Сервис"]
+
+      requestBody:
+        $ref: "#/components/requestBodies/User"
 
       responses:
         "200":
@@ -58,14 +63,18 @@ paths:
                   summary: Пользователь не зарегистрирован
                   value:
                     message: not registered
+                    
                 wrongPassword:
                   summary: Введён неверный пароль
                   value:
                     message: wrong password
+
                 emptyUsername:
                   $ref: "#/components/examples/EmptyUsername"
+
                 emptyRequestBody:
                   $ref: "#/components/examples/EmptyRequestBody"
+
                 badJsonSyntax:
                   $ref: "#/components/examples/BadJsonSyntax"
         "404":
@@ -78,6 +87,9 @@ paths:
     post:
       summary: Регистрация пользователя
       tags: ["Аутентификация", "Сервис"]
+
+      requestBody:
+        $ref: "#/components/requestBodies/User"
 
       responses:
         "100":
@@ -95,8 +107,10 @@ paths:
               examples:
                 emptyUsername:
                   $ref: "#/components/examples/EmptyUsername"
+
                 emptyRequestBody:
                   $ref: "#/components/examples/EmptyRequestBody"
+
                 badJsonSyntax:
                   $ref: "#/components/examples/BadJsonSyntax"
         
@@ -111,6 +125,8 @@ paths:
       security:
         - BearerAuth: []
       
+      tags: ["Файлы", "Сервис"]
+      
       summary: Получение параметров получения или отправки чанков
       description: |
         "Пропуск" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.
@@ -118,22 +134,273 @@ paths:
         Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.
 
         Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла)
+
+        Для создания соединения необходимо указать тип файла. Типы аналогичны названию сервисов в единственном числе и нижнем регистре (File, Image, Music и т.д.).
+        Вы также можете использовать индекс сервиса как тип (Files - 0, Images - 1, Music - 2 и т.д.)
+      
+      requestBody:
+        required: true
+        $ref: "./examples/data/connection-request.json"
       
       responses:
         "200":
           description: Соединение создано и получены его параметры
           content:
+            application/json:
+              schema:
+                type: object
+              example:
+                $ref: "./examples/data/connection-response.json"
+                    
+        "400":
+          description: Плохой запрос
+          content:
+            plain/text:
+              schema:
+                type: string
+              examples:
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
+
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
+
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
+
+                emptyFilename:
+                  summary: Пустое имя файла
+                  value:
+                    message: file name is empty
+
+                unexpectedFiletype:
+                  summary: Недопустимый тип файла
+                  value:
+                    message: unexpected file type
+        
+        "401":
+          $ref: "#/components/responses/NotAuthorized"
+        
+        "413":
+          description: Размер сохраняемого файла, больше свободного места на сервере
+          content:
+            plain/text:
+              schema:
+                type: string
+              example:
+                value: not enough disk space
+        
+        "500":
+          $ref: "#/components/responses/InternalError"
+        
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  
+  /files/save:
+    post:
+      parameters:
+        - name: connID
+          in: query
+          required: true
+          description: UUID соединения, созданного с помощью `/files/connect`
+          schema:
+            type: string
+            minimum: 32
+            maximum: 36
+      
+      security:
+        - BearerAuth: []
+      
+      tags: ["Файлы", "Сервис"]
+
+      summary: Сохранить часть файла
+      description: |
+        Сохраняет часть файла (чанк) на сервере. 
+        
+        Чтобы сохранить полный файл, необходимо отправить запрос столько раз, сколько указано в поле `chunksCount` созданного соединения.
+      
+      requestBody:
+        required: true
+        $ref: "./examples/data/save-chunk-request.json"
+      
+      responses:
+        "200":
+          description: Чанк сохранен
+          
+        "400":
+            description: Плохой запрос
+            content:
+              plain/text:
+                schema:
+                  type: string
+                examples:
+                  badJwtSyntax:
+                    $ref: "#/components/examples/BadJwtSyntax"
+
+                  badJwtSignature:
+                    $ref: "#/components/examples/BadJwtSignature"
+
+                  emptyRequestBody:
+                    $ref: "#/components/examples/EmptyRequestBody"
+                    
+                  badConnectionSyntax:
+                    $ref: "#/components/examples/BadConnectionSyntax"
+
+                  connectionNotExists:
+                    $ref: "#/components/examples/ConnectionNotExists"
+                  
+                  incorrectChunkSize:                  
+                    summary: Размер чанка больше, указанного в соединении
+                    value:
+                      message: incorrect chunk size
+        
+        "401":
+          $ref: "#/components/responses/NotAuthorized"
+
+        "500":
+          $ref: "#/components/responses/InternalError"
+        
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  
+  /files/get:
+    get:
+      parameters:
+        - name: connID
+          in: query
+          required: true
+          description: UUID соединения, созданного с помощью `/files/connect`
+          schema:
+            type: string
+            minimum: 32
+            maximum: 36
+      
+      security:
+        - BearerAuth: []
+      
+      tags: ["Файлы", "Сервис"]
+      summary: Получить часть файла
+      description: |
+        Запрос возвращает файл по чанкам. 
+
+        Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения
+      
+      requestBody:
+        $ref: "#/components/requestBodies/GetDataChunk"
+      
+      responses:
+        "200":
+          description: Чанк получен
+        
+        "400":
+            description: Плохой запрос
+            content:
+              plain/text:
+                schema:
+                  type: string
+                examples:
+                  badJwtSyntax:
+                    $ref: "#/components/examples/BadJwtSyntax"
+
+                  badJwtSignature:
+                    $ref: "#/components/examples/BadJwtSignature"
+
+                  emptyRequestBody:
+                    $ref: "#/components/examples/EmptyRequestBody"
+                  
+                  badConnectionSyntax:
+                    $ref: "#/components/examples/BadConnectionSyntax"
+                  
+                  connectionNotExists:
+                    $ref: "#/components/examples/ConnectionNotExists"
+        
+        "401":
+          $ref: "#/components/responses/NotAuthorized"
+        
+        "500":
+          $ref: "#/components/responses/InternalError"
+        
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  
+  /files/sum:
+    get:
+      parameters:
+        - name: connID
+          in: query
+          required: true
+          description: UUID соединения, созданного с помощью `/files/connect`
+          schema:
+            type: string
+            minimum: 32
+            maximum: 36
+        - name: chunkID
+          in: query
+          required: true
+          description: Индекс чанка файла, контрольную сумму нужно вернуть
+          schema:
+            type: integer
+      
+      security:
+        - BearerAuth: []
+      
+      tags: ["Файлы", "Сервис"]
+      summary: Получить контрольную сумму части файла
+      description: |
+        Используется проверки целлостности сохранённого файла. 
+        
+        Возвращает контрольную сумму чанка (не файла!), 
+        поэтому, чтобы проверить целостность файла, необходимо сделать столько запросов, сколько указано в поле `chunksCount` при создании соединения
+      
+      requestBody:
+        $ref: "#/components/requestBodies/GetDataChunk"
+      
+      responses:
+        "200":
+          description: Контрольная сумма получена
         
         "400":
           description: Плохой запрос
+          content:
+            plain/text:
+              schema:
+                type: string
+              examples:
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
+
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
+
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
+                  
+                badConnectionSyntax:
+                  $ref: "#/components/examples/BadConnectionSyntax"
+                  
+                connectionNotExists:
+                  $ref: "#/components/examples/ConnectionNotExists"
+        
+        "401":
+          $ref: "#/components/responses/NotAuthorized"
+        
+        "500":
+          $ref: "#/components/responses/InternalError"
+        
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+
                 
 components:
-  schemas:
-    Connection:
-      type: object
-      required:
-        - 
-
+  requestBodies:
+    User:
+      required: true
+      $ref: "./examples/auth/user-request.json"
+    
+    GetDataChunk:
+      required: true
+      $ref: "./examples/data/get-chunk-request.json"
 
   examples:
     EmptyUsername:
@@ -166,6 +433,18 @@ components:
         code: 400
         message: jwt signature is invalid
     
+    BadConnectionSyntax:
+      summary: UUID соединения записан в неправильной форме
+      value:
+        code: 400
+        message: bad connection uuid
+    
+    ConnectionNotExists:
+      summary: Отсутствует соединение или оно не существует
+      value:
+        code: 400
+        message: unexpected file change
+    
     EmptyAuthorizationField:
       description: Поле `Authorization` отсутствует, либо пустое
       value:
@@ -179,6 +458,19 @@ components:
         message: authorization expired
 
   responses:
+    NotAuthorized:
+      description: Не авторизован
+      content:
+        plain/text:
+          schema:
+            type: string
+          examples:
+            emptyAuthorizationField:
+              $ref: "#/components/examples/EmptyAuthorizationField"
+
+            jwtIsExpired:
+              $ref: "#/components/examples/JwtIsExpired"
+
     AuthServiceUnavailable:
       description: Сервис аутентификации недоступен
 
@@ -200,5 +492,3 @@ components:
           example:
             value: service is off or unavailable
     
-    
- 
