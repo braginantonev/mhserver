@@ -6,7 +6,7 @@ import (
 
 var (
 	// File find
-	ErrBadUUID              error = errors.New("bad file uuid")
+	ErrBadUUID              error = errors.New("bad connection uuid")
 	ErrUnexpectedFileChange error = errors.New("unexpected file change")
 
 	// Chunks
