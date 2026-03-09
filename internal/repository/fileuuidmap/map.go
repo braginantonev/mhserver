@@ -153,7 +153,6 @@ func (m *FileUUIDMap) UpdateLoadedChunks(uuid uuid.UUID) error {
 
 	if info.chunks.Loaded == info.chunks.Count {
 		delete(m.files, uuid)
-		return EOC
 	}
 
 	return nil
