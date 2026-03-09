@@ -231,7 +231,7 @@ func TestSaveData(t *testing.T) {
 			}
 
 			// Check file type only
-			file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test.conn_info.Filename), os.O_RDONLY, 0660)
+			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test.conn_info.Filename), os.O_RDONLY, 0660)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -250,7 +250,7 @@ func TestSaveData(t *testing.T) {
 }
 
 func TestGetData(t *testing.T) {
-	test_file_name := "get_data_test_file.txt"
+	test_file_name := "/get_data_test_file.txt"
 
 	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
 		t.Fatal(err)
@@ -283,7 +283,7 @@ func TestGetData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Create test file
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_CREATE|os.O_RDWR, 0660)
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,16 +306,12 @@ func TestGetData(t *testing.T) {
 		}
 	})
 
-	// Test
-	test_file_info := &pb.DataInfo{
-		Username: TEST_USER,
-		Filename: test_file_name,
-		Filetype: pb.FileType_File,
-		Size:     uint64(len(TEST_FILE_BODY)),
-	}
-
 	t.Run("normal get", func(t *testing.T) {
-		conn, err := data_client.CreateConnection(t.Context(), test_file_info)
+		conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
+			Username: TEST_USER,
+			Filename: test_file_name,
+			Filetype: pb.FileType_File,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -391,79 +387,80 @@ func TestGetSum(t *testing.T) {
 	cases := [...]struct {
 		name           string
 		data_info      *pb.DataInfo
+		gen_file_size  uint64
 		bad_sum_wanted bool
 	}{
 		{
 			name: "file 500 bytes",
 			data_info: &pb.DataInfo{
 				Username: TEST_USER,
-				Filename: "500b.txt",
+				Filename: "/get_sum_500b.txt",
 				Filetype: pb.FileType_File,
-				Size:     500,
 			},
+			gen_file_size: 500,
 		},
 		{
 			name: "file 10 kb",
 			data_info: &pb.DataInfo{
 				Username: TEST_USER,
-				Filename: "10kb.txt",
+				Filename: "/get_sum_10kb.txt",
 				Filetype: pb.FileType_File,
-				Size:     10 * 1024,
 			},
+			gen_file_size: 10 * 1024,
 		},
 		{
 			name: "file 500 kb",
 			data_info: &pb.DataInfo{
 				Username: TEST_USER,
-				Filename: "500kb.txt",
+				Filename: "/get_sum_500kb.txt",
 				Filetype: pb.FileType_File,
-				Size:     500 * 1024,
 			},
+			gen_file_size: 500 * 1024,
 		},
 		{
 			name: "file 5 mb",
 			data_info: &pb.DataInfo{
 				Username: TEST_USER,
-				Filename: "5mb.txt",
+				Filename: "/get_sum_5mb.txt",
 				Filetype: pb.FileType_File,
-				Size:     5 * 1024 * 1024,
 			},
+			gen_file_size: 5 * 1024 * 1024,
 		},
 		{
 			name: "file 50 mb",
 			data_info: &pb.DataInfo{
 				Username: TEST_USER,
-				Filename: "50mb.txt",
+				Filename: "/get_sum_50mb.txt",
 				Filetype: pb.FileType_File,
-				Size:     50 * 1024 * 1024,
 			},
+			gen_file_size: 50 * 1024 * 1024,
 		},
 		{
 			name: "file 100mb",
 			data_info: &pb.DataInfo{
 				Username: TEST_USER,
-				Filename: "100mb.txt",
+				Filename: "/get_sum_100mb.txt",
 				Filetype: pb.FileType_File,
-				Size:     100 * 1024 * 1024,
 			},
+			gen_file_size: 100 * 1024 * 1024,
 		},
 		{
 			name: "file 500mb",
 			data_info: &pb.DataInfo{
 				Username: TEST_USER,
-				Filename: "500mb.txt",
+				Filename: "/get_sum_500mb.txt",
 				Filetype: pb.FileType_File,
-				Size:     500 * 1024 * 1024,
 			},
+			gen_file_size: 500 * 1024 * 1024,
 		},
 		{
 			name: "file 750mb",
 			data_info: &pb.DataInfo{
 				Username: TEST_USER,
-				Filename: "750mb.txt",
+				Filename: "/get_sum_750mb.txt",
 				Filetype: pb.FileType_File,
-				Size:     750 * 1024 * 1024,
 			},
+			gen_file_size: 750 * 1024 * 1024,
 		},
 	}
 
@@ -471,11 +468,19 @@ func TestGetSum(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			file_body := genRandomFile(test.data_info.Size)
+			file_body := genRandomFile(test.gen_file_size)
 
-			if err := saveFile(t.Context(), data_client, test.data_info, strings.NewReader(file_body)); err != nil {
+			// Create test file
+			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test.data_info.Filename), os.O_CREATE|os.O_WRONLY, 0660)
+			if err != nil {
 				t.Fatal(err)
 			}
+
+			_, err = file.Write([]byte(file_body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = file.Close()
 
 			defer func(test_name string) {
 				if test.data_info.Filename == "" {
@@ -502,7 +507,7 @@ func TestGetSum(t *testing.T) {
 				}
 
 				offset := uint64(i) * conn.ChunkSize
-				n := min(offset+conn.ChunkSize, test.data_info.Size)
+				n := min(offset+conn.ChunkSize, test.gen_file_size)
 
 				expected_sum := sha256.Sum256([]byte(file_body[offset:n]))
 				if test.bad_sum_wanted {
