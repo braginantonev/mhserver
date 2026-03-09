@@ -114,11 +114,11 @@ func (m *FileUUIDMap) startCleaner() {
 	}
 }
 
-func (m *FileUUIDMap) Push(file *os.File, path string, chunks_info ChunksInfo) uuid.UUID {
+func (m *FileUUIDMap) Push(file *File) uuid.UUID {
 	uuid := uuid.New()
 
 	m.mux.Lock()
-	m.files[uuid] = NewFile(file, path, chunks_info)
+	m.files[uuid] = file
 	m.mux.Unlock()
 
 	return uuid

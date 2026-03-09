@@ -16,7 +16,6 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
-	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -68,30 +67,51 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 		return nil, ErrEmptyFilename
 	}
 
-	disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
-	if err != nil {
-		if errors.Is(err, unix.ENOENT) {
-			return nil, ErrDirNotFound
-		} else {
-			slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
-			return nil, ErrInternal
-		}
-	}
-
-	if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
-		return nil, ErrNotEnoughDiskSpace
-	}
-
 	file_path, err := s.getDataPath(info.Username, info.Filename, info.Filetype)
 	if err != nil {
 		return nil, err
 	}
 
+	r_stat, err := os.Stat(file_path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		slog.ErrorContext(ctx, "failed get stat from file", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
 	file_size := info.Size
 
-	// For reading, not save
-	if server_file_stat, err := os.Stat(file_path); err == nil && file_size == 0 {
-		file_size = uint64(server_file_stat.Size())
+	if r_stat != nil {
+		// File exist, but user want update him
+		if info.Size != 0 {
+			disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
+				return nil, ErrInternal
+			}
+
+			if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
+				return nil, ErrNotEnoughDiskSpace
+			}
+
+			err = os.Remove(file_path)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed remove existed file on save connection", slog.Any("err", err))
+				return nil, ErrInternal
+			}
+		} else {
+			file_size = uint64(r_stat.Size())
+		}
+	}
+
+	// Open file to read. If file not exist -> we use info in request
+	file, err := os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrDirNotFound
+		}
+
+		slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
 	var chunk_size uint64
@@ -109,18 +129,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 
 	chunks_count := int(math.Ceil(float64(file_size) / float64(chunk_size)))
 
-	// Create connection & register file changes
-	file, err := os.OpenFile(file_path+".part", os.O_CREATE|os.O_WRONLY, 0660)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, ErrDirNotFound
-		}
-
-		slog.ErrorContext(ctx, "failed create or open file", slog.Any("err", err))
-		return nil, ErrInternal
-	}
-
-	uuid := s.activeFiles.Push(file, file_path, fileuuidmap.NewChunksInfo(chunk_size, chunks_count))
+	uuid := s.activeFiles.Push(fileuuidmap.NewFile(file, file_path, fileuuidmap.NewChunksInfo(chunk_size, chunks_count)))
 
 	return &pb.Connection{
 		UUID:        uuid.String(),
@@ -155,15 +164,14 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 		return nil, ErrInternal
 	}
 
-	// The worst thing I've ever written
-	if n != 0 && err == io.EOF {
-		err = nil
+	if n == 0 && err == io.EOF {
+		return nil, ErrReadOutOfFile
 	}
 
 	return &pb.FilePart{
 		Chunk:  read_data[:n],
 		Offset: offset,
-	}, err
+	}, nil
 }
 
 func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*emptypb.Empty, error) {
@@ -193,23 +201,9 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		return nil, ErrInternal
 	}
 
-	err = s.activeFiles.UpdateLoadedChunks(uuid)
-	if err == nil {
-		return nil, nil
-	}
+	_ = s.activeFiles.UpdateLoadedChunks(uuid)
 
-	// Complete save
-	if err == fileuuidmap.EOC {
-		err := os.Rename(file.GetPath()+".part", file.GetPath())
-		if err != nil {
-			return nil, ErrFileNotExist
-		}
-
-		return nil, nil
-	}
-
-	// Предположительно, программа никогда не дойдёт до этого момента
-	return nil, ErrUnexpectedFileChange
+	return nil, nil
 }
 
 func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SHASum, error) {
@@ -236,15 +230,14 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 		return nil, ErrInternal
 	}
 
-	// The worst thing I've ever written
-	if n != 0 && err == io.EOF {
-		err = nil
+	if n == 0 && err == io.EOF {
+		return nil, ErrReadOutOfFile
 	}
 
 	sha := sha256.Sum256(body[:n])
 	return &pb.SHASum{
 		Sum: sha[:],
-	}, err
+	}, nil
 }
 
 func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direction) (*pb.Size, error) {
