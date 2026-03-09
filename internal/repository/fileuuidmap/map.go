@@ -94,7 +94,7 @@ func (m *FileUUIDMap) clean() {
 
 	for id, file := range m.files {
 		if file.isExpired() {
-			file.Close()
+			_ = file.Close()
 			delete(m.files, id)
 		}
 	}
