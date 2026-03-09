@@ -206,15 +206,7 @@ paths:
   /files/save:
     post:
       parameters:
-        - name: connID
-          in: query
-          required: true
-          description: UUID соединения, созданного с помощью `/files/connect`
-          schema:
-            type: string
-            format: uuid
-            minLength: 32
-            maxLength: 36
+        - $ref: "#/components/parameters/ConnectionID"
       
       security:
         - BearerAuth: []
@@ -274,16 +266,7 @@ paths:
   /files/get:
     get:
       parameters:
-        - name: connID
-          in: query
-          required: true
-          description: UUID соединения, созданного с помощью `/files/connect`
-          schema:
-            type: string
-            format: uuid
-            minLength: 32
-            maxLength: 36
-        
+        - $ref: "#/components/parameters/ConnectionID"
         - $ref: "#/components/parameters/GetChunk"
       
       security:
@@ -335,16 +318,7 @@ paths:
   /files/sum:
     get:
       parameters:
-        - name: connID
-          in: query
-          required: true
-          description: UUID соединения, созданного с помощью `/files/connect`
-          schema:
-            type: string
-            format: uuid
-            minLength: 32
-            maxLength: 36
-
+        - $ref: "#/components/parameters/ConnectionID"
         - $ref: "#/components/parameters/GetChunk"
       
       security:
@@ -433,6 +407,17 @@ components:
       schema:
         type: integer
         minimum: 0
+        
+    ConnectionID:
+      name: connID
+      in: query
+      required: true
+      description: UUID соединения, созданного с помощью `/files/connect`
+      schema:
+        type: string
+        format: uuid
+        minLength: 32
+        maxLength: 36
 
   requestBodies:
     User:
