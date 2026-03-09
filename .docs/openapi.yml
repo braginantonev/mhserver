@@ -212,8 +212,9 @@ paths:
           description: UUID соединения, созданного с помощью `/files/connect`
           schema:
             type: string
-            minimum: 32
-            maximum: 36
+            format: uuid
+            minLength: 32
+            maxLength: 36
       
       security:
         - BearerAuth: []
@@ -279,8 +280,9 @@ paths:
           description: UUID соединения, созданного с помощью `/files/connect`
           schema:
             type: string
-            minimum: 32
-            maximum: 36
+            format: uuid
+            minLength: 32
+            maxLength: 36
         
         - $ref: "#/components/parameters/GetChunk"
       
@@ -339,8 +341,9 @@ paths:
           description: UUID соединения, созданного с помощью `/files/connect`
           schema:
             type: string
-            minimum: 32
-            maximum: 36
+            format: uuid
+            minLength: 32
+            maxLength: 36
 
         - $ref: "#/components/parameters/GetChunk"
       
@@ -440,55 +443,46 @@ components:
     EmptyUsername:
       summary: Поле с именем пользователя - пустое
       value:
-        code: 400
         message: username is empty
 
     EmptyRequestBody:
       summary: Поле запроса - пустое
       value:
-        code: 400
         message: request body empty
 
     BadJsonSyntax:
       summary: Ошибка в синтаксисе JSON
       value:
-        code: 400
         message: bad request json body
     
     BadJwtSyntax:
       description: JWT записан в неправильной форме
       value:
-        code: 400
         message: bad jwt token
     
     BadJwtSignature:
       description: JWT имеет неверную сигнатуру
       value:
-        code: 400
         message: jwt signature is invalid
     
     BadConnectionSyntax:
       summary: UUID соединения записан в неправильной форме
       value:
-        code: 400
         message: bad connection uuid
     
     ConnectionNotExists:
       summary: Отсутствует соединение или оно не существует
       value:
-        code: 400
         message: unexpected file change
     
     EmptyAuthorizationField:
       description: Поле `Authorization` отсутствует, либо пустое
       value:
-        code: 401
         message: user not authorized
     
     JwtIsExpired:
       description: JWT просрочен
       value:
-        code: 401
         message: authorization expired
 
   responses:
