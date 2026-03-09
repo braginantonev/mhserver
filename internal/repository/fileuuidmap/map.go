@@ -2,6 +2,7 @@ package fileuuidmap
 
 import (
 	"context"
+	"os"
 	"sync"
 	"time"
 
@@ -9,8 +10,8 @@ import (
 )
 
 const (
-	FILE_INFO_UUID_LIFETIME time.Duration = 5 * time.Minute
-	CLEAN_DURATION          time.Duration = 10 * time.Second
+	FILE_LIFETIME  time.Duration = 2 * time.Minute
+	CLEAN_DURATION time.Duration = 10 * time.Second
 )
 
 type ChunksInfo struct {
@@ -26,47 +27,49 @@ func NewChunksInfo(c_size uint64, c_count int) ChunksInfo {
 	}
 }
 
-type FileInfo struct {
-	path   string
-	chunks ChunksInfo
+type File struct {
+	*os.File
 
+	path       string
+	chunks     ChunksInfo
 	expiration int64
 }
 
-func NewFileInfo(path string, chunks_info ChunksInfo) *FileInfo {
-	return &FileInfo{
+func NewFile(file *os.File, path string, chunks_info ChunksInfo) *File {
+	return &File{
+		File:       file,
 		path:       path,
 		chunks:     chunks_info,
-		expiration: time.Now().Add(FILE_INFO_UUID_LIFETIME).Unix(),
+		expiration: time.Now().Add(FILE_LIFETIME).Unix(),
 	}
 }
 
-func (p *FileInfo) isExpired() bool {
+func (p *File) isExpired() bool {
 	return time.Now().Unix() > p.expiration
 }
 
-func (p *FileInfo) updateExpiration() {
-	p.expiration = time.Now().Add(FILE_INFO_UUID_LIFETIME).Unix()
+func (p *File) updateExpiration() {
+	p.expiration = time.Now().Add(FILE_LIFETIME).Unix()
 }
 
-func (p *FileInfo) GetPath() string {
+func (p *File) GetPath() string {
 	return p.path
 }
 
-func (p *FileInfo) GetChunkSize() uint64 {
+func (p *File) GetChunkSize() uint64 {
 	return p.chunks.ChunkSize
 }
 
-func (p *FileInfo) GetChunksCount() int {
+func (p *File) GetChunksCount() int {
 	return p.chunks.Count
 }
 
-func (p *FileInfo) GetLoadedChunks() int {
+func (p *File) GetLoadedChunks() int {
 	return p.chunks.Loaded
 }
 
 type FileUUIDMap struct {
-	infos map[uuid.UUID]*FileInfo
+	files map[uuid.UUID]*File
 	mux   *sync.RWMutex
 
 	ctx           context.Context
@@ -75,7 +78,7 @@ type FileUUIDMap struct {
 
 func NewFileUUIDMap(ctx context.Context) *FileUUIDMap {
 	m := &FileUUIDMap{
-		infos:         make(map[uuid.UUID]*FileInfo),
+		files:         make(map[uuid.UUID]*File),
 		mux:           &sync.RWMutex{},
 		ctx:           ctx,
 		cleanDuration: CLEAN_DURATION,
@@ -89,9 +92,10 @@ func (m *FileUUIDMap) clean() {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
-	for key, path := range m.infos {
-		if path.isExpired() {
-			delete(m.infos, key)
+	for id, file := range m.files {
+		if file.isExpired() {
+			file.Close()
+			delete(m.files, id)
 		}
 	}
 }
@@ -110,21 +114,21 @@ func (m *FileUUIDMap) startCleaner() {
 	}
 }
 
-func (m *FileUUIDMap) Add(path string, chunks_info ChunksInfo) uuid.UUID {
+func (m *FileUUIDMap) Push(file *os.File, path string, chunks_info ChunksInfo) uuid.UUID {
 	uuid := uuid.New()
 
 	m.mux.Lock()
-	m.infos[uuid] = NewFileInfo(path, chunks_info)
+	m.files[uuid] = NewFile(file, path, chunks_info)
 	m.mux.Unlock()
 
 	return uuid
 }
 
-func (m *FileUUIDMap) Get(uuid uuid.UUID) (*FileInfo, bool) {
+func (m *FileUUIDMap) Get(uuid uuid.UUID) (*File, bool) {
 	m.mux.RLock()
 	defer m.mux.RUnlock()
 
-	info, ok := m.infos[uuid]
+	info, ok := m.files[uuid]
 	if !ok {
 		return nil, false
 	}
@@ -139,7 +143,7 @@ func (m *FileUUIDMap) UpdateLoadedChunks(uuid uuid.UUID) error {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
-	info, ok := m.infos[uuid]
+	info, ok := m.files[uuid]
 	if !ok {
 		return ErrFileNotFound
 	}
@@ -148,7 +152,7 @@ func (m *FileUUIDMap) UpdateLoadedChunks(uuid uuid.UUID) error {
 	info.updateExpiration()
 
 	if info.chunks.Loaded == info.chunks.Count {
-		delete(m.infos, uuid)
+		delete(m.files, uuid)
 		return EOC
 	}
 
@@ -158,7 +162,7 @@ func (m *FileUUIDMap) UpdateLoadedChunks(uuid uuid.UUID) error {
 // Return count active files UUIDs. If count is 0, return 1 by default
 func (m *FileUUIDMap) Length() int {
 	m.mux.RLock()
-	map_ln := len(m.infos)
+	map_ln := len(m.files)
 	m.mux.RUnlock()
 
 	// Standard value
@@ -175,7 +179,7 @@ func (m *FileUUIDMap) ExpectedSavedSpace() uint64 {
 	defer m.mux.RUnlock()
 
 	var res uint64
-	for _, info := range m.infos {
+	for _, info := range m.files {
 		res += info.GetChunkSize() * uint64(info.GetChunksCount()-info.GetLoadedChunks())
 	}
 	return res
