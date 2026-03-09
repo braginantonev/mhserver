@@ -2,7 +2,7 @@ openapi: '3.0.3'
 
 info:
   title: MHServer API
-  version: '1.2.0'
+  version: '2.0.0'
   description: API для работы с MHServer (My Home Server)
   license:
     name: MIT
@@ -122,6 +122,16 @@ paths:
   
   /files/connect:
     options:
+      parameters:
+        - name: filetype
+          in: query
+          required: true
+          description: |
+            Тип файла.
+            Типы аналогичны названию сервисов в единственном числе и нижнем регистре (File, Image, Music и т.д.).
+          schema:
+            type: string
+
       security:
         - BearerAuth: []
       
@@ -134,9 +144,6 @@ paths:
         Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.
 
         Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла)
-
-        Для создания соединения необходимо указать тип файла. Типы аналогичны названию сервисов в единственном числе и нижнем регистре (File, Image, Music и т.д.).
-        Вы также можете использовать индекс сервиса как тип (Files - 0, Images - 1, Music - 2 и т.д.)
       
       requestBody:
         required: true
@@ -274,19 +281,19 @@ paths:
             type: string
             minimum: 32
             maximum: 36
+        
+        - $ref: "#/components/parameters/GetChunk"
       
       security:
         - BearerAuth: []
       
       tags: ["Файлы", "Сервис"]
+
       summary: Получить часть файла
       description: |
         Запрос возвращает файл по чанкам. 
 
         Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения
-      
-      requestBody:
-        $ref: "#/components/requestBodies/GetDataChunk"
       
       responses:
         "200":
@@ -334,26 +341,20 @@ paths:
             type: string
             minimum: 32
             maximum: 36
-        - name: chunkID
-          in: query
-          required: true
-          description: Индекс чанка файла, контрольную сумму нужно вернуть
-          schema:
-            type: integer
+
+        - $ref: "#/components/parameters/GetChunk"
       
       security:
         - BearerAuth: []
       
       tags: ["Файлы", "Сервис"]
+
       summary: Получить контрольную сумму части файла
       description: |
         Используется проверки целлостности сохранённого файла. 
         
         Возвращает контрольную сумму чанка (не файла!), 
         поэтому, чтобы проверить целостность файла, необходимо сделать столько запросов, сколько указано в поле `chunksCount` при создании соединения
-      
-      requestBody:
-        $ref: "#/components/requestBodies/GetDataChunk"
       
       responses:
         "200":
@@ -389,18 +390,50 @@ paths:
         
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+  
+  /files:
+    get:
+      parameters:
+        - name: dir
+          in: query
+          required: true
+          description: | 
+            Каталог, файлы которого необходимо получить.
+            Параметр всегда должен начинаться с /
+          schema:
+            type: string
+            minimum: 1
+      
+      security:
+        - BearerAuth: []
+      
+      tags: ["Файлы", "Сервис"]
+      summary: Получить список файлов в каталоге
+      
+      responses:
+        "200":
+          description: Список файлов получен
+        
+        
+
 
 
                 
 components:
+  parameters:
+    GetChunk:
+      name: chunkID
+      in: query
+      required: true
+      description: Индекс чанка файла, контрольную сумму нужно вернуть
+      schema:
+        type: integer
+        minimum: 0
+
   requestBodies:
     User:
       required: true
       $ref: "./examples/auth/user-request.json"
-    
-    GetDataChunk:
-      required: true
-      $ref: "./examples/data/get-chunk-request.json"
 
   examples:
     EmptyUsername:
