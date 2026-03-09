@@ -27,9 +27,14 @@ const (
 	TEST_USER      string = "user"
 	CHUNK_SIZE     int    = 1024
 
-	TEST_FILE_BODY string = `Антон Чигур никого не убивал!
-Антон Чигур никого не покарал!
-Антон Чигур ничего не уничтожал!`
+	TEST_FILE_BODY string = `- Скажи, дружище, ты стихи любишь?
+	- Стихи? Ну, не особо, сэр.
+	- Тихо в лесу, только не спит только медведь... Он ещё с вечера начал пердеть. Вот и не спит медведь.
+	...
+	- Тихо в лесу, только не спит ёж. Нюхает ёж медвежий пердёжь, вот и не спит ёж.
+	- Эм... Что?
+	- Тихо в лесу, только не спит сова. Есть у совы смешная трава, вот и не спит сова.
+	- Сэр, может, заправку закончим? `
 )
 
 // Create server workspace in to test files with `File` type only
@@ -58,7 +63,7 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *
 		}
 
 		wg.Add(1)
-		func(ch_id int, data []byte) {
+		go func(ch_id int, data []byte) {
 			defer wg.Done()
 
 			_, err = data_client.SaveData(ctx, &pb.SaveChunk{
@@ -95,8 +100,6 @@ func getRPCErrorMessage(err error) string {
 }
 
 func TestSaveData(t *testing.T) {
-	test_file_name := "save_data_test_file.txt"
-
 	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
 		t.Fatal(err)
 	}
@@ -140,59 +143,110 @@ func TestSaveData(t *testing.T) {
 		}
 	})
 
-	t.Run("incorrect chunk size", func(t *testing.T) {
-		test_data_info := &pb.DataInfo{
-			Username: TEST_USER,
-			Filename: "incorrect size.txt",
-			Filetype: pb.FileType_File,
-			Size:     uint64(len(TEST_FILE_BODY)),
-		}
+	// To test: "save in test dir"
+	test_dir := "/test_dir/"
+	if err = os.MkdirAll(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test_dir), 0700); err != nil {
+		t.Fatal(err)
+	}
 
-		conn, err := data_client.CreateConnection(t.Context(), test_data_info)
-		if err != nil {
-			t.Fatal(err)
-		}
+	small_test_file := "I use arch btw"
+	small_test_file_len := uint64(len(small_test_file))
 
-		_, err = data_client.SaveData(t.Context(), &pb.SaveChunk{
-			UUID: conn.UUID,
-			Data: &pb.FilePart{
-				Chunk: []byte(TEST_FILE_BODY + "garbage"),
+	cases := [...]struct {
+		name         string
+		conn_info    *pb.DataInfo
+		save_data    string
+		expected_err error
+	}{
+		{
+			name: "save in root dir",
+			conn_info: &pb.DataInfo{
+				Username: TEST_USER,
+				Filename: "/save_data_single.txt",
+				Filetype: pb.FileType_File,
+				Size:     small_test_file_len,
 			},
+			save_data:    small_test_file,
+			expected_err: nil,
+		},
+		{
+			name: "save in test dir",
+			conn_info: &pb.DataInfo{
+				Username: TEST_USER,
+				Filename: test_dir + "save_data_test_dir.txt",
+				Filetype: pb.FileType_File,
+				Size:     small_test_file_len,
+			},
+			save_data:    small_test_file,
+			expected_err: nil,
+		},
+		{
+			name: "save in uncreated dir",
+			conn_info: &pb.DataInfo{
+				Username: TEST_USER,
+				Filename: "/stay/" + "cool.txt",
+				Filetype: pb.FileType_File,
+				Size:     small_test_file_len,
+			},
+			save_data:    small_test_file,
+			expected_err: data.ErrDirNotFound,
+		},
+		{
+			name: "save big file",
+			conn_info: &pb.DataInfo{
+				Username: TEST_USER,
+				Filename: "/save_data_big.txt",
+				Filetype: pb.FileType_File,
+				Size:     uint64(len(TEST_FILE_BODY)),
+			},
+			save_data:    TEST_FILE_BODY,
+			expected_err: nil,
+		},
+		{
+			name: "save more than accepted",
+			conn_info: &pb.DataInfo{
+				Username: TEST_USER,
+				Filename: "/save_data_incorrect_chunk.txt",
+				Filetype: pb.FileType_File,
+				Size:     small_test_file_len - 5,
+			},
+			save_data:    small_test_file,
+			expected_err: data.ErrUnexpectedFileChange,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			err = saveFile(t.Context(), data_client, test.conn_info, strings.NewReader(test.save_data))
+
+			if test.expected_err != nil {
+				if m := getRPCErrorMessage(err); m != test.expected_err.Error() {
+					t.Errorf("expected error %v, but got %s", test.expected_err, m)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("expected nil error, but got %s", getRPCErrorMessage(err))
+			}
+
+			// Check file type only
+			file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test.conn_info.Filename), os.O_RDONLY, 0660)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got_body_file, err := io.ReadAll(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(got_body_file) != test.save_data {
+				t.Error("got file body not implement expected")
+			}
+
 		})
-
-		if m := getRPCErrorMessage(err); m != data.ErrIncorrectChunkSize.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrIncorrectChunkSize.Error(), m)
-		}
-	})
-
-	t.Run("normal save", func(t *testing.T) {
-		data_info := &pb.DataInfo{
-			Username: TEST_USER,
-			Filename: test_file_name,
-			Filetype: pb.FileType_File,
-			Size:     uint64(len(TEST_FILE_BODY)),
-		}
-
-		err = saveFile(t.Context(), data_client, data_info, strings.NewReader(TEST_FILE_BODY))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// Check file type only
-		file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_RDONLY, 0660)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		got_body_file, err := io.ReadAll(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if string(got_body_file) != TEST_FILE_BODY {
-			t.Error("got file body not implement expected")
-		}
-	})
+	}
 }
 
 func TestGetData(t *testing.T) {
