@@ -413,13 +413,14 @@ paths:
       responses:
         "200":
           description: Список файлов получен
-        
-        
-
-
-
-                
+             
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   parameters:
     GetChunk:
       name: chunkID
