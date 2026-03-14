@@ -111,6 +111,7 @@ func TestSaveDataHandler(t *testing.T) {
 
 	cases := [...]struct {
 		TestCase
+		directory string
 		filename  string
 		save_body []byte
 	}{
@@ -122,7 +123,8 @@ func TestSaveDataHandler(t *testing.T) {
 				expected_content_type: "text/plain",
 				expected_body:         httpjsonutils.ErrRequestBodyEmpty.Description(),
 			},
-			filename: "/sht normal save.txt",
+			directory: "/",
+			filename:  "sht normal save.txt",
 		},
 		{
 			TestCase: TestCase{
@@ -130,7 +132,8 @@ func TestSaveDataHandler(t *testing.T) {
 				method:        http.MethodPost,
 				expected_code: http.StatusOK,
 			},
-			filename:  "/sht normal save.txt",
+			directory: "/",
+			filename:  "sht normal save.txt",
 			save_body: []byte(TEST_FILE_BODY),
 		},
 	}
@@ -138,10 +141,11 @@ func TestSaveDataHandler(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
-				Username: TEST_USERNAME,
-				Filename: test.filename,
-				Filetype: pb.FileType_File,
-				Size:     uint64(len(test.save_body)),
+				Username:  TEST_USERNAME,
+				Directory: test.directory,
+				Filename:  test.filename,
+				Filetype:  pb.FileType_File,
+				Size:      uint64(len(test.save_body)),
 			})
 			if err != nil {
 				t.Fatalf("failed create connection; err: %v", err)
@@ -231,14 +235,16 @@ func TestGetDataHandler(t *testing.T) {
 	handler := datahandler.NewDataHandler(data_client)
 
 	// Create test file
-	filename := "/test_get_data_handler.txt"
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
+
+	test_dir := "/"
+	test_file := "test_get_data_handler.txt"
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", TEST_WORKSPACE_PATH, TEST_USERNAME, test_dir, test_file), os.O_CREATE|os.O_RDWR, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		err = os.Remove(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename))
+		err = os.Remove(fmt.Sprintf("%s%s/files%s%s", TEST_WORKSPACE_PATH, TEST_USERNAME, test_dir, test_file))
 		if err != nil {
 			slog.WarnContext(t.Context(), "failed remove test files", slog.Any("err", err))
 		}
@@ -270,9 +276,10 @@ func TestGetDataHandler(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
-				Username: TEST_USERNAME,
-				Filename: filename,
-				Filetype: pb.FileType_File,
+				Username:  TEST_USERNAME,
+				Directory: test_dir,
+				Filename:  test_file,
+				Filetype:  pb.FileType_File,
 			})
 			if err != nil {
 				t.Fatalf("failed create connection; err: %v", err)

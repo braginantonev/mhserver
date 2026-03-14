@@ -74,6 +74,7 @@ func (FileType) EnumDescriptor() ([]byte, []int) {
 type DataInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Directory     string                 `protobuf:"bytes,2,opt,name=directory,proto3" json:"directory,omitempty"`
 	Filename      string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`
 	Filetype      FileType               `protobuf:"varint,4,opt,name=filetype,proto3,enum=data.FileType" json:"filetype,omitempty"`
 	Size          uint64                 `protobuf:"varint,5,opt,name=size,proto3" json:"size,omitempty"`
@@ -114,6 +115,13 @@ func (*DataInfo) Descriptor() ([]byte, []int) {
 func (x *DataInfo) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *DataInfo) GetDirectory() string {
+	if x != nil {
+		return x.Directory
 	}
 	return ""
 }
@@ -611,9 +619,10 @@ var File_data_data_proto protoreflect.FileDescriptor
 
 const file_data_data_proto_rawDesc = "" +
 	"\n" +
-	"\x0fdata/data.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"\x82\x01\n" +
+	"\x0fdata/data.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"\xa0\x01\n" +
 	"\bDataInfo\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1c\n" +
+	"\tdirectory\x18\x02 \x01(\tR\tdirectory\x12\x1a\n" +
 	"\bfilename\x18\x03 \x01(\tR\bfilename\x12*\n" +
 	"\bfiletype\x18\x04 \x01(\x0e2\x0e.data.FileTypeR\bfiletype\x12\x12\n" +
 	"\x04size\x18\x05 \x01(\x04R\x04size\"`\n" +

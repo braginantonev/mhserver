@@ -161,10 +161,11 @@ func TestSaveData(t *testing.T) {
 		{
 			name: "save in root dir",
 			conn_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/save_data_single.txt",
-				Filetype: pb.FileType_File,
-				Size:     small_test_file_len,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "save_data_single.txt",
+				Filetype:  pb.FileType_File,
+				Size:      small_test_file_len,
 			},
 			save_data:    small_test_file,
 			expected_err: nil,
@@ -172,10 +173,11 @@ func TestSaveData(t *testing.T) {
 		{
 			name: "save in test dir",
 			conn_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: test_dir + "save_data_test_dir.txt",
-				Filetype: pb.FileType_File,
-				Size:     small_test_file_len,
+				Username:  TEST_USER,
+				Directory: test_dir,
+				Filename:  "save_data_test_dir.txt",
+				Filetype:  pb.FileType_File,
+				Size:      small_test_file_len,
 			},
 			save_data:    small_test_file,
 			expected_err: nil,
@@ -183,10 +185,11 @@ func TestSaveData(t *testing.T) {
 		{
 			name: "save in uncreated dir",
 			conn_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/stay/" + "cool.txt",
-				Filetype: pb.FileType_File,
-				Size:     small_test_file_len,
+				Username:  TEST_USER,
+				Directory: "/stay/",
+				Filename:  "cool.txt",
+				Filetype:  pb.FileType_File,
+				Size:      small_test_file_len,
 			},
 			save_data:    small_test_file,
 			expected_err: data.ErrDirNotFound,
@@ -194,10 +197,11 @@ func TestSaveData(t *testing.T) {
 		{
 			name: "save big file",
 			conn_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/save_data_big.txt",
-				Filetype: pb.FileType_File,
-				Size:     uint64(len(TEST_FILE_BODY)),
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "save_data_big.txt",
+				Filetype:  pb.FileType_File,
+				Size:      uint64(len(TEST_FILE_BODY)),
 			},
 			save_data:    TEST_FILE_BODY,
 			expected_err: nil,
@@ -205,10 +209,11 @@ func TestSaveData(t *testing.T) {
 		{
 			name: "save more than accepted",
 			conn_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/save_data_incorrect_chunk.txt",
-				Filetype: pb.FileType_File,
-				Size:     small_test_file_len - 5,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "save_data_incorrect_chunk.txt",
+				Filetype:  pb.FileType_File,
+				Size:      small_test_file_len - 5,
 			},
 			save_data:    small_test_file,
 			expected_err: data.ErrUnexpectedFileChange,
@@ -231,7 +236,7 @@ func TestSaveData(t *testing.T) {
 			}
 
 			// Check file type only
-			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test.conn_info.Filename), os.O_RDONLY, 0660)
+			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.conn_info.Username, test.conn_info.Directory, test.conn_info.Filename), os.O_RDONLY, 0660)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -250,7 +255,7 @@ func TestSaveData(t *testing.T) {
 }
 
 func TestGetData(t *testing.T) {
-	test_file_name := "/get_data_test_file.txt"
+	test_file_name := "get_data_test_file.txt"
 
 	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
 		t.Fatal(err)
@@ -283,7 +288,7 @@ func TestGetData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Create test file
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_CREATE|os.O_WRONLY, 0660)
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,9 +313,10 @@ func TestGetData(t *testing.T) {
 
 	t.Run("normal get", func(t *testing.T) {
 		conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
-			Username: TEST_USER,
-			Filename: test_file_name,
-			Filetype: pb.FileType_File,
+			Username:  TEST_USER,
+			Directory: "/",
+			Filename:  test_file_name,
+			Filetype:  pb.FileType_File,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -393,72 +399,80 @@ func TestGetSum(t *testing.T) {
 		{
 			name: "file 500 bytes",
 			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/get_sum_500b.txt",
-				Filetype: pb.FileType_File,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "get_sum_500b.txt",
+				Filetype:  pb.FileType_File,
 			},
 			gen_file_size: 500,
 		},
 		{
 			name: "file 10 kb",
 			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/get_sum_10kb.txt",
-				Filetype: pb.FileType_File,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "get_sum_10kb.txt",
+				Filetype:  pb.FileType_File,
 			},
 			gen_file_size: 10 * 1024,
 		},
 		{
 			name: "file 500 kb",
 			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/get_sum_500kb.txt",
-				Filetype: pb.FileType_File,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "get_sum_500kb.txt",
+				Filetype:  pb.FileType_File,
 			},
 			gen_file_size: 500 * 1024,
 		},
 		{
 			name: "file 5 mb",
 			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/get_sum_5mb.txt",
-				Filetype: pb.FileType_File,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "get_sum_5mb.txt",
+				Filetype:  pb.FileType_File,
 			},
 			gen_file_size: 5 * 1024 * 1024,
 		},
 		{
 			name: "file 50 mb",
 			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/get_sum_50mb.txt",
-				Filetype: pb.FileType_File,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "get_sum_50mb.txt",
+				Filetype:  pb.FileType_File,
 			},
 			gen_file_size: 50 * 1024 * 1024,
 		},
 		{
 			name: "file 100mb",
 			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/get_sum_100mb.txt",
-				Filetype: pb.FileType_File,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "get_sum_100mb.txt",
+				Filetype:  pb.FileType_File,
 			},
 			gen_file_size: 100 * 1024 * 1024,
 		},
 		{
 			name: "file 500mb",
 			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/get_sum_500mb.txt",
-				Filetype: pb.FileType_File,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "get_sum_500mb.txt",
+				Filetype:  pb.FileType_File,
 			},
 			gen_file_size: 500 * 1024 * 1024,
 		},
 		{
 			name: "file 750mb",
 			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "/get_sum_750mb.txt",
-				Filetype: pb.FileType_File,
+				Username:  TEST_USER,
+				Directory: "/",
+				Filename:  "get_sum_750mb.txt",
+				Filetype:  pb.FileType_File,
 			},
 			gen_file_size: 750 * 1024 * 1024,
 		},
@@ -471,7 +485,7 @@ func TestGetSum(t *testing.T) {
 			file_body := genRandomFile(test.gen_file_size)
 
 			// Create test file
-			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test.data_info.Filename), os.O_CREATE|os.O_WRONLY, 0660)
+			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename), os.O_CREATE|os.O_WRONLY, 0660)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -487,7 +501,7 @@ func TestGetSum(t *testing.T) {
 					return
 				}
 
-				if err := os.Remove(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Filename)); err != nil {
+				if err := os.Remove(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename)); err != nil {
 					t.Logf("failed remove file; test name = %s; err: %v", test_name, err)
 				}
 			}(test.name)

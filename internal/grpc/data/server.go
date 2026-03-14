@@ -63,14 +63,12 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 
 	s.sem <- struct{}{}
 
-	if info.Filename == "" {
-		return nil, ErrEmptyFilename
-	}
-
-	file_path, err := s.getDataPath(info.Username, info.Filename, info.Filetype)
+	file_path, err := s.getDataPath(info.Username, info.Directory, info.Filetype)
 	if err != nil {
 		return nil, err
 	}
+
+	file_path += info.Filename
 
 	r_stat, err := os.Stat(file_path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -298,7 +296,7 @@ func (s *DataServer) GetFiles(ctx context.Context, in_dir *pb.Direction) (*pb.Fi
 		list.Infos[i].ModTime = info.ModTime().Unix()
 	}
 
-	return list, err
+	return list, nil
 }
 
 func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*emptypb.Empty, error) {

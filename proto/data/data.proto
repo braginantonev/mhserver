@@ -12,6 +12,7 @@ enum FileType {
 
 message DataInfo {
     string username = 1;
+    string directory = 2;
     string filename = 3;
     FileType filetype = 4;
     uint64 size = 5;
