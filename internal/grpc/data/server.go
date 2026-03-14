@@ -12,19 +12,16 @@ import (
 	"strings"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
-	"github.com/braginantonev/mhserver/internal/repository/filecache"
 	"github.com/braginantonev/mhserver/internal/repository/fileuuidmap"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
-	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type DataServer struct {
 	pb.DataServiceServer
 	cfg         dataconfig.DataServiceConfig
-	cache       *filecache.FileCache
 	activeFiles *fileuuidmap.FileUUIDMap
 	sem         chan any
 }
@@ -36,27 +33,9 @@ func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataS
 
 	return &DataServer{
 		cfg:         cfg,
-		cache:       filecache.NewFileCache(ctx),
 		activeFiles: fileuuidmap.NewFileUUIDMap(ctx),
 		sem:         make(chan any, sem_size),
 	}
-}
-
-func (s *DataServer) openFile(ctx context.Context, path string, flag int, perm os.FileMode) (file *os.File, err error) {
-	file, ok := s.cache.Get(path)
-	if !ok {
-		file, err = os.OpenFile(path, flag, perm)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return nil, ErrFileNotExist
-			}
-
-			slog.ErrorContext(ctx, "failed open user file", slog.Any("err", err))
-			return nil, ErrInternal
-		}
-		s.cache.Push(path, file)
-	}
-	return file, err
 }
 
 func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (string, error) {
@@ -88,30 +67,51 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 		return nil, ErrEmptyFilename
 	}
 
-	disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
-	if err != nil {
-		if errors.Is(err, unix.ENOENT) {
-			return nil, ErrDirNotFound
-		} else {
-			slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
-			return nil, ErrInternal
-		}
-	}
-
-	if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
-		return nil, ErrNotEnoughDiskSpace
-	}
-
 	file_path, err := s.getDataPath(info.Username, info.Filename, info.Filetype)
 	if err != nil {
 		return nil, err
 	}
 
+	r_stat, err := os.Stat(file_path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		slog.ErrorContext(ctx, "failed get stat from file", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
 	file_size := info.Size
 
-	// For reading, not save
-	if server_file_stat, err := os.Stat(file_path); err == nil && file_size == 0 {
-		file_size = uint64(server_file_stat.Size())
+	if r_stat != nil {
+		// File exist, but user want update him
+		if info.Size != 0 {
+			disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
+				return nil, ErrInternal
+			}
+
+			if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
+				return nil, ErrNotEnoughDiskSpace
+			}
+
+			err = os.Remove(file_path)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed remove existed file on save connection", slog.Any("err", err))
+				return nil, ErrInternal
+			}
+		} else {
+			file_size = uint64(r_stat.Size())
+		}
+	}
+
+	// Open file to read. If file not exist -> we use info in request
+	file, err := os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrDirNotFound
+		}
+
+		slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
 	var chunk_size uint64
@@ -129,8 +129,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 
 	chunks_count := int(math.Ceil(float64(file_size) / float64(chunk_size)))
 
-	// Create connection & register file changes
-	uuid := s.activeFiles.Add(file_path, fileuuidmap.NewChunksInfo(chunk_size, chunks_count))
+	uuid := s.activeFiles.Push(fileuuidmap.NewFile(file, file_path, fileuuidmap.NewChunksInfo(chunk_size, chunks_count)))
 
 	return &pb.Connection{
 		UUID:        uuid.String(),
@@ -151,34 +150,28 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 		return nil, ErrBadUUID
 	}
 
-	file_info, ok := s.activeFiles.Get(uuid)
+	file, ok := s.activeFiles.Get(uuid)
 	if !ok {
 		return nil, ErrUnexpectedFileChange
 	}
 
-	file, err := s.openFile(ctx, file_info.GetPath(), os.O_RDONLY, 0440)
-	if err != nil {
-		return nil, err
-	}
+	offset := int64(file.GetChunkSize()) * int64(get_chunk.ChunkId)
 
-	offset := int64(file_info.GetChunkSize()) * int64(get_chunk.ChunkId)
-
-	read_data := make([]byte, file_info.GetChunkSize())
+	read_data := make([]byte, file.GetChunkSize())
 	n, err := file.ReadAt(read_data, offset)
 	if err != nil && err != io.EOF {
 		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
 		return nil, ErrInternal
 	}
 
-	// The worst thing I've ever written
-	if n != 0 && err == io.EOF {
-		err = nil
+	if n == 0 && err == io.EOF {
+		return nil, ErrReadOutOfFile
 	}
 
 	return &pb.FilePart{
 		Chunk:  read_data[:n],
 		Offset: offset,
-	}, err
+	}, nil
 }
 
 func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*emptypb.Empty, error) {
@@ -193,18 +186,13 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		return nil, ErrBadUUID
 	}
 
-	file_info, ok := s.activeFiles.Get(uuid)
+	file, ok := s.activeFiles.Get(uuid)
 	if !ok {
 		return nil, ErrUnexpectedFileChange
 	}
 
-	if len(save_chunk.Data.Chunk) > int(file_info.GetChunkSize()) {
+	if len(save_chunk.Data.Chunk) > int(file.GetChunkSize()) {
 		return nil, ErrIncorrectChunkSize
-	}
-
-	file, err := s.openFile(ctx, file_info.GetPath()+".part", os.O_CREATE|os.O_WRONLY, 0660)
-	if err != nil {
-		return nil, err
 	}
 
 	_, err = file.WriteAt(save_chunk.Data.Chunk, save_chunk.Data.Offset)
@@ -213,23 +201,9 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		return nil, ErrInternal
 	}
 
-	err = s.activeFiles.UpdateLoadedChunks(uuid)
-	if err == nil {
-		return nil, nil
-	}
+	_ = s.activeFiles.UpdateLoadedChunks(uuid)
 
-	// Complete save
-	if err == fileuuidmap.EOC {
-		err := os.Rename(file_info.GetPath()+".part", file_info.GetPath())
-		if err != nil {
-			return nil, ErrFileNotExist
-		}
-
-		return nil, nil
-	}
-
-	// Предположительно, программа никогда не дойдёт до этого момента
-	return nil, ErrUnexpectedFileChange
+	return nil, nil
 }
 
 func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SHASum, error) {
@@ -244,32 +218,26 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 		return nil, ErrBadUUID
 	}
 
-	file_info, ok := s.activeFiles.Get(uuid)
+	file, ok := s.activeFiles.Get(uuid)
 	if !ok {
 		return nil, ErrUnexpectedFileChange
 	}
 
-	file, err := s.openFile(ctx, file_info.GetPath(), os.O_RDONLY, 0440)
-	if err != nil {
-		return nil, err
-	}
-
-	body := make([]byte, file_info.GetChunkSize())
-	n, err := file.ReadAt(body, int64(file_info.GetChunkSize())*int64(get_chunk.ChunkId))
+	body := make([]byte, file.GetChunkSize())
+	n, err := file.ReadAt(body, int64(file.GetChunkSize())*int64(get_chunk.ChunkId))
 	if err != nil && err != io.EOF {
 		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
 		return nil, ErrInternal
 	}
 
-	// The worst thing I've ever written
-	if n != 0 && err == io.EOF {
-		err = nil
+	if n == 0 && err == io.EOF {
+		return nil, ErrReadOutOfFile
 	}
 
 	sha := sha256.Sum256(body[:n])
 	return &pb.SHASum{
 		Sum: sha[:],
-	}, err
+	}, nil
 }
 
 func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direction) (*pb.Size, error) {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -121,7 +122,7 @@ func TestSaveDataHandler(t *testing.T) {
 				expected_content_type: "text/plain",
 				expected_body:         httpjsonutils.ErrRequestBodyEmpty.Description(),
 			},
-			filename: "sht normal save.txt",
+			filename: "/sht normal save.txt",
 		},
 		{
 			TestCase: TestCase{
@@ -129,7 +130,7 @@ func TestSaveDataHandler(t *testing.T) {
 				method:        http.MethodPost,
 				expected_code: http.StatusOK,
 			},
-			filename:  "sht normal save.txt",
+			filename:  "/sht normal save.txt",
 			save_body: []byte(TEST_FILE_BODY),
 		},
 	}
@@ -230,21 +231,24 @@ func TestGetDataHandler(t *testing.T) {
 	handler := datahandler.NewDataHandler(data_client)
 
 	// Create test file
-	filename := "test_get_data_handler.txt"
+	filename := "/test_get_data_handler.txt"
 	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		_ = file.Close()
-		_ = os.Remove(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename))
+		err = os.Remove(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename))
+		if err != nil {
+			slog.WarnContext(t.Context(), "failed remove test files", slog.Any("err", err))
+		}
 	}()
 
 	_, err = file.Write([]byte(TEST_FILE_BODY))
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = file.Close()
 
 	cases := [...]TestCase{
 		{
@@ -269,7 +273,6 @@ func TestGetDataHandler(t *testing.T) {
 				Username: TEST_USERNAME,
 				Filename: filename,
 				Filetype: pb.FileType_File,
-				Size:     uint64(len(TEST_FILE_BODY)),
 			})
 			if err != nil {
 				t.Fatalf("failed create connection; err: %v", err)
