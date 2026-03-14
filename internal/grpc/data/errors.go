@@ -18,7 +18,8 @@ var (
 	ErrNotEnoughDiskSpace error = errors.New("not enough disk space")
 
 	// GetData errors
-	ErrFileNotExist error = errors.New("file not exist")
+	ErrFileNotExist  error = errors.New("file not exist")
+	ErrReadOutOfFile error = errors.New("reading outside of file")
 
 	// Directory errors
 	ErrDirNotFound     error = errors.New("directory not found")
