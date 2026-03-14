@@ -1,1 +1,3 @@
-extends: ["spectral:{rulesetTagHere}"]
+extends: [
+  ["spectral:oas", "recommended"]
+]
