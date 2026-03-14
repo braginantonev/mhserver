@@ -103,16 +103,9 @@ paths:
           $ref: "#/components/responses/InternalError"
   
   /files/connect:
-    options:
+    post:
       parameters:
-        - name: filetype
-          in: query
-          required: true
-          description: |
-            Тип файла.
-            Типы аналогичны названию сервисов в единственном числе и нижнем регистре (File, Image, Music и т.д.).
-          schema:
-            type: string
+        - $ref: "#/components/parameters/Directory"
 
       security:
         - BearerAuth: []
@@ -323,15 +316,7 @@ paths:
   /files:
     get:
       parameters:
-        - name: dir
-          in: query
-          required: true
-          description: | 
-            Каталог, файлы которого необходимо получить.
-            Параметр всегда должен начинаться с /
-          schema:
-            type: string
-            minimum: 1
+        - $ref: "#/components/parameters/Directory"
       
       security:
         - BearerAuth: []
@@ -360,7 +345,139 @@ paths:
         
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+  
+  /files/space:
+    get:      
+      security:
+        - BearerAuth: []
+
+      tags: ["Файлы", "Сервис"]
+      summary: Получить количество свободного места
+
+      responses:
+        "200":
+          description: Количество свободного места в байтах получен
+          content:
+            plain/text:
+              schema:
+                type: integer
+              example: 1560
+        
+        "400":
+          description: Плохой запрос
+          content:
+            plain/text:
+              schema:
+                type: string
+              examples:
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
                 
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
+        
+        "401":
+          $ref: "#/components/responses/NotAuthorized"
+        
+        "500":
+          $ref: "#/components/responses/InternalError"
+        
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  
+  /files/mkdir:
+    post:
+      parameters:
+        - $ref: "#/components/parameters/Directory"
+      
+      security:
+        - BearerAuth: []
+      
+      tags: ["Файлы", "Сервис"]
+      summary: Создать каталог
+
+      responses:
+        "200":
+          description: Каталог создан
+        
+        "400":
+          description: Плохой запрос
+          content:
+            plain/text:
+              schema:
+                type: string
+              examples:
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
+                
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
+                
+                unspecifiedDirectory:
+                  $ref: "#/components/examples/UnspecifiedDirectory"
+                
+                directoryBadSyntax:
+                  $ref: "#/components/examples/DirectoryBadSyntax"
+                
+                directoryAlreadyExist:
+                  description: Каталог уже существует
+                  value:
+                    message: directory already exist
+        
+        "401":
+          $ref: "#/components/responses/NotAuthorized"
+        
+        "500":
+          $ref: "#/components/responses/InternalError"
+        
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /files/rmdir:
+    post:
+      parameters:
+        - $ref: "#/components/parameters/Directory"
+      
+      security:
+        - BearerAuth: []
+      
+      tags: ["Файлы", "Сервис"]
+      summary: Удалить каталог
+
+      responses:
+        "200":
+          description: Каталог удалён
+        
+        "400":
+          description: Плохой запрос
+          content:
+            plain/text:
+              schema:
+                type: string
+              examples:
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
+                
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
+                
+                unspecifiedDirectory:
+                  $ref: "#/components/examples/UnspecifiedDirectory"
+                
+                directoryBadSyntax:
+                  $ref: "#/components/examples/DirectoryBadSyntax"
+                
+                directoryNotFound:
+                  $ref: "#/components/examples/DirectoryNotFound"
+        
+        "401":
+          $ref: "#/components/responses/NotAuthorized"
+        
+        "500":
+          $ref: "#/components/responses/InternalError"
+        
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
                 
 components:
   securitySchemes:
@@ -389,6 +506,17 @@ components:
         format: uuid
         minLength: 32
         maxLength: 36
+    
+    Directory:
+      name: dir
+      in: query
+      required: true
+      description: | 
+        Каталог с файлами на сервере. 
+        Параметр всегда должен начинаться с корневого каталога: `/`
+      schema:
+        type: string
+        minimum: 1
 
   requestBodies:
     User:
