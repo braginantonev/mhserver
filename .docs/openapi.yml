@@ -350,6 +350,11 @@ paths:
                 requestError:
                   $ref: "#/components/responses/FilesRequestError"
                 
+                directoryNotFound:
+                  $ref: "#/components/examples/DirectoryNotFound"
+                
+                
+                
 components:
   securitySchemes:
     BearerAuth:
@@ -428,6 +433,11 @@ components:
       description: JWT просрочен
       value:
         message: authorization expired
+    
+    DirectoryNotFound:
+      description: Запрашиваемая директория не существует
+      value:
+        message: directory not found
 
   responses:
     NotAuthorized:
