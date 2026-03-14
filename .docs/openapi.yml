@@ -151,11 +151,8 @@ paths:
                 requestError:
                   $ref: "#/components/responses/FilesRequestError"
 
-                unspecifiedDirectory:
-                  $ref: "#/components/examples/UnspecifiedDirectory"
-                
-                directoryNotFound:
-                  $ref: "#/components/examples/DirectoryNotFound"
+                directoryError:
+                  $ref: "#/components/responses/FilesDirectoryError"
 
                 emptyFilename:
                   summary: Не указано имя файла
@@ -345,20 +342,24 @@ paths:
       responses:
         "200":
           description: Список файлов получен
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                $ref: "./examples/data/files-response.json"
         
         "400":
-          description: Плохой запрос
-          content:
-            plain/text:
-              schema:
-                type: string
-              examples:
-                requestError:
-                  $ref: "#/components/responses/FilesRequestError"
-                
-                directoryNotFound:
-                  $ref: "#/components/examples/DirectoryNotFound"
-                
+          $ref: "#/components/responses/FilesDirectoryError"
+        
+        "401":
+          $ref: "#/components/responses/NotAuthorized"
+        
+        "500":
+          $ref: "#/components/responses/InternalError"
+        
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
                 
                 
 components:
@@ -449,6 +450,11 @@ components:
       description: Каталог не найден
       value:
         message: directory not found
+    
+    DirectoryBadSyntax:
+      description: Не верный формат пути
+      value:
+        message: directory have bad syntax
 
   responses:
     NotAuthorized:
@@ -511,6 +517,23 @@ components:
               
             connectionNotExists:
               $ref: "#/components/examples/ConnectionNotExists"
+    
+    FilesDirectoryError:
+      description: Ошибка в записи каталога
+      content:
+        plain/text:
+          schema:
+            type: string
+          examples:
+            unspecified:
+              $ref: "#/components/examples/UnspecifiedDirectory"
+                
+            notFound:
+              $ref: "#/components/examples/DirectoryNotFound"
+            
+            badSyntax:
+              $ref: "#/components/examples/DirectoryBadSyntax"
+            
 
     InternalError:
       description: Внутренняя ошибка сервера
