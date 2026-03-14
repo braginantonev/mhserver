@@ -59,6 +59,9 @@ paths:
               schema:
                 type: string
               examples:
+                requestError:
+                  $ref: "#/components/responses/AuthRequestError"
+
                 notRegistered:
                   summary: Пользователь не зарегистрирован
                   value:
@@ -67,16 +70,8 @@ paths:
                 wrongPassword:
                   summary: Введён неверный пароль
                   value:
-                    message: wrong password
+                    message: wrong password             
 
-                emptyUsername:
-                  $ref: "#/components/examples/EmptyUsername"
-
-                emptyRequestBody:
-                  $ref: "#/components/examples/EmptyRequestBody"
-
-                badJsonSyntax:
-                  $ref: "#/components/examples/BadJsonSyntax"
         "404":
           $ref: "#/components/responses/AuthServiceUnavailable"
 
@@ -99,20 +94,7 @@ paths:
           description: Пользователь зарегистрирован
         
         "400":
-          description: Плохой запрос
-          content:
-            plain/text:
-              schema:
-                type: string
-              examples:
-                emptyUsername:
-                  $ref: "#/components/examples/EmptyUsername"
-
-                emptyRequestBody:
-                  $ref: "#/components/examples/EmptyRequestBody"
-
-                badJsonSyntax:
-                  $ref: "#/components/examples/BadJsonSyntax"
+          $ref: "#/components/responses/AuthRequestError"
         
         "404":
           $ref: "#/components/responses/AuthServiceUnavailable"
@@ -166,14 +148,8 @@ paths:
               schema:
                 type: string
               examples:
-                badJwtSyntax:
-                  $ref: "#/components/examples/BadJwtSyntax"
-
-                badJwtSignature:
-                  $ref: "#/components/examples/BadJwtSignature"
-
-                emptyRequestBody:
-                  $ref: "#/components/examples/EmptyRequestBody"
+                requestError:
+                  $ref: "#/components/responses/FilesRequestError"
 
                 emptyFilename:
                   summary: Пустое имя файла
@@ -234,18 +210,9 @@ paths:
                 schema:
                   type: string
                 examples:
-                  badJwtSyntax:
-                    $ref: "#/components/examples/BadJwtSyntax"
-
-                  badJwtSignature:
-                    $ref: "#/components/examples/BadJwtSignature"
-
-                  emptyRequestBody:
-                    $ref: "#/components/examples/EmptyRequestBody"
-                    
-                  badConnectionSyntax:
-                    $ref: "#/components/examples/BadConnectionSyntax"
-
+                  requestError:
+                    $ref: "#/components/responses/FilesRequestError"
+                  
                   connectionNotExists:
                     $ref: "#/components/examples/ConnectionNotExists"
                   
@@ -291,17 +258,8 @@ paths:
                 schema:
                   type: string
                 examples:
-                  badJwtSyntax:
-                    $ref: "#/components/examples/BadJwtSyntax"
-
-                  badJwtSignature:
-                    $ref: "#/components/examples/BadJwtSignature"
-
-                  emptyRequestBody:
-                    $ref: "#/components/examples/EmptyRequestBody"
-                  
-                  badConnectionSyntax:
-                    $ref: "#/components/examples/BadConnectionSyntax"
+                  requestError:
+                    $ref: "#/components/responses/FilesRequestError"
                   
                   connectionNotExists:
                     $ref: "#/components/examples/ConnectionNotExists"
@@ -344,21 +302,12 @@ paths:
               schema:
                 type: string
               examples:
-                badJwtSyntax:
-                  $ref: "#/components/examples/BadJwtSyntax"
-
-                badJwtSignature:
-                  $ref: "#/components/examples/BadJwtSignature"
-
-                emptyRequestBody:
-                  $ref: "#/components/examples/EmptyRequestBody"
+                requestError:
+                  $ref: "#/components/responses/FilesRequestError"
+                
+                connectionError:
+                  $ref: "#/components/responses/FilesConnectionError"
                   
-                badConnectionSyntax:
-                  $ref: "#/components/examples/BadConnectionSyntax"
-                  
-                connectionNotExists:
-                  $ref: "#/components/examples/ConnectionNotExists"
-        
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
@@ -390,7 +339,17 @@ paths:
       responses:
         "200":
           description: Список файлов получен
-             
+        
+        "400":
+          description: Плохой запрос
+          content:
+            plain/text:
+              schema:
+                type: string
+              examples:
+                requestError:
+                  $ref: "#/components/responses/FilesRequestError"
+                
 components:
   securitySchemes:
     BearerAuth:
@@ -486,6 +445,51 @@ components:
 
     AuthServiceUnavailable:
       description: Сервис аутентификации недоступен
+    
+    AuthRequestError:
+      description: Плохой запрос
+      content:
+        plain/text:
+          schema:
+            type: string
+          examples:
+            emptyUsername:
+              $ref: "#/components/examples/EmptyUsername"
+
+            emptyRequestBody:
+              $ref: "#/components/examples/EmptyRequestBody"
+
+            badJsonSyntax:
+              $ref: "#/components/examples/BadJsonSyntax"
+    
+    FilesRequestError:
+      description: Плохой запрос
+      content:
+        plain/text:
+          schema:
+            type: string
+          examples:
+            badJwtSyntax:
+              $ref: "#/components/examples/BadJwtSyntax"
+
+              badJwtSignature:
+                $ref: "#/components/examples/BadJwtSignature"
+
+              emptyRequestBody:
+                $ref: "#/components/examples/EmptyRequestBody"
+    
+    FilesConnectionError:
+      description: Ошибки подключения
+      content:
+        plain/text:
+          schema:
+            type: string
+          examples:
+            badConnectionSyntax:
+              $ref: "#/components/examples/BadConnectionSyntax"
+              
+            connectionNotExists:
+              $ref: "#/components/examples/ConnectionNotExists"
 
     InternalError:
       description: Внутренняя ошибка сервера
