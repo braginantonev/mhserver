@@ -151,8 +151,14 @@ paths:
                 requestError:
                   $ref: "#/components/responses/FilesRequestError"
 
+                unspecifiedDirectory:
+                  $ref: "#/components/examples/UnspecifiedDirectory"
+                
+                directoryNotFound:
+                  $ref: "#/components/examples/DirectoryNotFound"
+
                 emptyFilename:
-                  summary: Пустое имя файла
+                  summary: Не указано имя файла
                   value:
                     message: file name is empty
 
@@ -434,8 +440,13 @@ components:
       value:
         message: authorization expired
     
+    UnspecifiedDirectory:
+      description: Не указан каталог файла
+      value:
+        message: target directory is not specified
+    
     DirectoryNotFound:
-      description: Запрашиваемая директория не существует
+      description: Каталог не найден
       value:
         message: directory not found
 
