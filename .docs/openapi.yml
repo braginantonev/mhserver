@@ -40,7 +40,11 @@ paths:
       tags: ["Аутентификация", "Сервис"]
 
       requestBody:
-        $ref: "#/components/requestBodies/User"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLoginRequest"
 
       responses:
         "200":
@@ -84,7 +88,11 @@ paths:
       tags: ["Аутентификация", "Сервис"]
 
       requestBody:
-        $ref: "#/components/requestBodies/User"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegisterRequest"
 
       responses:
         "100":
@@ -122,7 +130,10 @@ paths:
       
       requestBody:
         required: true
-        $ref: "./examples/data/connection-request.json"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionRequest"
       
       responses:
         "200":
@@ -130,9 +141,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-              example:
-                $ref: "./examples/data/connection-response.json"
+                $ref: "#/components/schemas/ConnectionResponse"
                     
         "400":
           description: Плохой запрос
@@ -193,7 +202,10 @@ paths:
       
       requestBody:
         required: true
-        $ref: "./examples/data/save-chunk-request.json"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveChunk"
       
       responses:
         "200":
@@ -246,6 +258,10 @@ paths:
       responses:
         "200":
           description: Чанк получен
+          content:
+            application/octet-stream:
+              schema:
+                $ref: "#/components/schemas/FilePart"
         
         "400":
             description: Плохой запрос
@@ -290,6 +306,14 @@ paths:
       responses:
         "200":
           description: Контрольная сумма получена
+          content:
+            application/octet-stream:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  minimum: 0
+                  maximum: 255
         
         "400":
           description: Плохой запрос
@@ -330,9 +354,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-              example:
-                $ref: "./examples/data/files-response.json"
+                $ref: "#/components/schemas/FilesList"
         
         "400":
           $ref: "#/components/responses/FilesDirectoryError"
@@ -517,11 +539,163 @@ components:
       schema:
         type: string
         minimum: 1
+  
+  schemas:
+    UserRegisterRequest:
+      type: object
+      required:
+        - username
+        - password
+        - email
 
-  requestBodies:
-    User:
-      required: true
-      $ref: "./examples/auth/user-request.json"
+      properties:
+        username:
+          type: string
+          example: "anton"
+
+        password:
+          type: string
+          example: "123"
+        
+        email:
+          type: string
+          example: "braginantonev@my.mail.com"
+
+      example:
+        $ref: "./examples/auth/register-request.json"
+    
+    UserLoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      
+      properties:
+        username:
+          type: string
+          example: "anton"
+
+        password:
+          type: string
+          example: "123"
+      
+      example:
+        $ref: "./examples/auth/login-request.json"
+    
+    ConnectionRequest:
+      type: object
+      required:
+        - filename
+        - size
+      
+      properties:
+        filename:
+          type: string
+          example: "pentagon secrets.docx"
+        
+        size:
+          type: integer
+          minimum: 0
+          example: 140
+      
+      example:
+        $ref: "./examples/data/connection-request.json"
+    
+    ConnectionResponse:
+      type: object
+      readOnly: true      
+      required:
+        - UUID
+        - chunksSize
+        - chunksCount
+      
+      properties:
+        UUID:
+          type: string
+          example: 2dfab521-6eed-4202-a215-1c58284c9d79
+        
+        chunksSize:
+          description: Размер части файла в байтах для записи или чтения
+          type: integer
+          minimum: 0
+          example: 150
+        
+        chunksCount:
+          description: Количество частей файлов доступных для записи
+          type: integer
+          minimum: 0
+          example: 20
+      
+      example:
+        $ref: "./examples/data/connection-response.json"
+    
+    SaveChunk:
+      type: object
+      required:
+        - chunk
+        - offset
+      
+      properties:
+        chunk:
+          description: Массив байт, представляющий собой часть файла для записи
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 255
+          
+          example: [104, 101, 108, 108, 111]
+        
+        offset:
+          description: Отступ от начала файла, после которого будет сохранён чанк
+          type: integer
+          minimum: 0
+          example: 255
+      
+      example:
+        $ref: "./examples/data/save-chunk-request.json"
+    
+    FilePart:
+      description: Массив байт, часть файла
+      type: array
+      items:
+        type: integer
+        minimum: 0
+        maximum: 255
+        example: 123
+
+      example: [104, 101, 108, 108, 111]
+    
+    FilesList:
+      type: array
+      readOnly: true
+      items:
+        type: object
+        required:
+          - name
+          - size
+          - modTime
+        
+        properties:
+          name:
+            description: Имя файла
+            type: string
+            example: "cern secrets.docx"
+          
+          size:
+            description: Размер файла в байтах
+            type: integer
+            minimum: 0
+            example: 150
+          
+          modTime:
+            description: UNIX время создания файла
+            type: integer
+            minimum: 0
+            example: 1765733471
+
+        example:
+          $ref: "./examples/data/files-response.json"
 
   examples:
     EmptyUsername:
