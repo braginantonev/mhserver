@@ -35,7 +35,7 @@ tags:
 
 paths:
   /users/login:
-    get:
+    post:
       summary: Получение JWT пользователя
       tags: ["Аутентификация", "Сервис"]
 
@@ -95,9 +95,6 @@ paths:
               $ref: "#/components/schemas/UserRegisterRequest"
 
       responses:
-        "100":
-          description: Пользователь уже зарегистрирован
-
         "200":
           description: Пользователь зарегистрирован
         
@@ -106,6 +103,14 @@ paths:
         
         "404":
           $ref: "#/components/responses/AuthServiceUnavailable"
+        
+        "409":
+          description: Пользователь уже зарегистрирован
+          content:
+            plain/text:
+              schema:
+                type: string
+              example: user already exist
 
         "500":
           $ref: "#/components/responses/InternalError"
@@ -538,7 +543,9 @@ components:
         Параметр всегда должен начинаться с корневого каталога: `/`
       schema:
         type: string
-        minimum: 1
+        minLength: 1
+        pattern: "^/.*"
+        example: "/docs/secrets/"
   
   schemas:
     UserRegisterRequest:
@@ -612,6 +619,7 @@ components:
       properties:
         UUID:
           type: string
+          format: uuid
           example: 2dfab521-6eed-4202-a215-1c58284c9d79
         
         chunksSize:
@@ -801,11 +809,11 @@ components:
             badJwtSyntax:
               $ref: "#/components/examples/BadJwtSyntax"
 
-              badJwtSignature:
-                $ref: "#/components/examples/BadJwtSignature"
+            badJwtSignature:
+              $ref: "#/components/examples/BadJwtSignature"
 
-              emptyRequestBody:
-                $ref: "#/components/examples/EmptyRequestBody"
+            emptyRequestBody:
+              $ref: "#/components/examples/EmptyRequestBody"
     
     FilesConnectionError:
       description: Ошибки подключения
