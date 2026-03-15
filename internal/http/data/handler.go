@@ -70,15 +70,16 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var save_chunk pb.SaveChunk
+	var save_chunk pb.FilePart
 	if err := httpjsonutils.ConvertJsonToStruct(&save_chunk, r.Body, "Handlers.SaveData"); err != nil {
 		err.Write(w)
 		return
 	}
 
-	save_chunk.UUID = r.URL.Query().Get("uuid")
-
-	_, err := h.dataServiceClient.SaveData(r.Context(), &save_chunk)
+	_, err := h.dataServiceClient.SaveData(r.Context(), &pb.SaveChunk{
+		UUID: r.URL.Query().Get("uuid"),
+		Data: &save_chunk,
+	})
 	if err != nil {
 		handleServiceError(err, w, "data.SaveData")
 	}
