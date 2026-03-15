@@ -233,9 +233,7 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 	}
 
 	sha := sha256.Sum256(body[:n])
-	return &pb.SHASum{
-		Sum: sha[:],
-	}, nil
+	return &pb.SHASum{Sum: sha[:]}, nil
 }
 
 func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direction) (*pb.Size, error) {
@@ -245,7 +243,7 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direc
 
 	s.sem <- struct{}{}
 
-	dir, err := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	dir, err := s.getDataPath(in_dir.User, "/", pb.FileType_File)
 	if err != nil {
 		return nil, err
 	}
@@ -269,8 +267,6 @@ func (s *DataServer) GetFiles(ctx context.Context, in_dir *pb.Direction) (*pb.Fi
 	if err != nil {
 		return nil, err
 	}
-
-	slog.Info("read", slog.String("dir", dir))
 
 	files, err := os.ReadDir(dir)
 	if err != nil {

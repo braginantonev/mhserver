@@ -20,7 +20,7 @@ var (
 
 	// Handler errors
 	ErrWrongContextUsername = httperror.NewInternalHttpError("context username from jwt is not string", "")
-	ErrBadQuery             = httperror.NewExternalHttpError("bad query format", http.StatusBadRequest)
+	ErrBadUuidFormat        = httperror.NewExternalHttpError("bad uuid format", http.StatusBadRequest)
 
 	// Data info errors
 	ErrNullFileSize = httperror.NewExternalHttpError("file size is null", http.StatusBadRequest)

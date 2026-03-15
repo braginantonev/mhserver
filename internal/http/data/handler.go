@@ -10,7 +10,6 @@ import (
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 	pb "github.com/braginantonev/mhserver/proto/data"
-	"github.com/gorilla/mux"
 )
 
 type Handler struct {
@@ -39,6 +38,8 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 		err.Write(w)
 		return
 	}
+
+	req_info.Directory = r.URL.Query().Get("dir")
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
@@ -75,11 +76,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If !ok use uuid from json. It's using for tests
-	uuid, ok := mux.Vars(r)["uuid"]
-	if ok {
-		save_chunk.UUID = uuid
-	}
+	save_chunk.UUID = r.URL.Query().Get("uuid")
 
 	_, err := h.dataServiceClient.SaveData(r.Context(), &save_chunk)
 	if err != nil {
@@ -97,25 +94,15 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var get_chunk pb.GetChunk
-	if ch_id := r.URL.Query().Get("chunkID"); ch_id != "" {
-		res, err := strconv.Atoi(ch_id)
-		if err != nil {
-			ErrBadQuery.Write(w)
-			return
-		}
-		get_chunk.ChunkId = int32(res)
-	} else {
-		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err != nil {
-			err.Write(w)
-			return
-		}
+	chunk_id, err := strconv.Atoi(r.URL.Query().Get("chunkID"))
+	if err != nil {
+		ErrBadUuidFormat.Write(w)
+		return
 	}
 
-	// If !ok use uuid from json. It's using for tests
-	uuid, ok := mux.Vars(r)["uuid"]
-	if ok {
-		get_chunk.UUID = uuid
+	get_chunk := pb.GetChunk{
+		ChunkId: int32(chunk_id),
+		UUID:    r.URL.Query().Get("uuid"),
 	}
 
 	part, err := h.dataServiceClient.GetData(r.Context(), &get_chunk)
@@ -124,14 +111,8 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp_file_part := struct {
-		Chunk string `json:"chunk"`
-	}{Chunk: string(part.Chunk)}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp_file_part); err != nil {
-		ErrInternal.Append(err).WithFuncName("Handlers.GetData.Marshal").Write(w)
-	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	_, _ = w.Write(part.Chunk)
 }
 
 func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
@@ -144,25 +125,15 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var get_chunk pb.GetChunk
-	if ch_id := r.URL.Query().Get("chunkID"); ch_id != "" {
-		res, err := strconv.Atoi(ch_id)
-		if err != nil {
-			ErrBadQuery.Write(w)
-			return
-		}
-		get_chunk.ChunkId = int32(res)
-	} else {
-		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetSum"); err != nil {
-			err.Write(w)
-			return
-		}
+	chunk_id, err := strconv.Atoi(r.URL.Query().Get("chunkID"))
+	if err != nil {
+		ErrBadUuidFormat.Write(w)
+		return
 	}
 
-	// If !ok use uuid from json. It's using for tests
-	uuid, ok := mux.Vars(r)["uuid"]
-	if ok {
-		get_chunk.UUID = uuid
+	get_chunk := pb.GetChunk{
+		ChunkId: int32(chunk_id),
+		UUID:    r.URL.Query().Get("uuid"),
 	}
 
 	sum, err := h.dataServiceClient.GetSum(r.Context(), &get_chunk)
@@ -222,10 +193,7 @@ func (h Handler) GetAvailableDiskSpace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.dataServiceClient.GetAvailableDiskSpace(r.Context(), &pb.Direction{
-		User: username,
-		Dir:  r.URL.Query().Get("dir"),
-	})
+	resp, err := h.dataServiceClient.GetAvailableDiskSpace(r.Context(), &pb.Direction{User: username})
 	if err != nil {
 		handleServiceError(err, w, "data.GetAvailableDiskSpace")
 		return
