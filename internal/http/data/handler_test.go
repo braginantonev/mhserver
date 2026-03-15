@@ -153,18 +153,13 @@ func TestSaveDataHandler(t *testing.T) {
 
 			body := []byte("")
 			if test.save_body != nil {
-				body, err = json.Marshal(pb.SaveChunk{
-					UUID: conn.UUID,
-					Data: &pb.FilePart{
-						Chunk: test.save_body,
-					},
-				})
+				body, err = json.Marshal(pb.FilePart{Chunk: test.save_body})
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
 
-			req := httptest.NewRequest(test.method, server.SAVE_DATA_ENDPOINT, bytes.NewReader(body))
+			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?uuid=%s", server.SAVE_DATA_ENDPOINT, conn.UUID), bytes.NewReader(body))
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 
@@ -258,18 +253,12 @@ func TestGetDataHandler(t *testing.T) {
 
 	cases := [...]TestCase{
 		{
-			name:                  "empty body",
-			method:                http.MethodGet,
-			expected_code:         http.StatusBadRequest,
-			expected_body:         httpjsonutils.ErrRequestBodyEmpty.Description(),
-			expected_content_type: "text/plain",
-		},
-		{
 			// Compare with TEST_FILE_BODY
 			name:                  "normal get",
 			method:                http.MethodGet,
 			expected_code:         http.StatusOK,
-			expected_content_type: "application/json",
+			expected_body:         TEST_FILE_BODY,
+			expected_content_type: "application/octet-stream",
 		},
 	}
 
@@ -285,18 +274,7 @@ func TestGetDataHandler(t *testing.T) {
 				t.Fatalf("failed create connection; err: %v", err)
 			}
 
-			body := []byte("")
-			if test.expected_body != httpjsonutils.ErrRequestBodyEmpty.Description() {
-				body, err = json.Marshal(pb.GetChunk{
-					UUID:    conn.UUID,
-					ChunkId: 0,
-				})
-				if err != nil {
-					t.Fatalf("failed marshal pb.GetChunk; err: %v", err)
-				}
-			}
-
-			req := httptest.NewRequest(test.method, server.GET_DATA_ENDPOINT, bytes.NewReader(body))
+			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?uuid=%s&chunkID=%d", server.GET_DATA_ENDPOINT, conn.UUID, 0), nil)
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 
