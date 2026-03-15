@@ -38,11 +38,11 @@ func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 	r := mux.NewRouter()
 
 	// Auth service
-	r.HandleFunc(LOGIN_ENDPOINT, s.AuthService.Handlers.Login).Methods(http.MethodGet)
+	r.HandleFunc(LOGIN_ENDPOINT, s.AuthService.Handlers.Login).Methods(http.MethodPost)
 	r.HandleFunc(REGISTER_ENDPOINT, s.AuthService.Handlers.Register).Methods(http.MethodPost)
 
 	// Data service
-	r.HandleFunc(CREATE_CONNECTION_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.CreateConnection)).Methods(http.MethodOptions)
+	r.HandleFunc(CREATE_CONNECTION_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.CreateConnection)).Methods(http.MethodPost)
 	r.HandleFunc(SAVE_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.SaveData)).Methods(http.MethodPost)
 	r.HandleFunc(GET_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetData)).Methods(http.MethodGet)
 	r.HandleFunc(GET_DATA_SUM_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetSum)).Methods(http.MethodGet)
