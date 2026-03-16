@@ -6,8 +6,9 @@ import (
 
 var (
 	// File find
-	ErrBadUUID              error = errors.New("bad connection uuid")
-	ErrUnexpectedFileChange error = errors.New("unexpected file change")
+	ErrBadUUID            error = errors.New("bad connection uuid")
+	ErrConnectionNotFound error = errors.New("connection not found or ended")
+	
 
 	// Chunks
 	ErrIncorrectChunkSize error = errors.New("incorrect chunk size")
@@ -23,7 +24,7 @@ var (
 
 	// Directory errors
 	ErrDirNotFound     error = errors.New("directory not found")
-	ErrEmptyDir        error = errors.New("directory is empty")
+	ErrUnspecifiedDir  error = errors.New("target directory is not specified")
 	ErrDirAlreadyExist error = errors.New("directory already exist")
 	ErrBadDirSyntax    error = errors.New("directory have bad syntax")
 

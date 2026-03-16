@@ -138,8 +138,8 @@ func TestSaveData(t *testing.T) {
 			},
 		})
 
-		if m := getRPCErrorMessage(err); m != data.ErrUnexpectedFileChange.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrUnexpectedFileChange.Error(), m)
+		if m := getRPCErrorMessage(err); m != data.ErrConnectionNotFound.Error() {
+			t.Errorf("expected error %s, but got %s", data.ErrConnectionNotFound.Error(), m)
 		}
 	})
 
@@ -216,7 +216,7 @@ func TestSaveData(t *testing.T) {
 				Size:      small_test_file_len - 5,
 			},
 			save_data:    small_test_file,
-			expected_err: data.ErrUnexpectedFileChange,
+			expected_err: data.ErrConnectionNotFound,
 		},
 	}
 
@@ -306,8 +306,8 @@ func TestGetData(t *testing.T) {
 			ChunkId: 0,
 		})
 
-		if m := getRPCErrorMessage(err); m != data.ErrUnexpectedFileChange.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrUnexpectedFileChange.Error(), m)
+		if m := getRPCErrorMessage(err); m != data.ErrConnectionNotFound.Error() {
+			t.Errorf("expected error %s, but got %s", data.ErrConnectionNotFound.Error(), m)
 		}
 	})
 

@@ -45,7 +45,7 @@ func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (strin
 	}
 
 	if dir == "" {
-		return "", ErrEmptyDir
+		return "", ErrUnspecifiedDir
 	}
 
 	if dir[0] != '/' || strings.Contains(dir, "..") {
@@ -150,7 +150,7 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 
 	file, ok := s.activeFiles.Get(uuid)
 	if !ok {
-		return nil, ErrUnexpectedFileChange
+		return nil, ErrConnectionNotFound
 	}
 
 	offset := int64(file.GetChunkSize()) * int64(get_chunk.ChunkId)
@@ -186,7 +186,7 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 
 	file, ok := s.activeFiles.Get(uuid)
 	if !ok {
-		return nil, ErrUnexpectedFileChange
+		return nil, ErrConnectionNotFound
 	}
 
 	if len(save_chunk.Data.Chunk) > int(file.GetChunkSize()) {
@@ -218,7 +218,7 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 
 	file, ok := s.activeFiles.Get(uuid)
 	if !ok {
-		return nil, ErrUnexpectedFileChange
+		return nil, ErrConnectionNotFound
 	}
 
 	body := make([]byte, file.GetChunkSize())
