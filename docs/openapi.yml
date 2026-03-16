@@ -234,6 +234,9 @@ paths:
                     value:
                       message: incorrect chunk size
         
+        "403":
+          $ref: "#/components/responses/UnexpectedFileChangeError"
+                
         "401":
           $ref: "#/components/responses/NotAuthorized"
 
@@ -739,7 +742,7 @@ components:
     ConnectionNotExists:
       summary: Отсутствует соединение или оно не существует
       value:
-        message: unexpected file change
+        message: connection not found or ended
     
     EmptyAuthorizationField:
       description: Поле `Authorization` отсутствует, либо пустое
@@ -843,7 +846,15 @@ components:
             
             badSyntax:
               $ref: "#/components/examples/DirectoryBadSyntax"
-            
+    
+    UnexpectedFileChangeError:
+      description: Несоответствующий файл или директория
+      content:
+        plain/text:
+          schema:
+            type: string
+          example:
+            value: unexpected file change 
 
     InternalError:
       description: Внутренняя ошибка сервера
