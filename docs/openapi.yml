@@ -160,16 +160,12 @@ paths:
 
                 directoryError:
                   $ref: "#/components/responses/FilesDirectoryError"
-
+                
                 emptyFilename:
-                  summary: Не указано имя файла
-                  value:
-                    message: file name is empty
-
+                  $ref: "#/components/examples/EmptyFilename"
+                
                 unexpectedFiletype:
-                  summary: Недопустимый тип файла
-                  value:
-                    message: unexpected file type
+                  $ref: "#/components/examples/UnexpectedFiletype"
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
@@ -230,9 +226,7 @@ paths:
                     $ref: "#/components/examples/ConnectionNotExists"
                   
                   incorrectChunkSize:                  
-                    summary: Размер чанка больше, указанного в соединении
-                    value:
-                      message: incorrect chunk size
+                    $ref: "#/components/examples/IncorrectChunkSize"
         
         "403":
           $ref: "#/components/responses/UnexpectedFileChangeError"
@@ -450,9 +444,7 @@ paths:
                   $ref: "#/components/examples/DirectoryBadSyntax"
                 
                 directoryAlreadyExist:
-                  description: Каталог уже существует
-                  value:
-                    message: directory already exist
+                  $ref: "#/components/examples/DirectoryAlreadyExist"
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
@@ -713,6 +705,8 @@ components:
       summary: Поле с именем пользователя - пустое
       value:
         message: username is empty
+    
+    # Общие примеры
 
     EmptyRequestBody:
       summary: Поле запроса - пустое
@@ -734,16 +728,6 @@ components:
       value:
         message: jwt signature is invalid
     
-    BadConnectionSyntax:
-      summary: UUID соединения записан в неправильной форме
-      value:
-        message: bad connection uuid
-    
-    ConnectionNotExists:
-      summary: Отсутствует соединение или оно не существует
-      value:
-        message: connection not found or ended
-    
     EmptyAuthorizationField:
       description: Поле `Authorization` отсутствует, либо пустое
       value:
@@ -754,10 +738,37 @@ components:
       value:
         message: authorization expired
     
+    # Примеры ответов файлового сервиса
+
+    EmptyFilename:
+      summary: Не указано имя файла
+      value:
+        message: file name is empty
+
+    UnexpectedFiletype:
+      summary: Недопустимый тип файла
+      value:
+        message: unexpected file type
+    
+    BadConnectionSyntax:
+      summary: UUID соединения записан в неправильной форме
+      value:
+        message: bad connection uuid
+    
+    ConnectionNotExists:
+      summary: Отсутствует соединение или оно не существует
+      value:
+        message: connection not found or ended
+    
     UnspecifiedDirectory:
       description: Не указан каталог файла
       value:
         message: target directory is not specified
+    
+    IncorrectChunkSize:                  
+      summary: Размер чанка больше, указанного в соединении
+      value:
+        message: incorrect chunk size
     
     DirectoryNotFound:
       description: Каталог не найден
@@ -768,6 +779,11 @@ components:
       description: Не верный формат пути
       value:
         message: directory have bad syntax
+    
+    DirectoryAlreadyExist:
+      description: Каталог уже существует
+      value:
+        message: directory already exist
 
   responses:
     NotAuthorized:
