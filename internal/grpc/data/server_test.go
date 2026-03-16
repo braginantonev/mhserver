@@ -216,7 +216,7 @@ func TestSaveData(t *testing.T) {
 				Size:      small_test_file_len - 5,
 			},
 			save_data:    small_test_file,
-			expected_err: data.ErrConnectionNotFound,
+			expected_err: data.ErrUnexpectedFileChange,
 		},
 	}
 

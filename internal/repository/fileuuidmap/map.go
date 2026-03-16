@@ -68,6 +68,10 @@ func (p *File) GetLoadedChunks() int {
 	return p.chunks.Loaded
 }
 
+func (p *File) IsLoaded() bool {
+	return p.chunks.Loaded >= p.chunks.Count
+}
+
 type FileUUIDMap struct {
 	files map[uuid.UUID]*File
 	mux   *sync.RWMutex
@@ -138,7 +142,6 @@ func (m *FileUUIDMap) Get(uuid uuid.UUID) (*File, bool) {
 }
 
 // Update loaded chunks counter from file. Return ErrFileNotFound if file by uuid is not found.
-// Return EOC if loaded chunks >= his count. This is end for all connections.
 func (m *FileUUIDMap) UpdateLoadedChunks(uuid uuid.UUID) error {
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -150,10 +153,6 @@ func (m *FileUUIDMap) UpdateLoadedChunks(uuid uuid.UUID) error {
 
 	info.chunks.Loaded += 1
 	info.updateExpiration()
-
-	if info.chunks.Loaded == info.chunks.Count {
-		delete(m.files, uuid)
-	}
 
 	return nil
 }

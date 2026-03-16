@@ -6,9 +6,9 @@ import (
 
 var (
 	// File find
-	ErrBadUUID            error = errors.New("bad connection uuid")
-	ErrConnectionNotFound error = errors.New("connection not found or ended")
-	
+	ErrBadUUID              error = errors.New("bad connection uuid")
+	ErrConnectionNotFound   error = errors.New("connection not found or ended")
+	ErrUnexpectedFileChange error = errors.New("unexpected file change")
 
 	// Chunks
 	ErrIncorrectChunkSize error = errors.New("incorrect chunk size")

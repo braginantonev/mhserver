@@ -189,6 +189,10 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		return nil, ErrConnectionNotFound
 	}
 
+	if file.IsLoaded() {
+		return nil, ErrUnexpectedFileChange
+	}
+
 	if len(save_chunk.Data.Chunk) > int(file.GetChunkSize()) {
 		return nil, ErrIncorrectChunkSize
 	}
