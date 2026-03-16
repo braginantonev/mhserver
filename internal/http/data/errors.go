@@ -15,7 +15,8 @@ var (
 
 	// * I set empty desc for this errors, because they should be added in the error handler
 	SpecialServiceErrors = map[string]httperror.HttpError{
-		data.ErrNotEnoughDiskSpace.Error(): httperror.NewExternalHttpError("", http.StatusRequestEntityTooLarge),
+		data.ErrNotEnoughDiskSpace.Error():   httperror.NewExternalHttpError("", http.StatusRequestEntityTooLarge),
+		data.ErrUnexpectedFileChange.Error(): httperror.NewExternalHttpError("", http.StatusForbidden),
 	}
 
 	// Handler errors
