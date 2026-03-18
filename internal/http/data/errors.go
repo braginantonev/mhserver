@@ -13,10 +13,10 @@ var (
 	ErrInternal    = httperror.NewInternalHttpError("", "")
 	ErrUnavailable = httperror.NewExternalHttpError("service is off or unavailable", http.StatusServiceUnavailable)
 
-	// * I set empty desc for this errors, because they should be added in the error handler
-	SpecialServiceErrors = map[string]httperror.HttpError{
-		data.ErrNotEnoughDiskSpace.Error():   httperror.NewExternalHttpError("", http.StatusRequestEntityTooLarge),
-		data.ErrUnexpectedFileChange.Error(): httperror.NewExternalHttpError("", http.StatusForbidden),
+	// by default errors have 400 status code
+	SpecialCodes = map[string]int{
+		data.ErrNotEnoughDiskSpace.Error():   http.StatusRequestEntityTooLarge,
+		data.ErrUnexpectedFileChange.Error(): http.StatusForbidden,
 	}
 
 	// Handler errors
@@ -40,11 +40,10 @@ func handleServiceError(err error, w http.ResponseWriter, func_name string) {
 		return
 	}
 
-	herr, ok := SpecialServiceErrors[mess]
-	if ok {
-		herr.AppendStr(mess).Write(w)
-		return
+	cd, ok := SpecialCodes[mess]
+	if !ok {
+		cd = http.StatusBadRequest
 	}
 
-	httperror.NewExternalHttpError(mess, http.StatusBadRequest).Write(w)
+	httperror.NewExternalHttpError(mess, cd).Write(w)
 }

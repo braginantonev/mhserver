@@ -9,12 +9,9 @@ import (
 )
 
 var (
-	// * I set empty desc for this errors, because they should be added in the error handler
-	authErrors = map[error]httperror.HttpError{
-		auth.ErrNameIsEmpty:       httperror.NewExternalHttpError("", http.StatusBadRequest),
-		auth.ErrUserNotExist:      httperror.NewExternalHttpError("", http.StatusBadRequest),
-		auth.ErrWrongPassword:     httperror.NewExternalHttpError("", http.StatusBadRequest),
-		auth.ErrUserAlreadyExists: httperror.NewExternalHttpError("", http.StatusConflict),
+	// by default errors have 400 status code
+	authSpecialCodes = map[error]int{
+		auth.ErrUserAlreadyExists: http.StatusConflict,
 	}
 
 	// Handler
@@ -37,6 +34,10 @@ func handleServiceError(w http.ResponseWriter, err error, func_name string) {
 	if errors.Is(err, auth.ErrInternal) {
 		ErrInternal.WithFuncName(func_name).Write(w)
 	} else {
-		authErrors[err].Append(err).Write(w)
+		cd, ok := authSpecialCodes[err]
+		if !ok {
+			cd = http.StatusBadRequest
+		}
+		httperror.NewExternalHttpError(err.Error(), cd).Write(w)
 	}
 }
