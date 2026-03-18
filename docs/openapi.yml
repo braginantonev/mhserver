@@ -548,20 +548,16 @@ components:
       required:
         - username
         - password
-        - email
 
       properties:
         username:
           type: string
           example: "anton"
+          maxLength: 30
 
         password:
           type: string
           example: "123"
-        
-        email:
-          type: string
-          example: "braginantonev@my.mail.com"
 
       example:
         $ref: "./examples/auth/register-request.json"
