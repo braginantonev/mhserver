@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	INSERT_USER   string = "INSERT INTO users (user, password) VALUES (?, ?)"
-	SELECT_USERID string = "SELECT id FROM users WHERE user = ?"
-	SELECT_USER   string = "SELECT user, password FROM users WHERE user = ?"
+	USER_NAME_MAX_LENGTH int    = 30
+	INSERT_USER          string = "INSERT INTO users (user, password) VALUES (?, ?)"
+	SELECT_USERID        string = "SELECT id FROM users WHERE user = ?"
+	SELECT_USER          string = "SELECT user, password FROM users WHERE user = ?"
 )
 
 type User struct {
@@ -72,9 +73,9 @@ func Register(user User, db *sql.DB) error {
 		return ErrNameIsEmpty
 	}
 
-	if len(user.Name) > 30 {
+	if len(user.Name) > USER_NAME_MAX_LENGTH {
 		return ErrNameTooLong
-	} 
+	}
 
 	row := db.QueryRow(SELECT_USERID, user.Name)
 	if err := row.Scan(); err != sql.ErrNoRows {
