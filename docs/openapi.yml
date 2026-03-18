@@ -63,8 +63,14 @@ paths:
               schema:
                 type: string
               examples:
-                requestError:
-                  $ref: "#/components/responses/AuthRequestError"
+                emptyUsername:
+                  $ref: "#/components/examples/EmptyUsername"
+
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
+
+                badJsonSyntax:
+                  $ref: "#/components/examples/BadJsonSyntax"
 
                 notRegistered:
                   summary: Пользователь не зарегистрирован
@@ -155,11 +161,23 @@ paths:
               schema:
                 type: string
               examples:
-                requestError:
-                  $ref: "#/components/responses/FilesRequestError"
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
 
-                directoryError:
-                  $ref: "#/components/responses/FilesDirectoryError"
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
+
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
+
+                unspecifiedDirectory:
+                  $ref: "#/components/examples/UnspecifiedDirectory"
+                    
+                directoryNotFound:
+                  $ref: "#/components/examples/DirectoryNotFound"
+                
+                directoryBadSyntax:
+                  $ref: "#/components/examples/DirectoryBadSyntax"
                 
                 emptyFilename:
                   $ref: "#/components/examples/EmptyFilename"
@@ -219,9 +237,18 @@ paths:
                 schema:
                   type: string
                 examples:
-                  requestError:
-                    $ref: "#/components/responses/FilesRequestError"
+                  badJwtSyntax:
+                    $ref: "#/components/examples/BadJwtSyntax"
+
+                  badJwtSignature:
+                    $ref: "#/components/examples/BadJwtSignature"
+
+                  emptyRequestBody:
+                    $ref: "#/components/examples/EmptyRequestBody"
                   
+                  badConnectionSyntax:
+                    $ref: "#/components/examples/BadConnectionSyntax"
+                    
                   connectionNotExists:
                     $ref: "#/components/examples/ConnectionNotExists"
                   
@@ -272,9 +299,18 @@ paths:
                 schema:
                   type: string
                 examples:
-                  requestError:
-                    $ref: "#/components/responses/FilesRequestError"
+                  badJwtSyntax:
+                    $ref: "#/components/examples/BadJwtSyntax"
+
+                  badJwtSignature:
+                    $ref: "#/components/examples/BadJwtSignature"
+
+                  emptyRequestBody:
+                    $ref: "#/components/examples/EmptyRequestBody"
                   
+                  badConnectionSyntax:
+                    $ref: "#/components/examples/BadConnectionSyntax"
+                    
                   connectionNotExists:
                     $ref: "#/components/examples/ConnectionNotExists"
         
@@ -324,11 +360,20 @@ paths:
               schema:
                 type: string
               examples:
-                requestError:
-                  $ref: "#/components/responses/FilesRequestError"
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
+
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
+
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
                 
-                connectionError:
-                  $ref: "#/components/responses/FilesConnectionError"
+                badConnectionSyntax:
+                  $ref: "#/components/examples/BadConnectionSyntax"
+                  
+                connectionNotExists:
+                  $ref: "#/components/examples/ConnectionNotExists"
                   
         "401":
           $ref: "#/components/responses/NotAuthorized"
@@ -584,7 +629,6 @@ components:
       type: object
       required:
         - filename
-        - size
       
       properties:
         filename:
@@ -814,35 +858,6 @@ components:
             badJsonSyntax:
               $ref: "#/components/examples/BadJsonSyntax"
     
-    FilesRequestError:
-      description: Плохой запрос
-      content:
-        plain/text:
-          schema:
-            type: string
-          examples:
-            badJwtSyntax:
-              $ref: "#/components/examples/BadJwtSyntax"
-
-            badJwtSignature:
-              $ref: "#/components/examples/BadJwtSignature"
-
-            emptyRequestBody:
-              $ref: "#/components/examples/EmptyRequestBody"
-    
-    FilesConnectionError:
-      description: Ошибки подключения
-      content:
-        plain/text:
-          schema:
-            type: string
-          examples:
-            badConnectionSyntax:
-              $ref: "#/components/examples/BadConnectionSyntax"
-              
-            connectionNotExists:
-              $ref: "#/components/examples/ConnectionNotExists"
-    
     FilesDirectoryError:
       description: Ошибка в записи каталога
       content:
@@ -850,13 +865,13 @@ components:
           schema:
             type: string
           examples:
-            unspecified:
+            unspecifiedDirectory:
               $ref: "#/components/examples/UnspecifiedDirectory"
                 
-            notFound:
+            directoryNotFound:
               $ref: "#/components/examples/DirectoryNotFound"
             
-            badSyntax:
+            directoryBadSyntax:
               $ref: "#/components/examples/DirectoryBadSyntax"
     
     UnexpectedFileChangeError:
