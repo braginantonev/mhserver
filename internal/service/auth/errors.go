@@ -14,6 +14,7 @@ var (
 
 	// External errors
 	ErrNameIsEmpty error = errors.New("username is empty")
+	ErrNameTooLong error = errors.New("name is too long")
 
 	// - Login errors
 	ErrUserNotExist  error = errors.New("wrong username or user not registered")
@@ -21,6 +22,4 @@ var (
 
 	// - Register errors
 	ErrUserAlreadyExists error = errors.New("user already registered")
-
-	
 )

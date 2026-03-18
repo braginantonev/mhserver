@@ -72,6 +72,10 @@ func Register(user User, db *sql.DB) error {
 		return ErrNameIsEmpty
 	}
 
+	if len(user.Name) > 30 {
+		return ErrNameTooLong
+	} 
+
 	row := db.QueryRow(SELECT_USERID, user.Name)
 	if err := row.Scan(); err != sql.ErrNoRows {
 		return ErrUserAlreadyExists

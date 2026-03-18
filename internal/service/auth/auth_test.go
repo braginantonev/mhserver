@@ -12,26 +12,32 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	cases := []struct {
+	cases := [...]struct {
 		name         string
 		username     string
 		password     string
 		expected_err error
-		get_from_db  bool
+		get_from_db  bool // Check user field in db
 	}{
+		{
+			name:         "Empty name",
+			username:     "",
+			password:     "123",
+			expected_err: auth.ErrNameIsEmpty,
+		},
+		{
+
+			name:         "long username",
+			username:     "[Cop Killers] X1_BestCockSucker_1X",
+			password:     "123",
+			expected_err: auth.ErrNameTooLong,
+		},
 		{
 			name:         "Base register",
 			username:     "register_test1",
 			password:     "123",
 			expected_err: nil,
 			get_from_db:  true,
-		},
-		{
-			name:         "Empty name",
-			username:     "",
-			password:     "123",
-			expected_err: auth.ErrNameIsEmpty,
-			get_from_db:  false,
 		},
 		{
 			name:         "Already register",
@@ -103,9 +109,26 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	jwt_signature := "test"
+	db, err := database.OpenDB(mysql.Config{
+		User:                 "mhserver_tests",
+		Passwd:               "",
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		DBName:               "mhs_main_test",
+		AllowNativePasswords: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	cases := []struct {
+	jwt_signature := "test"
+	wrong_password_user := auth.NewUser("login_test1", "321")
+
+	if err := auth.Register(wrong_password_user, db); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := [...]struct {
 		name         string
 		user         auth.User
 		expected_err error
@@ -123,7 +146,7 @@ func TestLogin(t *testing.T) {
 		},
 		{
 			name:         "Wrong password",
-			user:         auth.NewUser("login_test1", "123"),
+			user:         auth.NewUser(wrong_password_user.Name, "123"),
 			expected_err: auth.ErrWrongPassword,
 		},
 		{
@@ -134,24 +157,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	db, err := database.OpenDB(mysql.Config{
-		User:                 "mhserver_tests",
-		Passwd:               "",
-		Net:                  "tcp",
-		Addr:                 "127.0.0.1:3306",
-		DBName:               "mhs_main_test",
-		AllowNativePasswords: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wrong_password_user := auth.NewUser("login_test1", "321")
-	if err := auth.Register(wrong_password_user, db); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := auth.Register(cases[3].user, db); err != nil {
+	if err := auth.Register(cases[len(cases)-1].user, db); err != nil {
 		t.Fatal(err)
 	}
 
