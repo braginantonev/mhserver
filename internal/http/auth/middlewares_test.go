@@ -147,8 +147,8 @@ func TestWithAuth(t *testing.T) {
 			check_fn := func(w http.ResponseWriter, r *http.Request) {
 				res, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 				if ok {
-					if res != test.user.Name {
-						t.Errorf("expected name: \"%s\", but got \"%s\"", test.user.Name, res)
+					if res != test.user.Username {
+						t.Errorf("expected name: \"%s\", but got \"%s\"", test.user.Username, res)
 					}
 				} else {
 					t.Errorf("context value is not string. value=%v", res)
