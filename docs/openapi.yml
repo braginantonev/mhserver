@@ -593,6 +593,7 @@ components:
       required:
         - username
         - password
+        - key
 
       properties:
         username:
@@ -603,6 +604,10 @@ components:
         password:
           type: string
           example: "123"
+        
+        key:
+          type: string
+          example: 7qBpwuHHsi6g3vrwhk0v/gcBJ4KHbb3fBAaYlSi+Y+M=
 
       example:
         $ref: "./examples/auth/register-request.json"
