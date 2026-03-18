@@ -18,8 +18,8 @@ const (
 )
 
 type User struct {
-	Name     string `json:"user"`
-	Password string `json:"pass"`
+	Name     string `json:"username"`
+	Password string `json:"password"`
 }
 
 func NewUser(name string, password string) User {
