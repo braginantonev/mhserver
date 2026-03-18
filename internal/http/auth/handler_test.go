@@ -133,7 +133,7 @@ func TestLogin(t *testing.T) {
 			}
 
 			if test.expected_code == http.StatusOK {
-				if err := auth.CheckJWTUserMatch(test.user.Username, string(received_body), TEST_JWT_SIG); err != nil {
+				if err := auth.CheckJWTUserMatch(test.user.Name, string(received_body), TEST_JWT_SIG); err != nil {
 					t.Error(err)
 				}
 			} else {
@@ -146,7 +146,7 @@ func TestLogin(t *testing.T) {
 
 	// Clear registered users
 	for _, test := range cases {
-		if _, err := db.Exec("delete from users where user=?", test.user.Username); err != nil {
+		if _, err := db.Exec("delete from users where user=?", test.user.Name); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -236,7 +236,7 @@ func TestRegister(t *testing.T) {
 				t.Errorf("expected body: \"%s\"\nbut got \"%s\"", test.expected_body, string(resp_body))
 			}
 
-			row := db.QueryRow("select id from users where name=?", test.user.Username)
+			row := db.QueryRow("select id from users where name=?", test.user.Name)
 			if err := row.Scan(); err == sql.ErrNoRows {
 				t.Error("user not found in db")
 			}
@@ -245,7 +245,7 @@ func TestRegister(t *testing.T) {
 
 	// Clear registered users
 	for _, test := range cases {
-		if _, err := db.Exec("delete from users where user=?", test.user.Username); err != nil {
+		if _, err := db.Exec("delete from users where user=?", test.user.Name); err != nil {
 			t.Fatal(err)
 		}
 	}
