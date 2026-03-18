@@ -136,14 +136,14 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	}, nil
 }
 
-func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.FilePart, error) {
+func (s *DataServer) GetData(ctx context.Context, chunk *pb.GetChunk) (*pb.FilePart, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	uuid, err := uuid.Parse(get_chunk.UUID)
+	uuid, err := uuid.Parse(chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
 	}
@@ -153,7 +153,7 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 		return nil, ErrConnectionNotFound
 	}
 
-	offset := int64(file.GetChunkSize()) * int64(get_chunk.ChunkId)
+	offset := int64(file.GetChunkSize()) * int64(chunk.ChunkId)
 
 	read_data := make([]byte, file.GetChunkSize())
 	n, err := file.ReadAt(read_data, offset)
@@ -172,14 +172,14 @@ func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.F
 	}, nil
 }
 
-func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*emptypb.Empty, error) {
+func (s *DataServer) SaveData(ctx context.Context, chunk *pb.SaveChunk) (*emptypb.Empty, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	uuid, err := uuid.Parse(save_chunk.UUID)
+	uuid, err := uuid.Parse(chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
 	}
@@ -193,11 +193,11 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 		return nil, ErrUnexpectedFileChange
 	}
 
-	if len(save_chunk.Data.Chunk) > int(file.GetChunkSize()) {
+	if len(chunk.Data.Chunk) > int(file.GetChunkSize()) {
 		return nil, ErrIncorrectChunkSize
 	}
 
-	_, err = file.WriteAt(save_chunk.Data.Chunk, save_chunk.Data.Offset)
+	_, err = file.WriteAt(chunk.Data.Chunk, chunk.Data.Offset)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed write chunk to file", slog.Any("err", err))
 		return nil, ErrInternal
@@ -208,14 +208,14 @@ func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*e
 	return nil, nil
 }
 
-func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SHASum, error) {
+func (s *DataServer) GetSum(ctx context.Context, chunk *pb.GetChunk) (*pb.SHASum, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	uuid, err := uuid.Parse(get_chunk.UUID)
+	uuid, err := uuid.Parse(chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
 	}
@@ -226,7 +226,7 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 	}
 
 	body := make([]byte, file.GetChunkSize())
-	n, err := file.ReadAt(body, int64(file.GetChunkSize())*int64(get_chunk.ChunkId))
+	n, err := file.ReadAt(body, int64(file.GetChunkSize())*int64(chunk.ChunkId))
 	if err != nil && err != io.EOF {
 		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
 		return nil, ErrInternal
@@ -237,52 +237,52 @@ func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SH
 	}
 
 	sha := sha256.Sum256(body[:n])
-	return &pb.SHASum{Sum: sha[:]}, nil
+	return &pb.SHASum{Value: sha[:]}, nil
 }
 
-func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, in_dir *pb.Direction) (*pb.Size, error) {
+func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Directory) (*pb.Size, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	dir, err := s.getDataPath(in_dir.User, "/", pb.FileType_File)
+	dir_path, err := s.getDataPath(dir.User, "/", pb.FileType_File)
 	if err != nil {
 		return nil, err
 	}
 
-	space, err := freemem.GetAvailableDiskSpace(dir)
+	space, err := freemem.GetAvailableDiskSpace(dir_path)
 	if err != nil {
 		return nil, ErrDirNotFound
 	}
 
-	return &pb.Size{Val: space}, nil
+	return &pb.Size{Value: space}, nil
 }
 
-func (s *DataServer) GetFiles(ctx context.Context, in_dir *pb.Direction) (*pb.FilesList, error) {
+func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	dir, err := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	dir_path, err := s.getDataPath(dir.User, dir.Value, pb.FileType_File)
 	if err != nil {
 		return nil, err
 	}
 
-	files, err := os.ReadDir(dir)
+	files, err := os.ReadDir(dir_path)
 	if err != nil {
 		return nil, ErrDirNotFound
 	}
 
 	list := &pb.FilesList{
-		Infos: make([]*pb.FileInfo, len(files)),
+		Value: make([]*pb.FileInfo, len(files)),
 	}
 
 	for i, file := range files {
-		list.Infos[i] = &pb.FileInfo{
+		list.Value[i] = &pb.FileInfo{
 			Name:  file.Name(),
 			IsDir: file.IsDir(),
 		}
@@ -292,26 +292,26 @@ func (s *DataServer) GetFiles(ctx context.Context, in_dir *pb.Direction) (*pb.Fi
 			continue
 		}
 
-		list.Infos[i].Size = uint64(info.Size())
-		list.Infos[i].ModTime = info.ModTime().Unix()
+		list.Value[i].Size = uint64(info.Size())
+		list.Value[i].ModTime = info.ModTime().Unix()
 	}
 
 	return list, nil
 }
 
-func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*emptypb.Empty, error) {
+func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	dir, err := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	dir_path, err := s.getDataPath(dir.User, dir.Value, pb.FileType_File)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := os.MkdirAll(dir, 0600); err != nil {
+	if err := os.MkdirAll(dir_path, 0600); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return nil, ErrDirAlreadyExist
 		}
@@ -323,19 +323,19 @@ func (s *DataServer) CreateDir(ctx context.Context, in_dir *pb.Direction) (*empt
 	return nil, nil
 }
 
-func (s *DataServer) RemoveDir(ctx context.Context, in_dir *pb.Direction) (*emptypb.Empty, error) {
+func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	dir, err := s.getDataPath(in_dir.User, in_dir.Dir, pb.FileType_File)
+	dir_path, err := s.getDataPath(dir.User, dir.Value, pb.FileType_File)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := os.RemoveAll(dir); err != nil {
+	if err := os.RemoveAll(dir_path); err != nil {
 		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
 		return nil, ErrInternal
 	}

@@ -528,9 +528,9 @@ func TestGetSum(t *testing.T) {
 					expected_sum[0] = 0
 				}
 
-				for j, n := range got_sum.Sum {
+				for j, n := range got_sum.Value {
 					if n != expected_sum[j] {
-						t.Fatalf("expected sum: %x, but got: %x", string(expected_sum[:]), string(got_sum.Sum))
+						t.Fatalf("expected sum: %x, but got: %x", string(expected_sum[:]), string(got_sum.Value))
 					}
 				}
 			}

@@ -10,23 +10,19 @@ enum FileType {
     Music = 2;
 }
 
+message FilePart {
+    bytes chunk = 1;
+    int64 offset = 2;
+}
+
+// * Requests
+
 message DataInfo {
     string username = 1;
     string directory = 2;
     string filename = 3;
     FileType filetype = 4;
     uint64 size = 5;
-}
-
-message Connection {
-    string UUID = 1;
-    uint64 chunkSize = 2;
-    int32 chunksCount = 3;
-}
-
-message FilePart {
-    bytes chunk = 1;
-    int64 offset = 2;
 }
 
 message SaveChunk {
@@ -39,13 +35,21 @@ message GetChunk {
     int32 chunkId = 2;
 }
 
-message SHASum {
-    bytes sum = 1;
+message Directory {
+    string user = 1;
+    string value = 2;
 }
 
-message Direction {
-    string user = 1;
-    string dir = 2;
+// * Responses
+
+message Connection {
+    string UUID = 1;
+    uint64 chunkSize = 2;
+    int32 chunksCount = 3;
+}
+
+message SHASum {
+    bytes value = 1;
 }
 
 message FileInfo {
@@ -56,11 +60,11 @@ message FileInfo {
 }
 
 message FilesList {
-    repeated FileInfo infos = 1;
+    repeated FileInfo value = 1;
 }
 
 message Size {
-    uint64 val = 1;
+    uint64 value = 1;
 }
 
 service DataService {
@@ -68,8 +72,8 @@ service DataService {
     rpc SaveData (SaveChunk) returns (google.protobuf.Empty);
     rpc GetData (GetChunk) returns (FilePart);
     rpc GetSum (GetChunk) returns (SHASum);
-    rpc GetFiles (Direction) returns (FilesList);
-	rpc GetAvailableDiskSpace (Direction) returns (Size);
-	rpc CreateDir (Direction) returns (google.protobuf.Empty);
-	rpc RemoveDir (Direction) returns (google.protobuf.Empty);
+    rpc GetFiles (Directory) returns (FilesList);
+	rpc GetAvailableDiskSpace (Directory) returns (Size);
+	rpc CreateDir (Directory) returns (google.protobuf.Empty);
+	rpc RemoveDir (Directory) returns (google.protobuf.Empty);
 }

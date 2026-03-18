@@ -38,10 +38,10 @@ type DataServiceClient interface {
 	SaveData(ctx context.Context, in *SaveChunk, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetData(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*FilePart, error)
 	GetSum(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*SHASum, error)
-	GetFiles(ctx context.Context, in *Direction, opts ...grpc.CallOption) (*FilesList, error)
-	GetAvailableDiskSpace(ctx context.Context, in *Direction, opts ...grpc.CallOption) (*Size, error)
-	CreateDir(ctx context.Context, in *Direction, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RemoveDir(ctx context.Context, in *Direction, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetFiles(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*FilesList, error)
+	GetAvailableDiskSpace(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*Size, error)
+	CreateDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RemoveDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type dataServiceClient struct {
@@ -92,7 +92,7 @@ func (c *dataServiceClient) GetSum(ctx context.Context, in *GetChunk, opts ...gr
 	return out, nil
 }
 
-func (c *dataServiceClient) GetFiles(ctx context.Context, in *Direction, opts ...grpc.CallOption) (*FilesList, error) {
+func (c *dataServiceClient) GetFiles(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*FilesList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(FilesList)
 	err := c.cc.Invoke(ctx, DataService_GetFiles_FullMethodName, in, out, cOpts...)
@@ -102,7 +102,7 @@ func (c *dataServiceClient) GetFiles(ctx context.Context, in *Direction, opts ..
 	return out, nil
 }
 
-func (c *dataServiceClient) GetAvailableDiskSpace(ctx context.Context, in *Direction, opts ...grpc.CallOption) (*Size, error) {
+func (c *dataServiceClient) GetAvailableDiskSpace(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*Size, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Size)
 	err := c.cc.Invoke(ctx, DataService_GetAvailableDiskSpace_FullMethodName, in, out, cOpts...)
@@ -112,7 +112,7 @@ func (c *dataServiceClient) GetAvailableDiskSpace(ctx context.Context, in *Direc
 	return out, nil
 }
 
-func (c *dataServiceClient) CreateDir(ctx context.Context, in *Direction, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *dataServiceClient) CreateDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DataService_CreateDir_FullMethodName, in, out, cOpts...)
@@ -122,7 +122,7 @@ func (c *dataServiceClient) CreateDir(ctx context.Context, in *Direction, opts .
 	return out, nil
 }
 
-func (c *dataServiceClient) RemoveDir(ctx context.Context, in *Direction, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *dataServiceClient) RemoveDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DataService_RemoveDir_FullMethodName, in, out, cOpts...)
@@ -140,10 +140,10 @@ type DataServiceServer interface {
 	SaveData(context.Context, *SaveChunk) (*emptypb.Empty, error)
 	GetData(context.Context, *GetChunk) (*FilePart, error)
 	GetSum(context.Context, *GetChunk) (*SHASum, error)
-	GetFiles(context.Context, *Direction) (*FilesList, error)
-	GetAvailableDiskSpace(context.Context, *Direction) (*Size, error)
-	CreateDir(context.Context, *Direction) (*emptypb.Empty, error)
-	RemoveDir(context.Context, *Direction) (*emptypb.Empty, error)
+	GetFiles(context.Context, *Directory) (*FilesList, error)
+	GetAvailableDiskSpace(context.Context, *Directory) (*Size, error)
+	CreateDir(context.Context, *Directory) (*emptypb.Empty, error)
+	RemoveDir(context.Context, *Directory) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDataServiceServer()
 }
 
@@ -166,16 +166,16 @@ func (UnimplementedDataServiceServer) GetData(context.Context, *GetChunk) (*File
 func (UnimplementedDataServiceServer) GetSum(context.Context, *GetChunk) (*SHASum, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSum not implemented")
 }
-func (UnimplementedDataServiceServer) GetFiles(context.Context, *Direction) (*FilesList, error) {
+func (UnimplementedDataServiceServer) GetFiles(context.Context, *Directory) (*FilesList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFiles not implemented")
 }
-func (UnimplementedDataServiceServer) GetAvailableDiskSpace(context.Context, *Direction) (*Size, error) {
+func (UnimplementedDataServiceServer) GetAvailableDiskSpace(context.Context, *Directory) (*Size, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAvailableDiskSpace not implemented")
 }
-func (UnimplementedDataServiceServer) CreateDir(context.Context, *Direction) (*emptypb.Empty, error) {
+func (UnimplementedDataServiceServer) CreateDir(context.Context, *Directory) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateDir not implemented")
 }
-func (UnimplementedDataServiceServer) RemoveDir(context.Context, *Direction) (*emptypb.Empty, error) {
+func (UnimplementedDataServiceServer) RemoveDir(context.Context, *Directory) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveDir not implemented")
 }
 func (UnimplementedDataServiceServer) mustEmbedUnimplementedDataServiceServer() {}
@@ -272,7 +272,7 @@ func _DataService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _DataService_GetFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Direction)
+	in := new(Directory)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -284,13 +284,13 @@ func _DataService_GetFiles_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: DataService_GetFiles_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).GetFiles(ctx, req.(*Direction))
+		return srv.(DataServiceServer).GetFiles(ctx, req.(*Directory))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _DataService_GetAvailableDiskSpace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Direction)
+	in := new(Directory)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -302,13 +302,13 @@ func _DataService_GetAvailableDiskSpace_Handler(srv interface{}, ctx context.Con
 		FullMethod: DataService_GetAvailableDiskSpace_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).GetAvailableDiskSpace(ctx, req.(*Direction))
+		return srv.(DataServiceServer).GetAvailableDiskSpace(ctx, req.(*Directory))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _DataService_CreateDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Direction)
+	in := new(Directory)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -320,13 +320,13 @@ func _DataService_CreateDir_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: DataService_CreateDir_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).CreateDir(ctx, req.(*Direction))
+		return srv.(DataServiceServer).CreateDir(ctx, req.(*Directory))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _DataService_RemoveDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Direction)
+	in := new(Directory)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -338,7 +338,7 @@ func _DataService_RemoveDir_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: DataService_RemoveDir_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).RemoveDir(ctx, req.(*Direction))
+		return srv.(DataServiceServer).RemoveDir(ctx, req.(*Directory))
 	}
 	return interceptor(ctx, in, info, handler)
 }

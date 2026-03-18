@@ -144,7 +144,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	_, _ = w.Write(sum.Sum)
+	_, _ = w.Write(sum.Value)
 }
 
 func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
@@ -163,9 +163,9 @@ func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files, err := h.dataServiceClient.GetFiles(r.Context(), &pb.Direction{
-		User: username,
-		Dir:  r.URL.Query().Get("dir"),
+	files, err := h.dataServiceClient.GetFiles(r.Context(), &pb.Directory{
+		User:  username,
+		Value: r.URL.Query().Get("dir"),
 	})
 	if err != nil {
 		handleServiceError(err, w, "data.GetFiles")
@@ -173,7 +173,7 @@ func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(files.Infos); err != nil {
+	if err := json.NewEncoder(w).Encode(files.Value); err != nil {
 		ErrInternal.Append(err).WithFuncName("Handler.GetFiles.Marshal").Write(w)
 	}
 }
@@ -194,13 +194,13 @@ func (h Handler) GetAvailableDiskSpace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.dataServiceClient.GetAvailableDiskSpace(r.Context(), &pb.Direction{User: username})
+	resp, err := h.dataServiceClient.GetAvailableDiskSpace(r.Context(), &pb.Directory{User: username})
 	if err != nil {
 		handleServiceError(err, w, "data.GetAvailableDiskSpace")
 		return
 	}
 
-	_, _ = fmt.Fprint(w, resp.Val)
+	_, _ = fmt.Fprint(w, resp.Value)
 }
 
 func (h Handler) CreateDir(w http.ResponseWriter, r *http.Request) {
@@ -219,9 +219,9 @@ func (h Handler) CreateDir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.dataServiceClient.CreateDir(r.Context(), &pb.Direction{
-		User: username,
-		Dir:  r.URL.Query().Get("dir"),
+	_, err := h.dataServiceClient.CreateDir(r.Context(), &pb.Directory{
+		User:  username,
+		Value: r.URL.Query().Get("dir"),
 	})
 	if err != nil {
 		handleServiceError(err, w, "data.CreateDir")
@@ -247,9 +247,9 @@ func (h Handler) RemoveDir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.dataServiceClient.RemoveDir(r.Context(), &pb.Direction{
-		User: username,
-		Dir:  r.URL.Query().Get("dir"),
+	_, err := h.dataServiceClient.RemoveDir(r.Context(), &pb.Directory{
+		User:  username,
+		Value: r.URL.Query().Get("dir"),
 	})
 	if err != nil {
 		handleServiceError(err, w, "data.RemoveDir")
