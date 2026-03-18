@@ -72,7 +72,7 @@ func TestRegister(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			err := auth.Register(auth.User{
-				Username: test.username,
+				Name:     test.username,
 				Password: test.password,
 			}, db)
 
@@ -87,12 +87,12 @@ func TestRegister(t *testing.T) {
 			db_user := auth.User{}
 			row := db.QueryRow(auth.SELECT_USER, test.username)
 
-			if err = row.Scan(&db_user.Username, &db_user.Password); err != nil {
+			if err = row.Scan(&db_user.Name, &db_user.Password); err != nil {
 				t.Error(err)
 			}
 
-			if db_user.Username != test.username {
-				t.Errorf("expected name %s, but got %s", test.username, db_user.Username)
+			if db_user.Name != test.username {
+				t.Errorf("expected name %s, but got %s", test.username, db_user.Name)
 			}
 
 			if err = bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(test.password)); err != nil {
@@ -146,7 +146,7 @@ func TestLogin(t *testing.T) {
 		},
 		{
 			name:         "Wrong password",
-			user:         auth.NewUser(wrong_password_user.Username, "123"),
+			user:         auth.NewUser(wrong_password_user.Name, "123"),
 			expected_err: auth.ErrWrongPassword,
 		},
 		{
@@ -172,18 +172,18 @@ func TestLogin(t *testing.T) {
 				return
 			}
 
-			if err := auth.CheckJWTUserMatch(test.user.Username, token, jwt_signature); err != nil {
+			if err := auth.CheckJWTUserMatch(test.user.Name, token, jwt_signature); err != nil {
 				t.Error(err)
 			}
 		})
 
-		_, err := db.Exec("DELETE FROM users WHERE user = ?", test.user.Username)
+		_, err := db.Exec("DELETE FROM users WHERE user = ?", test.user.Name)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 
-	_, err = db.Exec("DELETE FROM users WHERE user = ?", wrong_password_user.Username)
+	_, err = db.Exec("DELETE FROM users WHERE user = ?", wrong_password_user.Name)
 	if err != nil {
 		fmt.Println(err)
 	}
