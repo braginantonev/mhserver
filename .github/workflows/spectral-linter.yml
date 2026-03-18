@@ -1,6 +1,7 @@
 name: Run Spectral on Pull Requests
 
-on: [push, pull_request]
+on:
+  - pull_request
 
 jobs:
   build:
@@ -8,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Check out the repository
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # Run Spectral
       - uses: stoplightio/spectral-action@latest
