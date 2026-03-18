@@ -51,7 +51,7 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Name, handler.cfg.UserCatalogs...)
+	err := data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Username, handler.cfg.UserCatalogs...)
 	if err != nil {
 		ErrInternal.Append(err).WithFuncName("Handlers.Register.data.GenerateUserFolders").Write(w)
 	}

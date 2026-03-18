@@ -18,26 +18,26 @@ const (
 )
 
 type User struct {
-	Name     string `json:"user"`
-	Password string `json:"pass"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
-func NewUser(name string, password string) User {
+func NewUser(username string, password string) User {
 	return User{
-		Name:     name,
+		Username: username,
 		Password: password,
 	}
 }
 
 // If user exist in database, return personal jwt token
 func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
-	if user.Name == "" {
+	if user.Username == "" {
 		return "", ErrNameIsEmpty
 	}
 
 	db_user := User{}
-	row := db.QueryRow(SELECT_USER, user.Name)
-	if err := row.Scan(&db_user.Name, &db_user.Password); err != nil {
+	row := db.QueryRow(SELECT_USER, user.Username)
+	if err := row.Scan(&db_user.Username, &db_user.Password); err != nil {
 		if err == sql.ErrNoRows {
 			return "", ErrUserNotExist
 		}
@@ -52,7 +52,7 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"name": user.Name,
+		"name": user.Username,
 		"nbf":  now.Unix(),
 		"exp":  now.Add(24 * time.Hour).Unix(),
 		"iat":  now.Unix(),
@@ -69,15 +69,15 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 
 // Crypt user password and put them to database
 func Register(user User, db *sql.DB) error {
-	if user.Name == "" {
+	if user.Username == "" {
 		return ErrNameIsEmpty
 	}
 
-	if len(user.Name) > USER_NAME_MAX_LENGTH {
+	if len(user.Username) > USER_NAME_MAX_LENGTH {
 		return ErrNameTooLong
 	}
 
-	row := db.QueryRow(SELECT_USERID, user.Name)
+	row := db.QueryRow(SELECT_USERID, user.Username)
 	if err := row.Scan(); err != sql.ErrNoRows {
 		return ErrUserAlreadyExists
 	}
@@ -88,7 +88,7 @@ func Register(user User, db *sql.DB) error {
 		return ErrInternal
 	}
 
-	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
+	if _, err = db.Exec(INSERT_USER, user.Username, string(hash)); err != nil {
 		slog.Error("failed insert user to sql", slog.Any("err", err))
 		return ErrInternal
 	}
