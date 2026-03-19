@@ -3,6 +3,7 @@ package data_test
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -86,16 +87,180 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, req *pb.Con
 	return <-errs
 }
 
-func getRPCErrorMessage(err error) string {
-	if err == nil {
-		return ""
+func errorIs(err error, target error) bool {
+	// Standard check
+	if errors.Is(err, target) {
+		return true
+	}
+
+	// GRPC error check
+
+	target_desc := ""
+	if target != nil {
+		target_desc = target.Error()
 	}
 
 	st, ok := status.FromError(err)
 	if ok {
-		return st.Message()
-	} else {
-		return err.Error()
+		return st.Message() == target_desc
+	}
+
+	return false
+}
+
+func TestCreateConnection(t *testing.T) {
+	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create data grpc client
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 25,
+		MinChunkSize: 5,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
+
+	lis, err := net.Listen("tcp", "localhost:8084")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8084", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data_client := pb.NewDataServiceClient(grpc_connection)
+
+	cases := [...]struct {
+		name         string
+		conn_req     *pb.ConnectionRequest
+		expected_err error
+	}{
+		{
+			name: "empty directory field",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrUnspecifiedDir,
+		},
+		{
+			name: "going beyond directory",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/../test/",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrBadDirSyntax,
+		},
+		{
+			name: "directory start is not root",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "test/test1/",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrBadDirSyntax,
+		},
+		{
+			name: "filename bad syntax",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "123!/xyt$::..txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrBadFilenameSyntax,
+		},
+		{
+			name: "invalid file type",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType(-10),
+				Size:      5,
+			},
+			expected_err: data.ErrUnexpectedFileType,
+		},
+		{
+			name: "read unavailable file request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "unavailable_file.docx",
+				Filetype:  pb.FileType_File,
+			},
+			expected_err: data.ErrFileNotExist,
+		},
+		{
+			name: "normal save request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+		},
+		{
+			//! After - normal save request. Do not use t.Parallel()
+
+			name: "normal read request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+				Filetype:  pb.FileType_File,
+			},
+		},
+		{
+			//! After - normal save request. Do not use t.Parallel()
+
+			name: "rewrite file request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := data_client.CreateConnection(t.Context(), test.conn_req)
+
+			if !errorIs(err, test.expected_err) {
+				t.Errorf("expected %v but got %v", test.expected_err, err)
+			}
+		})
 	}
 }
 
@@ -138,8 +303,8 @@ func TestSaveData(t *testing.T) {
 			},
 		})
 
-		if m := getRPCErrorMessage(err); m != data.ErrConnectionNotFound.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrConnectionNotFound.Error(), m)
+		if !errorIs(err, data.ErrConnectionNotFound) {
+			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
 
@@ -230,14 +395,14 @@ func TestSaveData(t *testing.T) {
 			err = saveFile(t.Context(), data_client, test.conn_info, strings.NewReader(test.save_data))
 
 			if test.expected_err != nil {
-				if m := getRPCErrorMessage(err); m != test.expected_err.Error() {
-					t.Errorf("expected error %v, but got %s", test.expected_err, m)
+				if !errors.Is(err, test.expected_err) {
+					t.Errorf("expected error %v, but got %v", test.expected_err, err)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Fatalf("expected nil error, but got %s", getRPCErrorMessage(err))
+				t.Fatalf("expected nil error, but got %V", err)
 			}
 
 			// Check file type only
@@ -311,8 +476,8 @@ func TestGetData(t *testing.T) {
 			ChunkId: 0,
 		})
 
-		if m := getRPCErrorMessage(err); m != data.ErrConnectionNotFound.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrConnectionNotFound.Error(), m)
+		if !errors.Is(err, data.ErrConnectionNotFound) {
+			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
 
@@ -551,165 +716,3 @@ func TestGetSum(t *testing.T) {
 		})
 	}
 }
-
-// func TestCreateConnection(t *testing.T) {
-// 	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	// Create data grpc client
-// 	grpc_server := grpc.NewServer()
-// 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
-// 		MaxChunkSize: 25,
-// 		MinChunkSize: 5,
-// 		AvailableRAM: 1024,
-// 	})))
-
-// 	lis, err := net.Listen("tcp", "localhost:8084")
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	go func() {
-// 		if err := grpc_server.Serve(lis); err != nil {
-// 			panic(err)
-// 		}
-// 	}()
-
-// 	grpc_connection, err := grpc.NewClient("localhost:8084", grpc.WithTransportCredentials(insecure.NewCredentials()))
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	data_client := pb.NewDataServiceClient(grpc_connection)
-
-// 	cases := [...]struct {
-// 		name         string
-// 		data_info    *pb.DataInfo
-// 		expected_err error
-// 		conn_check bool
-// 	}{
-// 		{
-// 			name: "empty directory field",
-// 			data_info: &pb.DataInfo{
-// 				Username:  TEST_USER,
-// 				Directory: "",
-// 				Filename:  "123.txt",
-// 				Filetype:  pb.FileType_File,
-// 				Size:      5,
-// 			},
-// 			expected_err: data.ErrUnspecifiedDir,
-// 		},
-// 		{
-// 			name: "going beyond directory",
-// 			data_info: &pb.DataInfo{
-// 				Username:  TEST_USER,
-// 				Directory: "/../test/",
-// 				Filename:  "123.txt",
-// 				Filetype:  pb.FileType_File,
-// 				Size:      5,
-// 			},
-// 			expected_err: data.ErrBadDirSyntax,
-// 		},
-// 		{
-// 			name: "directory start is not root",
-// 			data_info: &pb.DataInfo{
-// 				Username:  TEST_USER,
-// 				Directory: "test/test1/",
-// 				Filename:  "123.txt",
-// 				Filetype:  pb.FileType_File,
-// 				Size:      5,
-// 			},
-// 			expected_err: data.ErrBadDirSyntax,
-// 		},
-// 		{
-// 			name: "empty filename",
-// 			data_info: &pb.DataInfo{
-// 				Username:  TEST_USER,
-// 				Directory: "/",
-// 				Filename:  "",
-// 				Filetype:  pb.FileType_File,
-// 				Size:      5,
-// 			},
-// 			expected_err: data.ErrEmptyFilename,
-// 		},
-// 		{
-// 			name: "filename bad syntax",
-// 			data_info: &pb.DataInfo{
-// 				Username:  TEST_USER,
-// 				Directory: "/",
-// 				Filename:  "123!/xyt$::..txt",
-// 				Filetype:  pb.FileType_File,
-// 				Size:      5,
-// 			},
-// 			expected_err: nil, // Todo: add error
-// 		},
-// 		{
-// 			name: "invalid file type",
-// 			data_info: &pb.DataInfo{
-// 				Username:  TEST_USER,
-// 				Directory: "/",
-// 				Filename:  "123.txt",
-// 				Filetype:  pb.FileType(-10),
-// 				Size:      5,
-// 			},
-// 			expected_err: data.ErrUnexpectedFileType,
-// 		},
-// 		{
-// 			name:         "empty data info",
-// 			data_info:    nil,
-// 			expected_err: data.ErrInternal,
-// 		},
-// 		{
-// 			name: "read unavailable file connection",
-// 			data_info: &pb.DataInfo{
-// 				Username: TEST_USER,
-// 				Directory: "/",
-// 				Filename: "unavailable_file.docx",
-// 				Filetype: pb.FileType_File,
-// 				Size: 0, // To read
-// 			},
-// 			expected_err: data.ErrFileNotExist,
-// 			conn_check: true,
-// 		},
-// 		{
-// 			name: "normal save connection",
-// 			data_info: &pb.DataInfo{
-// 				Username:  TEST_USER,
-// 				Directory: "/",
-// 				Filename:  "test_conn_save.txt",
-// 				Filetype:  pb.FileType_File,
-// 				Size:      5,
-// 			},
-// 			conn_check: true,
-// 		},
-// 		{
-// 			name: "normal read connection",
-// 			data_info: &pb.DataInfo{
-// 				Username: TEST_USER,
-// 				Directory: "/",
-// 				Filename: "test_conn_read.txt",
-// 				Filetype: pb.FileType_File,
-// 				Size: 0, // To read
-// 			},
-// 			conn_check: true,
-// 		},
-// 		{
-// 			name: "rewrite file connection",
-// 			data_info: &pb.DataInfo{
-// 				Username: TEST_USER,
-// 				Directory: "/",
-// 				Filename: "test_conn_save.txt",
-// 				Filetype: pb.FileType_File,
-// 				Size: 5,
-// 			},
-// 			conn_check: true,
-// 		},
-// 	}
-
-// 	for _, test := range cases {
-// 		t.Run(test.name, func(t *testing.T) {
-// 			conn, err :=
-// 		})
-// 	}
-// }
