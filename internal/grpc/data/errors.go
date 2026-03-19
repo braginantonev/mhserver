@@ -16,6 +16,7 @@ var (
 	// CreateConnection errors
 	ErrEmptyFilename      error = errors.New("file name is empty")
 	ErrUnexpectedFileType error = errors.New("unexpected file type")
+	ErrNullSizeToSave     error = errors.New("null size to save")
 	ErrNotEnoughDiskSpace error = errors.New("not enough disk space")
 
 	// GetData errors

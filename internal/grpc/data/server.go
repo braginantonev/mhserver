@@ -38,22 +38,27 @@ func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataS
 	}
 }
 
-func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (string, error) {
+func (s *DataServer) getDataPath(user, req_dir string, data_type pb.FileType) (string, error) {
 	filetype, ok := catalogs[data_type]
 	if !ok {
 		return "", ErrUnexpectedFileType
 	}
 
-	if dir == "" {
+	if req_dir == "" {
 		return "", ErrUnspecifiedDir
 	}
 
-	if dir[0] != '/' || strings.Contains(dir, "..") {
+	if req_dir[0] != '/' || strings.Contains(req_dir, "..") {
 		return "", ErrBadDirSyntax
 	}
 
+	dir := fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, req_dir)
+	if _, err := os.Stat(dir); err != nil {
+		return "", ErrDirNotFound
+	}
+
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	return fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, dir), nil
+	return dir, nil
 }
 
 func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionRequest) (*pb.Connection, error) {
@@ -70,46 +75,46 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 
 	file_path += req.Filename
 
-	r_stat, err := os.Stat(file_path)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		slog.ErrorContext(ctx, "failed get stat from file", slog.Any("err", err))
-		return nil, ErrInternal
-	}
+	var file_size uint64
+	var file *os.File
 
-	file_size := req.Size
-
-	if r_stat != nil {
-		// File exist, but user want update him
-		if req.Size != 0 {
-			disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
-				return nil, ErrInternal
-			}
-
-			if disk_space-s.activeFiles.ExpectedSavedSpace() < req.Size {
-				return nil, ErrNotEnoughDiskSpace
-			}
-
-			err = os.Remove(file_path)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed remove existed file on save connection", slog.Any("err", err))
-				return nil, ErrInternal
-			}
-		} else {
-			file_size = uint64(r_stat.Size())
-		}
-	}
-
-	// Open file to read. If file not exist -> we use info in request
-	file, err := os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, ErrDirNotFound
+	switch req.Mode {
+	case pb.ConnectionMode_RDONLY:
+		file, err = os.OpenFile(file_path, os.O_RDONLY, 0660)
+		if err != nil {
+			return nil, ErrFileNotExist
 		}
 
-		slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
-		return nil, ErrInternal
+		file_stat, err := file.Stat()
+		if err != nil {
+			slog.ErrorContext(ctx, "failed get file stat", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		file_size = uint64(file_stat.Size())
+
+	case pb.ConnectionMode_RDWR:
+		if req.Size == 0 {
+			return nil, ErrNullSizeToSave
+		}
+
+		disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		if disk_space-s.activeFiles.ExpectedSavedSpace() < req.Size {
+			return nil, ErrNotEnoughDiskSpace
+		}
+
+		file, err = os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		file_size = req.Size
 	}
 
 	var chunk_size uint64
@@ -126,7 +131,6 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 	}
 
 	chunks_count := int(math.Ceil(float64(file_size) / float64(chunk_size)))
-
 	uuid := s.activeFiles.Push(fileuuidmap.NewFile(file, file_path, fileuuidmap.NewChunksInfo(chunk_size, chunks_count)))
 
 	return &pb.Connection{
