@@ -56,19 +56,19 @@ func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (strin
 	return fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, dir), nil
 }
 
-func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*pb.Connection, error) {
+func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionRequest) (*pb.Connection, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	file_path, err := s.getDataPath(info.Username, info.Directory, info.Filetype)
+	file_path, err := s.getDataPath(req.Username, req.Directory, req.Filetype)
 	if err != nil {
 		return nil, err
 	}
 
-	file_path += info.Filename
+	file_path += req.Filename
 
 	r_stat, err := os.Stat(file_path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -76,18 +76,18 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 		return nil, ErrInternal
 	}
 
-	file_size := info.Size
+	file_size := req.Size
 
 	if r_stat != nil {
 		// File exist, but user want update him
-		if info.Size != 0 {
+		if req.Size != 0 {
 			disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
 			if err != nil {
 				slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
 				return nil, ErrInternal
 			}
 
-			if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
+			if disk_space-s.activeFiles.ExpectedSavedSpace() < req.Size {
 				return nil, ErrNotEnoughDiskSpace
 			}
 

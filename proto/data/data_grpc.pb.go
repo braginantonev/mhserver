@@ -34,7 +34,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DataServiceClient interface {
-	CreateConnection(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*Connection, error)
+	CreateConnection(ctx context.Context, in *ConnectionRequest, opts ...grpc.CallOption) (*Connection, error)
 	SaveData(ctx context.Context, in *SaveChunk, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetData(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*FilePart, error)
 	GetSum(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*SHASum, error)
@@ -52,7 +52,7 @@ func NewDataServiceClient(cc grpc.ClientConnInterface) DataServiceClient {
 	return &dataServiceClient{cc}
 }
 
-func (c *dataServiceClient) CreateConnection(ctx context.Context, in *DataInfo, opts ...grpc.CallOption) (*Connection, error) {
+func (c *dataServiceClient) CreateConnection(ctx context.Context, in *ConnectionRequest, opts ...grpc.CallOption) (*Connection, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Connection)
 	err := c.cc.Invoke(ctx, DataService_CreateConnection_FullMethodName, in, out, cOpts...)
@@ -136,7 +136,7 @@ func (c *dataServiceClient) RemoveDir(ctx context.Context, in *Directory, opts .
 // All implementations must embed UnimplementedDataServiceServer
 // for forward compatibility.
 type DataServiceServer interface {
-	CreateConnection(context.Context, *DataInfo) (*Connection, error)
+	CreateConnection(context.Context, *ConnectionRequest) (*Connection, error)
 	SaveData(context.Context, *SaveChunk) (*emptypb.Empty, error)
 	GetData(context.Context, *GetChunk) (*FilePart, error)
 	GetSum(context.Context, *GetChunk) (*SHASum, error)
@@ -154,7 +154,7 @@ type DataServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedDataServiceServer struct{}
 
-func (UnimplementedDataServiceServer) CreateConnection(context.Context, *DataInfo) (*Connection, error) {
+func (UnimplementedDataServiceServer) CreateConnection(context.Context, *ConnectionRequest) (*Connection, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateConnection not implemented")
 }
 func (UnimplementedDataServiceServer) SaveData(context.Context, *SaveChunk) (*emptypb.Empty, error) {
@@ -200,7 +200,7 @@ func RegisterDataServiceServer(s grpc.ServiceRegistrar, srv DataServiceServer) {
 }
 
 func _DataService_CreateConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DataInfo)
+	in := new(ConnectionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func _DataService_CreateConnection_Handler(srv interface{}, ctx context.Context,
 		FullMethod: DataService_CreateConnection_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).CreateConnection(ctx, req.(*DataInfo))
+		return srv.(DataServiceServer).CreateConnection(ctx, req.(*ConnectionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

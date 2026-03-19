@@ -10,6 +10,11 @@ enum FileType {
     Music = 2;
 }
 
+enum ConnectionMode {
+    R = 0;
+    RW = 1;
+}
+
 message FilePart {
     bytes chunk = 1;
     int64 offset = 2;
@@ -17,12 +22,14 @@ message FilePart {
 
 // * Requests
 
-message DataInfo {
+message ConnectionRequest {
     string username = 1;
-    string directory = 2;
-    string filename = 3;
-    FileType filetype = 4;
-    uint64 size = 5;
+    ConnectionMode mode = 2;
+
+    string directory = 3;
+    string filename = 4;
+    FileType filetype = 5;
+    uint64 size = 6;
 }
 
 message SaveChunk {
@@ -68,7 +75,7 @@ message Size {
 }
 
 service DataService {
-    rpc CreateConnection (DataInfo) returns (Connection);
+    rpc CreateConnection (ConnectionRequest) returns (Connection);
     rpc SaveData (SaveChunk) returns (google.protobuf.Empty);
     rpc GetData (GetChunk) returns (FilePart);
     rpc GetSum (GetChunk) returns (SHASum);

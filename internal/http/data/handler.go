@@ -33,7 +33,7 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req_info pb.DataInfo
+	var req_info pb.ConnectionRequest
 	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.CreateConnection"); err != nil {
 		err.Write(w)
 		return
