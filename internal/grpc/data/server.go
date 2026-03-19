@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"regexp"
 	"strings"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
@@ -17,6 +18,10 @@ import (
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+var (
+	filenameRegex = regexp.MustCompile(`^[.]?[\p{L} _\-\p{N}]+([.]\w+)+$`)
 )
 
 type DataServer struct {
@@ -73,6 +78,10 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 		return nil, err
 	}
 
+	if !filenameRegex.MatchString(req.Filename) {
+		return nil, ErrBadFilenameSyntax
+	}
+
 	file_path += req.Filename
 
 	var file_size uint64
@@ -82,7 +91,12 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 	case pb.ConnectionMode_RDONLY:
 		file, err = os.OpenFile(file_path, os.O_RDONLY, 0660)
 		if err != nil {
-			return nil, ErrFileNotExist
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrFileNotExist
+			}
+
+			slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
+			return nil, ErrInternal
 		}
 
 		file_stat, err := file.Stat()
@@ -110,7 +124,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 
 		file, err = os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
 		if err != nil {
-			slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
+			slog.ErrorContext(ctx, "failed open file to save", slog.Any("err", err))
 			return nil, ErrInternal
 		}
 
