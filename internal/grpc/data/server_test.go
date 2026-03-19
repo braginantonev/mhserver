@@ -395,7 +395,7 @@ func TestSaveData(t *testing.T) {
 			err = saveFile(t.Context(), data_client, test.conn_info, strings.NewReader(test.save_data))
 
 			if test.expected_err != nil {
-				if !errors.Is(err, test.expected_err) {
+				if !errorIs(err, test.expected_err) {
 					t.Errorf("expected error %v, but got %v", test.expected_err, err)
 				}
 				return
@@ -476,7 +476,7 @@ func TestGetData(t *testing.T) {
 			ChunkId: 0,
 		})
 
-		if !errors.Is(err, data.ErrConnectionNotFound) {
+		if !errorIs(err, data.ErrConnectionNotFound) {
 			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
