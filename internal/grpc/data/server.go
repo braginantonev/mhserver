@@ -144,7 +144,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 	}
 
 	chunks_count := int(math.Ceil(float64(file_size) / float64(chunk_size)))
-	uuid := s.activeConnections.Push(NewConnection(NewFile(file, file_path, NewChunksInfo(chunk_size, chunks_count))))
+	uuid := s.activeConnections.Push(NewConnection(NewFile(file, file_path, NewChunksInfo(chunk_size, chunks_count)), req.Mode))
 
 	return &pb.Connection{
 		UUID:        uuid.String(),
@@ -206,6 +206,10 @@ func (s *DataServer) SaveData(ctx context.Context, chunk *pb.SaveChunk) (*emptyp
 	conn, ok := s.activeConnections.Get(uuid)
 	if !ok {
 		return nil, ErrConnectionNotFound
+	}
+
+	if conn.mode != pb.ConnectionMode_RDWR {
+		return nil, ErrUnexpectedFileChange
 	}
 
 	file := conn.GetFile()

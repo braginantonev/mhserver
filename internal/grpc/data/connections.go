@@ -66,9 +66,10 @@ type Connection struct {
 	expiration int64
 }
 
-func NewConnection(file File) *Connection {
+func NewConnection(file File, mode pb.ConnectionMode) *Connection {
 	return &Connection{
 		file:       file,
+		mode:       mode,
 		expiration: time.Now().Add(FILE_LIFETIME).Unix(),
 	}
 }
