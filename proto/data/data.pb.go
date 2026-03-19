@@ -74,19 +74,19 @@ func (FileType) EnumDescriptor() ([]byte, []int) {
 type ConnectionMode int32
 
 const (
-	ConnectionMode_R  ConnectionMode = 0
-	ConnectionMode_RW ConnectionMode = 1
+	ConnectionMode_RDONLY ConnectionMode = 0
+	ConnectionMode_RDWR   ConnectionMode = 1
 )
 
 // Enum value maps for ConnectionMode.
 var (
 	ConnectionMode_name = map[int32]string{
-		0: "R",
-		1: "RW",
+		0: "RDONLY",
+		1: "RDWR",
 	}
 	ConnectionMode_value = map[string]int32{
-		"R":  0,
-		"RW": 1,
+		"RDONLY": 0,
+		"RDWR":   1,
 	}
 )
 
@@ -222,7 +222,7 @@ func (x *ConnectionRequest) GetMode() ConnectionMode {
 	if x != nil {
 		return x.Mode
 	}
-	return ConnectionMode_R
+	return ConnectionMode_RDONLY
 }
 
 func (x *ConnectionRequest) GetDirectory() string {
@@ -712,10 +712,11 @@ const file_data_data_proto_rawDesc = "" +
 	"\bFileType\x12\b\n" +
 	"\x04File\x10\x00\x12\t\n" +
 	"\x05Image\x10\x01\x12\t\n" +
-	"\x05Music\x10\x02*\x1f\n" +
-	"\x0eConnectionMode\x12\x05\n" +
-	"\x01R\x10\x00\x12\x06\n" +
-	"\x02RW\x10\x012\xa4\x03\n" +
+	"\x05Music\x10\x02*&\n" +
+	"\x0eConnectionMode\x12\n" +
+	"\n" +
+	"\x06RDONLY\x10\x00\x12\b\n" +
+	"\x04RDWR\x10\x012\xa4\x03\n" +
 	"\vDataService\x12=\n" +
 	"\x10CreateConnection\x12\x17.data.ConnectionRequest\x1a\x10.data.Connection\x123\n" +
 	"\bSaveData\x12\x0f.data.SaveChunk\x1a\x16.google.protobuf.Empty\x12)\n" +

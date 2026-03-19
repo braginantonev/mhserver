@@ -11,8 +11,8 @@ enum FileType {
 }
 
 enum ConnectionMode {
-    R = 0;
-    RW = 1;
+    RDONLY = 0;
+    RDWR = 1;
 }
 
 message FilePart {
