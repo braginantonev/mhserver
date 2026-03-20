@@ -170,12 +170,12 @@ func (s *DataServer) GetData(ctx context.Context, chunk *pb.GetChunk) (*pb.FileP
 		return nil, ErrConnectionNotFound
 	}
 
-	file := conn.GetFile()
+	file_info := conn.GetFile().GetChunksInfo()
 
-	offset := int64(file.GetChunksInfo().ChunkSize) * int64(chunk.ChunkId)
+	offset := int64(file_info.ChunkSize) * int64(chunk.ChunkId)
 
-	read_data := make([]byte, file.GetChunksInfo().ChunkSize)
-	n, err := file.ReadAt(read_data, offset)
+	read_data := make([]byte, file_info.ChunkSize)
+	n, err := conn.file.ReadAt(read_data, offset)
 	if err != nil && err != io.EOF {
 		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
 		return nil, ErrInternal
@@ -249,10 +249,11 @@ func (s *DataServer) GetSum(ctx context.Context, chunk *pb.GetChunk) (*pb.SHASum
 	if !ok {
 		return nil, ErrConnectionNotFound
 	}
-	file := conn.GetFile()
 
-	body := make([]byte, file.GetChunksInfo().ChunkSize)
-	n, err := file.ReadAt(body, int64(file.GetChunksInfo().ChunkSize)*int64(chunk.ChunkId))
+	file_info := conn.GetFile().GetChunksInfo()
+
+	body := make([]byte, file_info.ChunkSize)
+	n, err := conn.file.ReadAt(body, int64(file_info.ChunkSize)*int64(chunk.ChunkId))
 	if err != nil && err != io.EOF {
 		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
 		return nil, ErrInternal
