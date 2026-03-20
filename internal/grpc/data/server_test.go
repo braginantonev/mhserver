@@ -216,6 +216,18 @@ func TestCreateConnection(t *testing.T) {
 			expected_err: data.ErrFileNotExist,
 		},
 		{
+			name: "save to uncreated directory request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/uncreated_dir/",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrDirNotFound,
+		},
+		{
 			name: "normal save request",
 			conn_req: &pb.ConnectionRequest{
 				Username:  TEST_USER,

@@ -56,12 +56,8 @@ func (s *DataServer) getDataPath(user, req_dir string, data_type pb.FileType) (s
 		return "", ErrBadDirSyntax
 	}
 
+	// "%s%s/%s%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + directory
 	dir := fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, req_dir)
-	if _, err := os.Stat(dir); err != nil {
-		return "", ErrDirNotFound
-	}
-
-	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
 	return dir, nil
 }
 
@@ -123,6 +119,10 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 
 		file, err = os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrDirNotFound
+			}
+
 			slog.ErrorContext(ctx, "failed open file to save", slog.Any("err", err))
 			return nil, ErrInternal
 		}
