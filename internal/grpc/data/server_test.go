@@ -3,6 +3,7 @@ package data_test
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -43,13 +44,13 @@ func createWorkspaceFolders(workspace_path, username string) error {
 }
 
 // Client simulation
-func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *pb.DataInfo, reader io.Reader) error {
-	conn, err := data_client.CreateConnection(ctx, data_info)
+func saveFile(ctx context.Context, data_client pb.DataServiceClient, req *pb.ConnectionRequest, reader io.Reader) error {
+	conn, err := data_client.CreateConnection(ctx, req)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("save file (%s) with size %d; chunk size = %d, count = %d", data_info.Filename, data_info.Size, conn.ChunkSize, conn.ChunksCount)
+	log.Printf("save file (%s) with size %d; chunk size = %d, count = %d", req.Filename, req.Size, conn.ChunkSize, conn.ChunksCount)
 
 	wg := sync.WaitGroup{}
 	errs := make(chan error, 1)
@@ -86,16 +87,180 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *
 	return <-errs
 }
 
-func getRPCErrorMessage(err error) string {
-	if err == nil {
-		return ""
+func errorIs(err error, target error) bool {
+	// Standard check
+	if errors.Is(err, target) {
+		return true
+	}
+
+	// GRPC error check
+
+	target_desc := ""
+	if target != nil {
+		target_desc = target.Error()
 	}
 
 	st, ok := status.FromError(err)
 	if ok {
-		return st.Message()
-	} else {
-		return err.Error()
+		return st.Message() == target_desc
+	}
+
+	return false
+}
+
+func TestCreateConnection(t *testing.T) {
+	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create data grpc client
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 25,
+		MinChunkSize: 5,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
+
+	lis, err := net.Listen("tcp", "localhost:8084")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8084", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data_client := pb.NewDataServiceClient(grpc_connection)
+
+	cases := [...]struct {
+		name         string
+		conn_req     *pb.ConnectionRequest
+		expected_err error
+	}{
+		{
+			name: "empty directory field",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrUnspecifiedDir,
+		},
+		{
+			name: "going beyond directory",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/../test/",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrBadDirSyntax,
+		},
+		{
+			name: "directory start is not root",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "test/test1/",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrBadDirSyntax,
+		},
+		{
+			name: "filename bad syntax",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "123!/xyt$::..txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+			expected_err: data.ErrBadFilenameSyntax,
+		},
+		{
+			name: "invalid file type",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "123.txt",
+				Filetype:  pb.FileType(-10),
+				Size:      5,
+			},
+			expected_err: data.ErrUnexpectedFileType,
+		},
+		{
+			name: "read unavailable file request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "unavailable_file.docx",
+				Filetype:  pb.FileType_File,
+			},
+			expected_err: data.ErrFileNotExist,
+		},
+		{
+			name: "normal save request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+		},
+		{
+			//! After - normal save request. Do not use t.Parallel()
+
+			name: "normal read request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+				Filetype:  pb.FileType_File,
+			},
+		},
+		{
+			//! After - normal save request. Do not use t.Parallel()
+
+			name: "rewrite file request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+				Filetype:  pb.FileType_File,
+				Size:      5,
+			},
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := data_client.CreateConnection(t.Context(), test.conn_req)
+
+			if !errorIs(err, test.expected_err) {
+				t.Errorf("expected %v but got %v", test.expected_err, err)
+			}
+		})
 	}
 }
 
@@ -138,8 +303,8 @@ func TestSaveData(t *testing.T) {
 			},
 		})
 
-		if m := getRPCErrorMessage(err); m != data.ErrConnectionNotFound.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrConnectionNotFound.Error(), m)
+		if !errorIs(err, data.ErrConnectionNotFound) {
+			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
 
@@ -154,14 +319,15 @@ func TestSaveData(t *testing.T) {
 
 	cases := [...]struct {
 		name         string
-		conn_info    *pb.DataInfo
+		conn_info    *pb.ConnectionRequest
 		save_data    string
 		expected_err error
 	}{
 		{
 			name: "save in root dir",
-			conn_info: &pb.DataInfo{
+			conn_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
 				Directory: "/",
 				Filename:  "save_data_single.txt",
 				Filetype:  pb.FileType_File,
@@ -172,8 +338,9 @@ func TestSaveData(t *testing.T) {
 		},
 		{
 			name: "save in test dir",
-			conn_info: &pb.DataInfo{
+			conn_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
 				Directory: test_dir,
 				Filename:  "save_data_test_dir.txt",
 				Filetype:  pb.FileType_File,
@@ -184,8 +351,9 @@ func TestSaveData(t *testing.T) {
 		},
 		{
 			name: "save in uncreated dir",
-			conn_info: &pb.DataInfo{
+			conn_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
 				Directory: "/stay/",
 				Filename:  "cool.txt",
 				Filetype:  pb.FileType_File,
@@ -196,8 +364,9 @@ func TestSaveData(t *testing.T) {
 		},
 		{
 			name: "save big file",
-			conn_info: &pb.DataInfo{
+			conn_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
 				Directory: "/",
 				Filename:  "save_data_big.txt",
 				Filetype:  pb.FileType_File,
@@ -208,8 +377,9 @@ func TestSaveData(t *testing.T) {
 		},
 		{
 			name: "save more than accepted",
-			conn_info: &pb.DataInfo{
+			conn_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
 				Directory: "/",
 				Filename:  "save_data_incorrect_chunk.txt",
 				Filetype:  pb.FileType_File,
@@ -225,14 +395,14 @@ func TestSaveData(t *testing.T) {
 			err = saveFile(t.Context(), data_client, test.conn_info, strings.NewReader(test.save_data))
 
 			if test.expected_err != nil {
-				if m := getRPCErrorMessage(err); m != test.expected_err.Error() {
-					t.Errorf("expected error %v, but got %s", test.expected_err, m)
+				if !errorIs(err, test.expected_err) {
+					t.Errorf("expected error %v, but got %v", test.expected_err, err)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Fatalf("expected nil error, but got %s", getRPCErrorMessage(err))
+				t.Fatalf("expected nil error, but got %V", err)
 			}
 
 			// Check file type only
@@ -306,14 +476,15 @@ func TestGetData(t *testing.T) {
 			ChunkId: 0,
 		})
 
-		if m := getRPCErrorMessage(err); m != data.ErrConnectionNotFound.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrConnectionNotFound.Error(), m)
+		if !errorIs(err, data.ErrConnectionNotFound) {
+			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
 
 	t.Run("normal get", func(t *testing.T) {
-		conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
+		conn, err := data_client.CreateConnection(t.Context(), &pb.ConnectionRequest{
 			Username:  TEST_USER,
+			Mode:      pb.ConnectionMode_RDONLY,
 			Directory: "/",
 			Filename:  test_file_name,
 			Filetype:  pb.FileType_File,
@@ -392,14 +563,15 @@ func TestGetSum(t *testing.T) {
 
 	cases := [...]struct {
 		name           string
-		data_info      *pb.DataInfo
+		data_info      *pb.ConnectionRequest
 		gen_file_size  uint64
 		bad_sum_wanted bool
 	}{
 		{
 			name: "file 500 bytes",
-			data_info: &pb.DataInfo{
+			data_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
 				Directory: "/",
 				Filename:  "get_sum_500b.txt",
 				Filetype:  pb.FileType_File,
@@ -408,8 +580,9 @@ func TestGetSum(t *testing.T) {
 		},
 		{
 			name: "file 10 kb",
-			data_info: &pb.DataInfo{
+			data_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
 				Directory: "/",
 				Filename:  "get_sum_10kb.txt",
 				Filetype:  pb.FileType_File,
@@ -418,8 +591,9 @@ func TestGetSum(t *testing.T) {
 		},
 		{
 			name: "file 500 kb",
-			data_info: &pb.DataInfo{
+			data_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
 				Directory: "/",
 				Filename:  "get_sum_500kb.txt",
 				Filetype:  pb.FileType_File,
@@ -428,8 +602,9 @@ func TestGetSum(t *testing.T) {
 		},
 		{
 			name: "file 5 mb",
-			data_info: &pb.DataInfo{
+			data_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
 				Directory: "/",
 				Filename:  "get_sum_5mb.txt",
 				Filetype:  pb.FileType_File,
@@ -438,8 +613,9 @@ func TestGetSum(t *testing.T) {
 		},
 		{
 			name: "file 50 mb",
-			data_info: &pb.DataInfo{
+			data_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
 				Directory: "/",
 				Filename:  "get_sum_50mb.txt",
 				Filetype:  pb.FileType_File,
@@ -448,8 +624,9 @@ func TestGetSum(t *testing.T) {
 		},
 		{
 			name: "file 100mb",
-			data_info: &pb.DataInfo{
+			data_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
 				Directory: "/",
 				Filename:  "get_sum_100mb.txt",
 				Filetype:  pb.FileType_File,
@@ -458,8 +635,9 @@ func TestGetSum(t *testing.T) {
 		},
 		{
 			name: "file 500mb",
-			data_info: &pb.DataInfo{
+			data_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
 				Directory: "/",
 				Filename:  "get_sum_500mb.txt",
 				Filetype:  pb.FileType_File,
@@ -468,8 +646,9 @@ func TestGetSum(t *testing.T) {
 		},
 		{
 			name: "file 750mb",
-			data_info: &pb.DataInfo{
+			data_info: &pb.ConnectionRequest{
 				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
 				Directory: "/",
 				Filename:  "get_sum_750mb.txt",
 				Filetype:  pb.FileType_File,

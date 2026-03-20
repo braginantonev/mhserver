@@ -9,21 +9,25 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"regexp"
 	"strings"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
-	"github.com/braginantonev/mhserver/internal/repository/fileuuidmap"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+var (
+	filenameRegex = regexp.MustCompile(`^[.]?[\p{L} _\-\p{N}]+([.]\w+)+$`)
+)
+
 type DataServer struct {
 	pb.DataServiceServer
-	cfg         dataconfig.DataServiceConfig
-	activeFiles *fileuuidmap.FileUUIDMap
-	sem         chan any
+	cfg               dataconfig.DataServiceConfig
+	activeConnections *Connections
+	sem               chan any
 }
 
 func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
@@ -32,84 +36,98 @@ func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataS
 	slog.Info("Set semaphore size", "value", sem_size)
 
 	return &DataServer{
-		cfg:         cfg,
-		activeFiles: fileuuidmap.NewFileUUIDMap(ctx),
-		sem:         make(chan any, sem_size),
+		cfg:               cfg,
+		activeConnections: NewConnectionsMap(ctx),
+		sem:               make(chan any, sem_size),
 	}
 }
 
-func (s *DataServer) getDataPath(user, dir string, data_type pb.FileType) (string, error) {
+func (s *DataServer) getDataPath(user, req_dir string, data_type pb.FileType) (string, error) {
 	filetype, ok := catalogs[data_type]
 	if !ok {
 		return "", ErrUnexpectedFileType
 	}
 
-	if dir == "" {
+	if req_dir == "" {
 		return "", ErrUnspecifiedDir
 	}
 
-	if dir[0] != '/' || strings.Contains(dir, "..") {
+	if req_dir[0] != '/' || strings.Contains(req_dir, "..") {
 		return "", ErrBadDirSyntax
 	}
 
+	dir := fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, req_dir)
+	if _, err := os.Stat(dir); err != nil {
+		return "", ErrDirNotFound
+	}
+
 	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	return fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, dir), nil
+	return dir, nil
 }
 
-func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*pb.Connection, error) {
+func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionRequest) (*pb.Connection, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	file_path, err := s.getDataPath(info.Username, info.Directory, info.Filetype)
+	file_path, err := s.getDataPath(req.Username, req.Directory, req.Filetype)
 	if err != nil {
 		return nil, err
 	}
 
-	file_path += info.Filename
-
-	r_stat, err := os.Stat(file_path)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		slog.ErrorContext(ctx, "failed get stat from file", slog.Any("err", err))
-		return nil, ErrInternal
+	if !filenameRegex.MatchString(req.Filename) {
+		return nil, ErrBadFilenameSyntax
 	}
 
-	file_size := info.Size
+	file_path += req.Filename
 
-	if r_stat != nil {
-		// File exist, but user want update him
-		if info.Size != 0 {
-			disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
-				return nil, ErrInternal
+	var file_size uint64
+	var file *os.File
+
+	switch req.Mode {
+	case pb.ConnectionMode_RDONLY:
+		file, err = os.OpenFile(file_path, os.O_RDONLY, 0660)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrFileNotExist
 			}
 
-			if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
-				return nil, ErrNotEnoughDiskSpace
-			}
-
-			err = os.Remove(file_path)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed remove existed file on save connection", slog.Any("err", err))
-				return nil, ErrInternal
-			}
-		} else {
-			file_size = uint64(r_stat.Size())
-		}
-	}
-
-	// Open file to read. If file not exist -> we use info in request
-	file, err := os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, ErrDirNotFound
+			slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
+			return nil, ErrInternal
 		}
 
-		slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
-		return nil, ErrInternal
+		file_stat, err := file.Stat()
+		if err != nil {
+			slog.ErrorContext(ctx, "failed get file stat", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		file_size = uint64(file_stat.Size())
+
+	case pb.ConnectionMode_RDWR:
+		if req.Size == 0 {
+			return nil, ErrNullSizeToSave
+		}
+
+		disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		if disk_space-s.activeConnections.ExpectedSavedSpace() < req.Size {
+			return nil, ErrNotEnoughDiskSpace
+		}
+
+		file, err = os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed open file to save", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		file_size = req.Size
 	}
 
 	var chunk_size uint64
@@ -126,8 +144,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	}
 
 	chunks_count := int(math.Ceil(float64(file_size) / float64(chunk_size)))
-
-	uuid := s.activeFiles.Push(fileuuidmap.NewFile(file, file_path, fileuuidmap.NewChunksInfo(chunk_size, chunks_count)))
+	uuid := s.activeConnections.Push(NewConnection(NewFile(file, file_path, NewChunksInfo(chunk_size, chunks_count)), req.Mode))
 
 	return &pb.Connection{
 		UUID:        uuid.String(),
@@ -148,15 +165,17 @@ func (s *DataServer) GetData(ctx context.Context, chunk *pb.GetChunk) (*pb.FileP
 		return nil, ErrBadUUID
 	}
 
-	file, ok := s.activeFiles.Get(uuid)
+	conn, ok := s.activeConnections.Get(uuid)
 	if !ok {
 		return nil, ErrConnectionNotFound
 	}
 
-	offset := int64(file.GetChunkSize()) * int64(chunk.ChunkId)
+	file_info := conn.GetFile().GetChunksInfo()
 
-	read_data := make([]byte, file.GetChunkSize())
-	n, err := file.ReadAt(read_data, offset)
+	offset := int64(file_info.ChunkSize) * int64(chunk.ChunkId)
+
+	read_data := make([]byte, file_info.ChunkSize)
+	n, err := conn.file.ReadAt(read_data, offset)
 	if err != nil && err != io.EOF {
 		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
 		return nil, ErrInternal
@@ -184,16 +203,22 @@ func (s *DataServer) SaveData(ctx context.Context, chunk *pb.SaveChunk) (*emptyp
 		return nil, ErrBadUUID
 	}
 
-	file, ok := s.activeFiles.Get(uuid)
+	conn, ok := s.activeConnections.Get(uuid)
 	if !ok {
 		return nil, ErrConnectionNotFound
 	}
+
+	if conn.mode != pb.ConnectionMode_RDWR {
+		return nil, ErrUnexpectedFileChange
+	}
+
+	file := conn.GetFile()
 
 	if file.IsLoaded() {
 		return nil, ErrUnexpectedFileChange
 	}
 
-	if len(chunk.Data.Chunk) > int(file.GetChunkSize()) {
+	if len(chunk.Data.Chunk) > int(file.GetChunksInfo().ChunkSize) {
 		return nil, ErrIncorrectChunkSize
 	}
 
@@ -203,7 +228,7 @@ func (s *DataServer) SaveData(ctx context.Context, chunk *pb.SaveChunk) (*emptyp
 		return nil, ErrInternal
 	}
 
-	_ = s.activeFiles.UpdateLoadedChunks(uuid)
+	_ = s.activeConnections.UpdateLoadedFileChunks(uuid)
 
 	return nil, nil
 }
@@ -220,13 +245,15 @@ func (s *DataServer) GetSum(ctx context.Context, chunk *pb.GetChunk) (*pb.SHASum
 		return nil, ErrBadUUID
 	}
 
-	file, ok := s.activeFiles.Get(uuid)
+	conn, ok := s.activeConnections.Get(uuid)
 	if !ok {
 		return nil, ErrConnectionNotFound
 	}
 
-	body := make([]byte, file.GetChunkSize())
-	n, err := file.ReadAt(body, int64(file.GetChunkSize())*int64(chunk.ChunkId))
+	file_info := conn.GetFile().GetChunksInfo()
+
+	body := make([]byte, file_info.ChunkSize)
+	n, err := conn.file.ReadAt(body, int64(file_info.ChunkSize)*int64(chunk.ChunkId))
 	if err != nil && err != io.EOF {
 		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
 		return nil, ErrInternal

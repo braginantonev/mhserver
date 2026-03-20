@@ -140,7 +140,8 @@ func TestSaveDataHandler(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
+			conn, err := data_client.CreateConnection(t.Context(), &pb.ConnectionRequest{
+				Mode:      pb.ConnectionMode_RDWR,
 				Username:  TEST_USERNAME,
 				Directory: test.directory,
 				Filename:  test.filename,
@@ -264,7 +265,8 @@ func TestGetDataHandler(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
+			conn, err := data_client.CreateConnection(t.Context(), &pb.ConnectionRequest{
+				Mode:      pb.ConnectionMode_RDONLY,
 				Username:  TEST_USERNAME,
 				Directory: test_dir,
 				Filename:  test_file,

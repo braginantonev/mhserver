@@ -33,13 +33,19 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req_info pb.DataInfo
+	var req_info pb.ConnectionRequest
 	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.CreateConnection"); err != nil {
 		err.Write(w)
 		return
 	}
 
-	req_info.Directory = r.URL.Query().Get("dir")
+	conn_mode, ok := pb.ConnectionMode_value[r.URL.Query().Get("dir")]
+	if !ok {
+		ErrUnexpectedConnectionMode.Write(w)
+		return
+	}
+
+	req_info.Mode = pb.ConnectionMode(conn_mode)
 
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
