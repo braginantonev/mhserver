@@ -10,7 +10,6 @@ import (
 	"math"
 	"os"
 	"regexp"
-	"strings"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
@@ -20,7 +19,28 @@ import (
 )
 
 var (
-	filenameRegex = regexp.MustCompile(`^[.]?[\p{L} _\-\p{N}]+([.]\w+)+$`)
+	/* directoryRegexp check:
+	- dir start with /
+	- dir name contains only letters, numbers and underscores, whitespaces and hyphens
+	- dir name can't be started and ended with space, underscore and hyphen
+	- dir name have one letter or number
+	- dir name can have dot in start (hidden folder)
+	- dir name can't be only one dot
+	- dir end with /, if dir not root
+	*/
+	directoryRegexp = regexp.MustCompile(`^\/(\.?[\p{L}\p{N}]+([ _-]+[\p{L}\p{N}]+)*\/)*$`)
+
+	/* filenameRegexp check:
+	- filename can have dot in start (hidden file)
+	- filename can have letters, numbers and underscores, whitespaces and hyphens
+	- filename can't be empty
+	- filename can't be started and ended with space, underscore and hyphen
+	- file extension start with dot
+	- file extension can only have eng letters or numbers
+	- file can have several extensions separated by dot (.txt.bak)
+	- file can have empty extension (Makefile, Dockerfile etc)
+	*/
+	filenameRegexp = regexp.MustCompile(`^\.?[\p{L}\p{N}]+([ _-]+[\p{L}\p{N}]+)*(\.[a-zA-Z0-9]+)*$`)
 )
 
 type DataServer struct {
@@ -48,17 +68,12 @@ func (s *DataServer) getDataPath(user, req_dir string, data_type pb.FileType) (s
 		return "", ErrUnexpectedFileType
 	}
 
-	if req_dir == "" {
-		return "", ErrUnspecifiedDir
-	}
-
-	if req_dir[0] != '/' || strings.Contains(req_dir, "..") {
+	if !directoryRegexp.MatchString(req_dir) {
 		return "", ErrBadDirSyntax
 	}
 
 	// "%s%s/%s%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + directory
-	dir := fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, req_dir)
-	return dir, nil
+	return fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, req_dir), nil
 }
 
 func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionRequest) (*pb.Connection, error) {
@@ -73,7 +88,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 		return nil, err
 	}
 
-	if !filenameRegex.MatchString(req.Filename) {
+	if !filenameRegexp.MatchString(req.Filename) {
 		return nil, ErrBadFilenameSyntax
 	}
 

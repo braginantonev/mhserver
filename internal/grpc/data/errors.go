@@ -15,7 +15,6 @@ var (
 
 	// Directory errors
 	ErrDirNotFound     error = errors.New("directory not found")
-	ErrUnspecifiedDir  error = errors.New("target directory is not specified")
 	ErrDirAlreadyExist error = errors.New("directory already exist")
 	ErrBadDirSyntax    error = errors.New("directory have bad syntax")
 

@@ -154,7 +154,7 @@ func TestCreateConnection(t *testing.T) {
 				Filetype:  pb.FileType_File,
 				Size:      5,
 			},
-			expected_err: data.ErrUnspecifiedDir,
+			expected_err: data.ErrBadDirSyntax,
 		},
 		{
 			name: "going beyond directory",
