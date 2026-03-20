@@ -124,7 +124,18 @@ paths:
   /files/connect:
     post:
       parameters:
-        - $ref: "#/components/parameters/Directory"
+        - name: mode
+          in: query
+          required: true
+          description: |
+            Тип подключения. 
+            `RDWR` - подключение для создания, редактирования и чтения файлов. При использовании - обязательно указывать размер файла в теле запроса.
+            `RDONLY` - подключение только для чтения фаилов. При использовании - указывать размер файла не обязательно.
+          schema:
+            type: string
+            enum:
+             - RDWR
+             - RDONLY
 
       security:
         - BearerAuth: []
@@ -138,7 +149,7 @@ paths:
         Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.
 
         Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла)
-      
+
       requestBody:
         required: true
         content:
@@ -633,11 +644,17 @@ components:
     ConnectionRequest:
       type: object
       required:
+        - directory
         - filename
       
       properties:
+        directory:
+          type: string
+          example: "/test/"
+
         filename:
           type: string
+          pattern: ^[.]?[\p{L} _\-\p{N}]+([.]\w+)+$
           example: "pentagon secrets.docx"
         
         size:
