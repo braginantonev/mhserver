@@ -114,6 +114,7 @@ func TestSaveDataHandler(t *testing.T) {
 		directory string
 		filename  string
 		save_body []byte
+		body_len  uint64
 	}{
 		{
 			TestCase: TestCase{
@@ -125,6 +126,7 @@ func TestSaveDataHandler(t *testing.T) {
 			},
 			directory: "/",
 			filename:  "sht normal save.txt",
+			body_len:  5,
 		},
 		{
 			TestCase: TestCase{
@@ -135,6 +137,7 @@ func TestSaveDataHandler(t *testing.T) {
 			directory: "/",
 			filename:  "sht normal save.txt",
 			save_body: []byte(TEST_FILE_BODY),
+			body_len:  uint64(len(TEST_FILE_BODY)),
 		},
 	}
 
@@ -146,7 +149,7 @@ func TestSaveDataHandler(t *testing.T) {
 				Directory: test.directory,
 				Filename:  test.filename,
 				Filetype:  pb.FileType_File,
-				Size:      uint64(len(test.save_body)),
+				Size:      test.body_len,
 			})
 			if err != nil {
 				t.Fatalf("failed create connection; err: %v", err)
