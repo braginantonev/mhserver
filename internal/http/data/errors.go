@@ -20,8 +20,9 @@ var (
 	}
 
 	// Handler errors
-	ErrWrongContextUsername = httperror.NewInternalHttpError("context username from jwt is not string", "")
-	ErrBadUuidFormat        = httperror.NewExternalHttpError("bad uuid format", http.StatusBadRequest)
+	ErrWrongContextUsername     = httperror.NewInternalHttpError("context username from jwt is not string", "")
+	ErrBadUuidFormat            = httperror.NewExternalHttpError("bad uuid format", http.StatusBadRequest)
+	ErrUnexpectedConnectionMode = httperror.NewExternalHttpError("unexpected connection mode", http.StatusBadRequest)
 
 	// Data info errors
 	ErrNullFileSize = httperror.NewExternalHttpError("file size is null", http.StatusBadRequest)
