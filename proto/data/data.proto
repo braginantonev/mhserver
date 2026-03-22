@@ -4,12 +4,6 @@ option go_package = "github.com/braginantonev/mhserver/proto/data";
 
 import "google/protobuf/empty.proto";
 
-enum FileType {
-    File = 0;
-    Image = 1;
-    Music = 2;
-}
-
 enum ConnectionMode {
     RDONLY = 0;
     RDWR = 1;
@@ -28,7 +22,6 @@ message ConnectionRequest {
 
     string directory = 3;
     string filename = 4;
-    FileType filetype = 5;
     uint64 size = 6;
 }
 
