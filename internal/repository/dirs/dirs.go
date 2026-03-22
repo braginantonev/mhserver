@@ -3,6 +3,7 @@ package dirs
 import (
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 )
 
@@ -29,4 +30,14 @@ func GetDataPath(workspace_path, user, service, req_dir string) (string, error) 
 
 	// "%s%s/%s%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + directory
 	return fmt.Sprintf("%s%s/%s%s", workspace_path, user, service, req_dir), nil
+}
+
+func GenerateUserFolders(workspace_path, user string, folders ...string) error {
+	for _, folder := range folders {
+		err := os.MkdirAll(fmt.Sprintf("%s%s/%s", workspace_path, user, folder), 0660)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
-	"github.com/braginantonev/mhserver/internal/grpc/data"
+	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 )
@@ -51,7 +51,7 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Name, handler.cfg.UserCatalogs...)
+	err := dirs.GenerateUserFolders(handler.cfg.WorkspacePath, user.Name, handler.cfg.UserCatalogs...)
 	if err != nil {
 		ErrInternal.Append(err).WithFuncName("Handlers.Register.data.GenerateUserFolders").Write(w)
 	}
