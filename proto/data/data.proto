@@ -22,7 +22,7 @@ message ConnectionRequest {
 
     string directory = 3;
     string filename = 4;
-    uint64 size = 6;
+    uint64 size = 5;
 }
 
 message SaveChunk {
