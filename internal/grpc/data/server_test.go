@@ -302,7 +302,7 @@ func TestSaveData(t *testing.T) {
 
 	// To test: "save in test dir"
 	test_dir := "/test_dir/"
-	if err = os.MkdirAll(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test_dir), 0700); err != nil {
+	if err = os.MkdirAll(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test_dir), 0660); err != nil {
 		t.Fatal(err)
 	}
 
@@ -333,6 +333,7 @@ func TestSaveData(t *testing.T) {
 				Username:  TEST_USER,
 				Mode:      pb.ConnectionMode_RDWR,
 				Directory: test_dir,
+				Filename:  "test.txt",
 				Size:      small_test_file_len,
 			},
 			save_data:    small_test_file,
@@ -388,7 +389,7 @@ func TestSaveData(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Fatalf("expected nil error, but got %V", err)
+				t.Fatalf("expected nil error, but got %v", err)
 			}
 
 			// Check file type only
