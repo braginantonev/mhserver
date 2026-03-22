@@ -58,7 +58,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 
 	s.sem <- struct{}{}
 
-	file_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, req.Username, "files", req.Directory)
+	file_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, req.Username, req.Directory, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +284,7 @@ func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.Files
 
 	s.sem <- struct{}{}
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", dir.Value)
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 
 	s.sem <- struct{}{}
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", dir.Value)
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +347,7 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 
 	s.sem <- struct{}{}
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", dir.Value)
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}

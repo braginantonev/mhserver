@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+
+	"github.com/braginantonev/mhserver/internal/config"
 )
 
 var (
@@ -23,7 +25,7 @@ directoryRegexp check:
 */
 var directoryRegexp = regexp.MustCompile(`^\/(\.?[\p{L}\p{N}]+([ _-]+[\p{L}\p{N}]+)*\/)*$`)
 
-func GetDataPath(workspace_path, user, service, req_dir string) (string, error) {
+func GetDataPath(workspace_path, user, req_dir string, service config.ServiceName) (string, error) {
 	if !directoryRegexp.MatchString(req_dir) {
 		return "", ErrBadDirSyntax
 	}

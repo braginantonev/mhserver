@@ -1,5 +1,7 @@
 package dataconfig
 
+import "github.com/braginantonev/mhserver/internal/config"
+
 const (
 	BASE_CHUNK_SIZE uint64 = 32 * 1024 // 32 kb
 )
@@ -11,12 +13,14 @@ type DataMemoryConfig struct {
 }
 
 type DataServiceConfig struct {
+	ServiceName   config.ServiceName
 	WorkspacePath string // User files path
 	Memory        DataMemoryConfig
 }
 
 func NewDataServerConfig(workspace_path string, data_memory_cfg DataMemoryConfig) DataServiceConfig {
 	return DataServiceConfig{
+		ServiceName:   "files",
 		WorkspacePath: workspace_path,
 		Memory:        data_memory_cfg,
 	}
