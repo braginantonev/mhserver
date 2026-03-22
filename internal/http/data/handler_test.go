@@ -148,7 +148,6 @@ func TestSaveDataHandler(t *testing.T) {
 				Username:  TEST_USERNAME,
 				Directory: test.directory,
 				Filename:  test.filename,
-				Filetype:  pb.FileType_File,
 				Size:      test.body_len,
 			})
 			if err != nil {
@@ -273,7 +272,6 @@ func TestGetDataHandler(t *testing.T) {
 				Username:  TEST_USERNAME,
 				Directory: test_dir,
 				Filename:  test_file,
-				Filetype:  pb.FileType_File,
 			})
 			if err != nil {
 				t.Fatalf("failed create connection; err: %v", err)

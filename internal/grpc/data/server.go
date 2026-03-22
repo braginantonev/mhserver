@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"math"
@@ -12,6 +11,7 @@ import (
 	"regexp"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
@@ -19,17 +19,6 @@ import (
 )
 
 var (
-	/* directoryRegexp check:
-	- dir start with /
-	- dir name contains only letters, numbers and underscores, whitespaces and hyphens
-	- dir name can't be started and ended with space, underscore and hyphen
-	- dir name have one letter or number
-	- dir name can have dot in start (hidden folder)
-	- dir name can't be only one dot
-	- dir end with /, if dir not root
-	*/
-	directoryRegexp = regexp.MustCompile(`^\/(\.?[\p{L}\p{N}]+([ _-]+[\p{L}\p{N}]+)*\/)*$`)
-
 	/* filenameRegexp check:
 	- filename can have dot in start (hidden file)
 	- filename can have letters, numbers and underscores, whitespaces and hyphens
@@ -62,20 +51,6 @@ func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataS
 	}
 }
 
-func (s *DataServer) getDataPath(user, req_dir string, data_type pb.FileType) (string, error) {
-	filetype, ok := catalogs[data_type]
-	if !ok {
-		return "", ErrUnexpectedFileType
-	}
-
-	if !directoryRegexp.MatchString(req_dir) {
-		return "", ErrBadDirSyntax
-	}
-
-	// "%s%s/%s%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + directory
-	return fmt.Sprintf("%s%s/%s%s", s.cfg.WorkspacePath, user, filetype, req_dir), nil
-}
-
 func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionRequest) (*pb.Connection, error) {
 	defer func() {
 		<-s.sem
@@ -83,7 +58,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 
 	s.sem <- struct{}{}
 
-	file_path, err := s.getDataPath(req.Username, req.Directory, req.Filetype)
+	file_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, req.Username, "files", req.Directory)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +264,7 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Director
 
 	s.sem <- struct{}{}
 
-	dir_path, err := s.getDataPath(dir.User, "/", pb.FileType_File)
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", "/")
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +284,7 @@ func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.Files
 
 	s.sem <- struct{}{}
 
-	dir_path, err := s.getDataPath(dir.User, dir.Value, pb.FileType_File)
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", dir.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +323,7 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 
 	s.sem <- struct{}{}
 
-	dir_path, err := s.getDataPath(dir.User, dir.Value, pb.FileType_File)
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", dir.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +347,7 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 
 	s.sem <- struct{}{}
 
-	dir_path, err := s.getDataPath(dir.User, dir.Value, pb.FileType_File)
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", dir.Value)
 	if err != nil {
 		return nil, err
 	}
