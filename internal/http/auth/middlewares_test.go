@@ -88,8 +88,9 @@ func TestWithAuth(t *testing.T) {
 			name:  "normal auth",
 			token: Token{},
 			user: TestUser{
-				User:     auth.NewUser("with_auth_middleware_test1", "123"),
-				Register: true,
+				User:              auth.NewUser("with_auth_middleware_test1", "123"),
+				RegisterSecretKey: TEST_REGISTER_SECRET_KEY,
+				Register:          true,
 			},
 			expected_code: http.StatusOK, // Not set
 			expected_body: "",            // Not set
@@ -129,13 +130,19 @@ func TestWithAuth(t *testing.T) {
 
 	for _, test := range cases {
 		if test.user.Register {
-			err := auth.Register(test.user.User, db)
+			err := auth.Register(auth.NewRegisterUser(test.user.User, test.user.RegisterSecretKey), db)
 			if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
 				t.Fatal(err)
 			}
 		}
 
 		t.Run(test.name, func(t *testing.T) {
+			if test.user.Register {
+				if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+					t.Fatalf("failed to insert register key to DB: %v", err)
+				}
+			}
+
 			if !test.token.IsWrong {
 				var err error
 				test.token.string, err = auth.Login(test.user.User, db, TestJWT)
