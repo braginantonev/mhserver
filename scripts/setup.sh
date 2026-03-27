@@ -287,9 +287,45 @@ echo # SKip the line
 sh /opt/mhserver/create-ssl-cert.sh
 
 
+#* ------- Generate register secrets ------- *#
+
+echo -e "\nGenerate register secrets...\n"
+
+echo \
+"#######################################################################
+#                         Register secrets                            #
+#######################################################################
+#                                                                     #"
+
+for (( i = 0; i < 5; i ++))
+do
+    secret=$(openssl rand -hex 32)
+    mariadb -u mhserver --password=$db_password -D mhs_main <<-SQL
+    INSERT INTO register_secrets (secret) VALUES ('$secret');
+SQL
+
+    if [ $? -eq 0 ]; then
+        echo "# $i. $secret #"
+    fi
+done
+
+echo \
+"#                                                                     #
+#######################################################################"
+
+echo -e "\nUse this secrets to register on server"
+
+mariadb -u mhserver_tests -D mhs_main_test <<-SQL
+INSERT INTO register_secrets (secret) VALUES ('TEST_SECRET');
+SQL
+
+if [ $? -ne 0 ]; then
+    echo "\aFailed insert test register secret to tests database"
+fi
+
 #* -------- Enable server service ---------- *#
 
-echo #Skip the line
+echo # Skip the line
 
 if [[ $(yn_input "Start mhserver service right now?") == 'y' ]]; then
     sudo systemctl enable mhserver
