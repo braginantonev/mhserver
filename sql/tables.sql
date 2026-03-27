@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(256) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS register_secrets (
+CREATE TABLE IF NOT EXISTS register_secret_keys (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    secret VARCHAR(64) NOT NULL
+    secret_key VARCHAR(64) NOT NULL
 );

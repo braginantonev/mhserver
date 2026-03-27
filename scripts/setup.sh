@@ -293,19 +293,19 @@ echo -e "\nGenerate register secrets...\n"
 
 echo \
 "#######################################################################
-#                         Register secrets                            #
+#                        Register secret keys                         #
 #######################################################################
 #                                                                     #"
 
 for (( i = 0; i < 5; i ++))
 do
-    secret=$(openssl rand -hex 32)
+    key=$(openssl rand -hex 32)
     mariadb -u mhserver --password=$db_password -D mhs_main <<-SQL
-    INSERT INTO register_secrets (secret) VALUES ('$secret');
+    INSERT INTO register_secret_keys (secret_key) VALUES ('$key');
 SQL
 
     if [ $? -eq 0 ]; then
-        echo "# $i. $secret #"
+        echo "# $i. $key #"
     fi
 done
 
@@ -314,14 +314,6 @@ echo \
 #######################################################################"
 
 echo -e "\nUse this secrets to register on server"
-
-mariadb -u mhserver_tests -D mhs_main_test <<-SQL
-INSERT INTO register_secrets (secret) VALUES ('TEST_SECRET');
-SQL
-
-if [ $? -ne 0 ]; then
-    echo "\aFailed insert test register secret to tests database"
-fi
 
 #* -------- Enable server service ---------- *#
 
