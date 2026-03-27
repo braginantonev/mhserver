@@ -40,7 +40,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Register request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	var user auth.User
+	var user auth.RegisterUser
 	if err := httpjsonutils.ConvertJsonToStruct(&user, r.Body, "Handlers.Register"); err != nil {
 		err.Write(w)
 		return

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -15,6 +16,7 @@ const (
 	INSERT_USER          string = "INSERT INTO users (user, password) VALUES (?, ?)"
 	SELECT_USERID        string = "SELECT id FROM users WHERE user = ?"
 	SELECT_USER          string = "SELECT user, password FROM users WHERE user = ?"
+	SELECT_SECRET_KEY    string = "SELECT id FROM register_secret_keys WHERE secret_key = ?"
 )
 
 type User struct {
@@ -26,6 +28,18 @@ func NewUser(name string, password string) User {
 	return User{
 		Name:     name,
 		Password: password,
+	}
+}
+
+type RegisterUser struct {
+	User
+	Key string `json:"key"`
+}
+
+func NewRegisterUser(user User, key string) RegisterUser {
+	return RegisterUser{
+		User: user,
+		Key:  key,
 	}
 }
 
@@ -68,7 +82,7 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 }
 
 // Crypt user password and put them to database
-func Register(user User, db *sql.DB) error {
+func Register(user RegisterUser, db *sql.DB) error {
 	if user.Name == "" {
 		return ErrNameIsEmpty
 	}
@@ -80,6 +94,11 @@ func Register(user User, db *sql.DB) error {
 	row := db.QueryRow(SELECT_USERID, user.Name)
 	if err := row.Scan(); err != sql.ErrNoRows {
 		return ErrUserAlreadyExists
+	}
+
+	db_key := db.QueryRow(SELECT_SECRET_KEY, user.Key)
+	if err := db_key.Scan(); errors.Is(err, sql.ErrNoRows) {
+		return ErrRegSecretKeyNotFound
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
