@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	USER_NAME_MAX_LENGTH int    = 30
-	INSERT_USER          string = "INSERT INTO users (user, password) VALUES (?, ?)"
-	SELECT_USERID        string = "SELECT id FROM users WHERE user = ?"
-	SELECT_USER          string = "SELECT user, password FROM users WHERE user = ?"
-	SELECT_SECRET_KEY    string = "SELECT id FROM register_secret_keys WHERE secret_key = ?"
+	USER_NAME_MAX_LENGTH           int    = 30
+	INSERT_USER                    string = "INSERT INTO users (user, password) VALUES (?, ?)"
+	SELECT_USERID                  string = "SELECT id FROM users WHERE user = ?"
+	SELECT_USER                    string = "SELECT user, password FROM users WHERE user = ?"
+	SELECT_REGISTER_SECRET_KEY     string = "SELECT id FROM register_secret_keys WHERE secret_key = ?"
+	DELETE_REGISTRATION_SECRET_KEY string = "DELETE FROM register_secret_keys WHERE id = ?"
 )
 
 type User struct {
@@ -96,8 +97,9 @@ func Register(user RegisterUser, db *sql.DB) error {
 		return ErrUserAlreadyExists
 	}
 
-	db_key := db.QueryRow(SELECT_SECRET_KEY, user.Key)
-	if err := db_key.Scan(); errors.Is(err, sql.ErrNoRows) {
+	var key_id int
+	key_row := db.QueryRow(SELECT_REGISTER_SECRET_KEY, user.Key)
+	if err := key_row.Scan(&key_id); errors.Is(err, sql.ErrNoRows) {
 		return ErrRegSecretKeyNotFound
 	}
 
@@ -109,6 +111,11 @@ func Register(user RegisterUser, db *sql.DB) error {
 
 	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
 		slog.Error("failed insert user to sql", slog.Any("err", err))
+		return ErrInternal
+	}
+
+	if _, err = db.Exec(DELETE_REGISTRATION_SECRET_KEY, key_id); err != nil {
+		slog.Error("failed delete registration secret key from sql", slog.Any("err", err))
 		return ErrInternal
 	}
 
