@@ -31,12 +31,12 @@ func TestRegister(t *testing.T) {
 	}{
 		{
 			name:         "Empty name",
-			user:         auth.NewRegisterUser(auth.NewUser("", "123"), TEST_REGISTER_SECRET_KEY),
+			user:         auth.NewRegisterUser(auth.NewUser("", "123"), ""),
 			expected_err: auth.ErrNameIsEmpty,
 		},
 		{
 			name:         "long username",
-			user:         auth.NewRegisterUser(auth.NewUser("[Cop Killers] X1_BestCockSucker_1X", "123"), TEST_REGISTER_SECRET_KEY),
+			user:         auth.NewRegisterUser(auth.NewUser("[Cop Killers] X1_BestCockSucker_1X", "123"), ""),
 			expected_err: auth.ErrNameTooLong,
 		},
 		{
@@ -47,7 +47,7 @@ func TestRegister(t *testing.T) {
 		},
 		{
 			name:         "Already register",
-			user:         auth.NewRegisterUser(auth.NewUser("register_test2", "123"), TEST_REGISTER_SECRET_KEY),
+			user:         auth.NewRegisterUser(auth.NewUser("register_test2", "123"), ""),
 			expected_err: auth.ErrUserAlreadyExists,
 			get_from_db:  true,
 		},
@@ -76,8 +76,10 @@ func TestRegister(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
-				t.Fatalf("failed to insert register key to DB: %v", err)
+			if test.user.Key != "" {
+				if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+					t.Fatalf("failed to insert register key to DB: %v", err)
+				}
 			}
 
 			err := auth.Register(test.user, db)
@@ -128,9 +130,13 @@ func TestLogin(t *testing.T) {
 	}
 
 	jwt_signature := "test"
-	wrong_password_user := auth.NewRegisterUser(auth.NewUser("test_login_test1", "321"), TEST_REGISTER_SECRET_KEY)
+	registered_user := auth.NewRegisterUser(auth.NewUser("test_login1", "123"), TEST_REGISTER_SECRET_KEY)
 
-	if err := auth.Register(wrong_password_user, db); err != nil {
+	if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+		t.Fatalf("failed to insert register key to DB: %v", err)
+	}
+
+	if err := auth.Register(registered_user, db); err != nil {
 		t.Fatal(err)
 	}
 
@@ -152,32 +158,22 @@ func TestLogin(t *testing.T) {
 		},
 		{
 			name:         "Wrong password",
-			user:         auth.NewUser(wrong_password_user.Name, "123"),
+			user:         auth.NewUser(registered_user.Name, "WRONG"),
 			expected_err: auth.ErrWrongPassword,
 		},
 		{
 			name:         "Normal login",
-			user:         auth.NewUser("login_test2", "123"),
+			user:         auth.NewUser(registered_user.Name, "123"),
 			expected_err: nil,
 			check_reg:    true,
 		},
 	}
 
-	if err := auth.Register(auth.NewRegisterUser(cases[len(cases)-1].user, TEST_REGISTER_SECRET_KEY), db); err != nil {
-		t.Fatal(err)
-	}
-
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			if test.check_reg {
-				if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
-					t.Fatalf("failed to insert register key to DB: %v", err)
-				}
-			}
-
 			token, err := auth.Login(test.user, db, jwt_signature)
 			if !errors.Is(err, test.expected_err) {
-				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
+				t.Errorf("expected error: %v, but got: %v", test.expected_err, err)
 			}
 
 			if !test.check_reg {
@@ -188,14 +184,9 @@ func TestLogin(t *testing.T) {
 				t.Error(err)
 			}
 		})
-
-		_, err := db.Exec("DELETE FROM users WHERE user = ?", test.user.Name)
-		if err != nil {
-			fmt.Println(err)
-		}
 	}
 
-	_, err = db.Exec("DELETE FROM users WHERE user = ?", wrong_password_user.Name)
+	_, err = db.Exec("DELETE FROM users WHERE user = ?", registered_user.Name)
 	if err != nil {
 		fmt.Println(err)
 	}

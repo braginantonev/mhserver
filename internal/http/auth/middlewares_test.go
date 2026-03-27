@@ -130,6 +130,10 @@ func TestWithAuth(t *testing.T) {
 
 	for _, test := range cases {
 		if test.user.Register {
+			if err := InsertRegisterKeyToDB(db, test.user.RegisterSecretKey); err != nil {
+				t.Fatalf("failed to insert register key to DB: %v", err)
+			}
+
 			err := auth.Register(auth.NewRegisterUser(test.user.User, test.user.RegisterSecretKey), db)
 			if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
 				t.Fatal(err)
@@ -137,12 +141,6 @@ func TestWithAuth(t *testing.T) {
 		}
 
 		t.Run(test.name, func(t *testing.T) {
-			if test.user.Register {
-				if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
-					t.Fatalf("failed to insert register key to DB: %v", err)
-				}
-			}
-
 			if !test.token.IsWrong {
 				var err error
 				test.token.string, err = auth.Login(test.user.User, db, TestJWT)
