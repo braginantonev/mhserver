@@ -3,3 +3,8 @@ CREATE TABLE IF NOT EXISTS users (
     user VARCHAR(30) NOT NULL,
     password VARCHAR(256) NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS register_secrets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    secret VARCHAR(64) NOT NULL,
+);
