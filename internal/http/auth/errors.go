@@ -11,14 +11,17 @@ import (
 var (
 	// by default errors have 400 status code
 	authSpecialCodes = map[error]int{
-		auth.ErrUserAlreadyExists: http.StatusConflict,
+		auth.ErrUserAlreadyExists:    http.StatusConflict,
+		auth.ErrRegSecretKeyNotFound: http.StatusForbidden,
 	}
 
 	// Handler
-	ErrInternal         = httperror.NewInternalHttpError("", "")
-	ErrRequestBodyEmpty = httperror.NewExternalHttpError("request body empty", http.StatusBadRequest)
-	ErrBadJsonBody      = httperror.NewExternalHttpError("bad request json body", http.StatusBadRequest)
-	ErrFailedReadBody   = httperror.NewInternalHttpError("failed read request body", "") // Use WithDesc() and WithFuncName() to write response
+	ErrInternal          = httperror.NewInternalHttpError("", "")
+	ErrRequestBodyEmpty  = httperror.NewExternalHttpError("request body empty", http.StatusBadRequest)
+	ErrBadJsonBody       = httperror.NewExternalHttpError("bad request json body", http.StatusBadRequest)
+	ErrFailedReadBody    = httperror.NewInternalHttpError("failed read request body", "") // Use WithDesc() and WithFuncName() to write response
+	ErrUsernameEmpty     = httperror.NewExternalHttpError("username is empty", http.StatusBadRequest)
+	ErrRegSecretKeyEmpty = httperror.NewExternalHttpError("register secret key is empty", http.StatusBadRequest)
 
 	// Middleware
 	ErrGetJWTClaims = httperror.NewInternalHttpError("failed get jwt claims", "AuthMiddleware.WithAuth")

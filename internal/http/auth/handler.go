@@ -23,9 +23,16 @@ func NewAuthHandler(cfg authconfig.AuthHandlerConfig) Handler {
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Login request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
+	w.Header().Add("Content-Type", "plain/text")
+
 	var user auth.User
 	if err := httpjsonutils.ConvertJsonToStruct(&user, r.Body, "Handlers.Login"); err != nil {
 		err.Write(w)
+		return
+	}
+
+	if user.Name == "" {
+		ErrUsernameEmpty.Write(w)
 		return
 	}
 
@@ -35,14 +42,28 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	} else {
 		_, _ = w.Write([]byte(token))
 	}
+
+	w.Header().Del("Content-Type")
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Register request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
+	w.Header().Add("Content-Type", "plain/text")
+
 	var user auth.RegisterUser
 	if err := httpjsonutils.ConvertJsonToStruct(&user, r.Body, "Handlers.Register"); err != nil {
 		err.Write(w)
+		return
+	}
+
+	if user.Name == "" {
+		ErrUsernameEmpty.Write(w)
+		return
+	}
+
+	if user.Key == "" {
+		ErrRegSecretKeyEmpty.Write(w)
 		return
 	}
 
@@ -55,4 +76,6 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ErrInternal.Append(err).WithFuncName("Handlers.Register.dirs.GenerateUserFolders").Write(w)
 	}
+
+	w.Header().Del("Content-Type")
 }

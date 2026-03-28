@@ -182,14 +182,12 @@ func TestRegister(t *testing.T) {
 
 	cases := [...]struct {
 		name          string
-		method        string
 		user          TestUser
 		expected_code int
 		expected_body string
 	}{
 		{
-			name:   "normal register",
-			method: http.MethodPost,
+			name: "normal register",
 			user: TestUser{
 				User:                auth.NewUser("register_handler_test1", "123"),
 				RegisterSecretKey:   TEST_REGISTER_SECRET_KEY,
@@ -199,18 +197,25 @@ func TestRegister(t *testing.T) {
 			expected_body: "",
 		},
 		{
-			name:   "empty username",
-			method: http.MethodPost,
+			name: "empty username",
 			user: TestUser{
 				User:                auth.NewUser("", "123"),
 				IsConvertibleToJSON: true,
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: auth.ErrNameIsEmpty.Error(),
+			expected_body: authhandler.ErrUsernameEmpty.Description(),
 		},
 		{
-			name:   "empty request",
-			method: http.MethodPost,
+			name: "empty secret key",
+			user: TestUser{
+				User:                auth.NewUser("123", "123"),
+				IsConvertibleToJSON: true,
+			},
+			expected_code: http.StatusBadRequest,
+			expected_body: authhandler.ErrRegSecretKeyEmpty.Description(),
+		},
+		{
+			name: "empty request",
 			user: TestUser{
 				User:                auth.NewUser("register_handler_test1", "123"),
 				IsConvertibleToJSON: false,
@@ -238,7 +243,7 @@ func TestRegister(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			req := httptest.NewRequest(test.method, server.REGISTER_ENDPOINT, bytes.NewReader(req_body))
+			req := httptest.NewRequest(http.MethodPost, server.REGISTER_ENDPOINT, bytes.NewReader(req_body))
 			w := httptest.NewRecorder()
 
 			handler.Register(w, req)
