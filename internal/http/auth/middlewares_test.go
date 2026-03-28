@@ -135,16 +135,22 @@ func TestWithAuth(t *testing.T) {
 			}
 
 			err := auth.Register(auth.NewRegisterUser(test.user.User, test.user.RegisterSecretKey), db)
-			if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
+			if errors.Is(err, auth.ErrInternal) {
 				t.Fatal(err)
 			}
+
+			defer func() {
+				if _, err := db.Exec("delete from users where user=?", test.user.Name); err != nil {
+					t.Fatal(err)
+				}
+			}()
 		}
 
 		t.Run(test.name, func(t *testing.T) {
 			if !test.token.IsWrong {
 				var err error
 				test.token.string, err = auth.Login(test.user.User, db, TestJWT)
-				if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
+				if errors.Is(err, auth.ErrInternal) {
 					t.Fatal(err)
 				}
 			}
