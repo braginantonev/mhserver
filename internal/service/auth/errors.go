@@ -14,7 +14,7 @@ var (
 
 	// External errors
 	ErrNameTooLong          error = errors.New("name is too long")
-	ErrRegSecretKeyNotFound error = errors.New("register secret key not found")
+	ErrRegSecretKeyNotFound error = errors.New("wrong register secret key")
 
 	// - Login errors
 	ErrUserNotExist  error = errors.New("wrong username or user not registered")
