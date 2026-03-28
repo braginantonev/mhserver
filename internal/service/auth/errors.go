@@ -13,7 +13,6 @@ var (
 	ErrBadClaims           error = errors.New("failed get claims from jwt token")
 
 	// External errors
-	ErrNameIsEmpty          error = errors.New("username is empty")
 	ErrNameTooLong          error = errors.New("name is too long")
 	ErrRegSecretKeyNotFound error = errors.New("register secret key not found")
 

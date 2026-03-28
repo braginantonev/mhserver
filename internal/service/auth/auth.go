@@ -46,10 +46,6 @@ func NewRegisterUser(user User, key string) RegisterUser {
 
 // If user exist in database, return personal jwt token
 func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
-	if user.Name == "" {
-		return "", ErrNameIsEmpty
-	}
-
 	db_user := User{}
 	row := db.QueryRow(SELECT_USER, user.Name)
 	if err := row.Scan(&db_user.Name, &db_user.Password); err != nil {
@@ -84,10 +80,6 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 
 // Crypt user password and put them to database
 func Register(user RegisterUser, db *sql.DB) error {
-	if user.Name == "" {
-		return ErrNameIsEmpty
-	}
-
 	if len(user.Name) > USER_NAME_MAX_LENGTH {
 		return ErrNameTooLong
 	}

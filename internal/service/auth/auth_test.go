@@ -30,11 +30,6 @@ func TestRegister(t *testing.T) {
 		expected_err error
 	}{
 		{
-			name:         "Empty name",
-			user:         auth.NewRegisterUser(auth.NewUser("", "123"), ""),
-			expected_err: auth.ErrNameIsEmpty,
-		},
-		{
 			name:         "long username",
 			user:         auth.NewRegisterUser(auth.NewUser("[Cop Killers] X1_BestCockSucker_1X", "123"), ""),
 			expected_err: auth.ErrNameTooLong,
@@ -156,11 +151,6 @@ func TestLogin(t *testing.T) {
 		expected_err error
 		check_reg    bool
 	}{
-		{
-			name:         "Empty username",
-			user:         auth.NewUser("", ""),
-			expected_err: auth.ErrNameIsEmpty,
-		},
 		{
 			name:         "Not registered",
 			user:         auth.NewUser("unregistered user", "123"),
