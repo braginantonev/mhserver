@@ -26,8 +26,8 @@ func TestRegister(t *testing.T) {
 	cases := [...]struct {
 		name         string
 		user         auth.RegisterUser
-		expected_err error
 		get_from_db  bool // Check user field in db
+		expected_err error
 	}{
 		{
 			name:         "Empty name",
@@ -40,10 +40,15 @@ func TestRegister(t *testing.T) {
 			expected_err: auth.ErrNameTooLong,
 		},
 		{
+			name:         "key not found",
+			user:         auth.NewRegisterUser(auth.NewUser("without reg", "123"), "WRONG KEY"),
+			expected_err: auth.ErrRegSecretKeyNotFound,
+		},
+		{
 			name:         "Base register",
 			user:         auth.NewRegisterUser(auth.NewUser("register_test1", "123"), TEST_REGISTER_SECRET_KEY),
-			expected_err: nil,
 			get_from_db:  true,
+			expected_err: nil,
 		},
 		{
 			name:         "Already register",
@@ -76,7 +81,7 @@ func TestRegister(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			if test.user.Key != "" {
+			if test.user.Key == TEST_REGISTER_SECRET_KEY {
 				if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
 					t.Fatalf("failed to insert register key to DB: %v", err)
 				}
@@ -106,6 +111,11 @@ func TestRegister(t *testing.T) {
 			if err = bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(test.user.Password)); err != nil {
 				t.Log(db_user.Password)
 				t.Errorf("password incorrect. error=%s", err.Error())
+			}
+
+			row = db.QueryRow(auth.SELECT_REGISTER_SECRET_KEY, test.user.Key)
+			if err := row.Scan(); !errors.Is(err, sql.ErrNoRows) {
+				t.Error("secret key not deleted after registration")
 			}
 		})
 
