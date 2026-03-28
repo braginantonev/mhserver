@@ -80,8 +80,8 @@ paths:
                 wrongPassword:
                   summary: Введён неверный пароль
                   value:
-                    message: wrong password             
-
+                    message: wrong password    
+        
         "404":
           $ref: "#/components/responses/AuthServiceUnavailable"
 
@@ -106,6 +106,14 @@ paths:
         
         "400":
           $ref: "#/components/responses/AuthRequestError"
+        
+        "403":
+          description: Введённый секретный ключ не существует
+          content:
+            plain/text:
+              schema:
+                type: string
+              example: wrong register secret key
         
         "404":
           $ref: "#/components/responses/AuthServiceUnavailable"
@@ -609,16 +617,18 @@ components:
       properties:
         username:
           type: string
-          example: "anton"
           maxLength: 30
+          example: "anton"
 
         password:
           type: string
+          maxLength: 256
           example: "123"
         
         key:
           type: string
-          example: 7qBpwuHHsi6g3vrwhk0v/gcBJ4KHbb3fBAaYlSi+Y+M=
+          maxLength: 64
+          example: 59addea5aacf5ccb832921cca9f2e22d04a47670202a3da9557bda9fc2578bf4
 
       example:
         $ref: "./examples/auth/register-request.json"

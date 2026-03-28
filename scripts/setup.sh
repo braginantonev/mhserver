@@ -215,24 +215,23 @@ if [ $? -ne 0 ]; then
 fi
 
 
-#* ---------- Create users table ---------- *#
+#* ---------- Create server tables ---------- *#
 
-echo -e "Create users table..."
+echo -e "Create server tables..."
 mariadb -u mhserver --password=$db_password -D mhs_main < $EXECUTABLE_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
 fi
 
-echo -e "Create tests users table..."
+echo -e "Create test server tables..."
 mariadb -u mhserver_tests -D mhs_main_test < $EXECUTABLE_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
 fi
 
-
-#* -------------- Memory setup ------------- *#
+#* -------------- Memory setup --------------- *#
 
 echo # Skip the line
 
@@ -288,9 +287,37 @@ echo # SKip the line
 sh /opt/mhserver/create-ssl-cert.sh
 
 
+#* ------- Generate register secrets ------- *#
+
+echo -e "\nGenerate register secrets...\n"
+
+echo \
+"#######################################################################
+#                        Register secret keys                         #
+#######################################################################
+#                                                                     #"
+
+for (( i = 0; i < 5; i ++))
+do
+    key=$(openssl rand -hex 32)
+    mariadb -u mhserver --password=$db_password -D mhs_main <<-SQL
+    INSERT INTO register_secret_keys (secret_key) VALUES ('$key');
+SQL
+
+    if [ $? -eq 0 ]; then
+        echo "# $i. $key #"
+    fi
+done
+
+echo \
+"#                                                                     #
+#######################################################################"
+
+echo -e "\nUse this secrets to register on server"
+
 #* -------- Enable server service ---------- *#
 
-echo #Skip the line
+echo # Skip the line
 
 if [[ $(yn_input "Start mhserver service right now?") == 'y' ]]; then
     sudo systemctl enable mhserver
