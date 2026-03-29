@@ -39,7 +39,7 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn_mode, ok := pb.ConnectionMode_value[r.URL.Query().Get("dir")]
+	conn_mode, ok := pb.ConnectionMode_value[r.URL.Query().Get("mode")]
 	if !ok {
 		ErrUnexpectedConnectionMode.Write(w)
 		return
