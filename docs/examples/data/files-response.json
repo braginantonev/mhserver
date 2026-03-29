@@ -1,5 +1,10 @@
 [
   {
+    "name": "photos",
+    "isDir": true,
+    "modTime": 1768085187
+  },
+  {
     "name": "my diary.txt",
     "size": 1,
     "modTime": 1767653758
