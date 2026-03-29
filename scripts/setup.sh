@@ -38,8 +38,12 @@ write_to_file() {
 #* -------- Root project tree check -------- *#
 
 if [[ !(-e mhserver) ]]; then
-    echo "Run mhserver setup script only with builded project!"
-    exit 1
+    cd ..
+
+    if [[ !(-e mhserver) ]]; then
+        echo "Run mhserver setup script only with builded project!"
+        exit 1
+    fi
 fi
 
 
@@ -284,36 +288,15 @@ done
 
 echo # SKip the line
 
-sh /opt/mhserver/create-ssl-cert.sh
+sh /opt/mhserver/scripts/create-ssl-cert.sh
 
 
 #* ------- Generate register secrets ------- *#
 
-echo -e "\nGenerate register secrets...\n"
+echo # SKip the line
 
-echo \
-"#######################################################################
-#                        Register secret keys                         #
-#######################################################################
-#                                                                     #"
+sh /opt/mhserver/scripts/generate_reg_keys.sh --db_pass=$db_password
 
-for (( i = 0; i < 5; i ++))
-do
-    key=$(openssl rand -hex 32)
-    mariadb -u mhserver --password=$db_password -D mhs_main <<-SQL
-    INSERT INTO register_secret_keys (secret_key) VALUES ('$key');
-SQL
-
-    if [ $? -eq 0 ]; then
-        echo "# $i. $key #"
-    fi
-done
-
-echo \
-"#                                                                     #
-#######################################################################"
-
-echo -e "\nUse this secrets to register on server"
 
 #* -------- Enable server service ---------- *#
 
