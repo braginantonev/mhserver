@@ -6,19 +6,28 @@ import (
 
 var (
 	// File find
-	ErrBadUUID              error = errors.New("bad file uuid")
+	ErrBadUUID              error = errors.New("bad connection uuid")
+	ErrConnectionNotFound   error = errors.New("connection not found or ended")
 	ErrUnexpectedFileChange error = errors.New("unexpected file change")
 
 	// Chunks
 	ErrIncorrectChunkSize error = errors.New("incorrect chunk size")
 
-	// CreateConnection errors
-	ErrEmptyFilename      error = errors.New("file name is empty")
-	ErrUnexpectedFileType error = errors.New("unexpected file type")
+	// Directory errors
+	ErrDirNotFound     error = errors.New("directory not found")
+	ErrDirAlreadyExist error = errors.New("directory already exist")
+
+	// Filename errors
+	ErrEmptyFilename     error = errors.New("file name is empty")
+	ErrBadFilenameSyntax error = errors.New("filename have bad syntax")
+
+	// Connection errors
+	ErrNullSizeToSave     error = errors.New("null size to save")
 	ErrNotEnoughDiskSpace error = errors.New("not enough disk space")
 
 	// GetData errors
-	ErrFileNotExist error = errors.New("file not exist")
+	ErrFileNotExist  error = errors.New("file not exist")
+	ErrReadOutOfFile error = errors.New("reading outside of file")
 
 	ErrInternal error = errors.New("internal error")
 )

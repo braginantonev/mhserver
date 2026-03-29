@@ -1,15 +1,13 @@
 package authhandler
 
 import (
-	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
-	"github.com/braginantonev/mhserver/internal/grpc/data"
+	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/service/auth"
-	"github.com/braginantonev/mhserver/pkg/httperror"
+	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 )
 
 type Handler struct {
@@ -25,20 +23,16 @@ func NewAuthHandler(cfg authconfig.AuthHandlerConfig) Handler {
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Login request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("Handlers.Login.io.ReadAll").Write(w)
+	w.Header().Add("Content-Type", "plain/text")
+
+	var user auth.User
+	if err := httpjsonutils.ConvertJsonToStruct(&user, r.Body, "Handlers.Login"); err != nil {
+		err.Write(w)
 		return
 	}
 
-	if len(body) == 0 {
-		ErrRequestBodyEmpty.Write(w)
-		return
-	}
-
-	user := auth.User{}
-	if err = json.Unmarshal(body, &user); err != nil {
-		ErrBadJsonBody.Append(err).Write(w)
+	if user.Name == "" {
+		ErrUsernameEmpty.Write(w)
 		return
 	}
 
@@ -48,25 +42,28 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	} else {
 		_, _ = w.Write([]byte(token))
 	}
+
+	w.Header().Del("Content-Type")
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Register request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		ErrFailedReadBody.Append(err).WithFuncName("Handlers.Register.io.ReadAll").Write(w)
+	w.Header().Add("Content-Type", "plain/text")
+
+	var user auth.RegisterUser
+	if err := httpjsonutils.ConvertJsonToStruct(&user, r.Body, "Handlers.Register"); err != nil {
+		err.Write(w)
 		return
 	}
 
-	if len(body) == 0 {
-		ErrRequestBodyEmpty.Write(w)
+	if user.Name == "" {
+		ErrUsernameEmpty.Write(w)
 		return
 	}
 
-	user := auth.User{}
-	if err = json.Unmarshal(body, &user); err != nil {
-		ErrBadJsonBody.Append(err).Write(w)
+	if user.Key == "" {
+		ErrRegSecretKeyEmpty.Write(w)
 		return
 	}
 
@@ -75,8 +72,10 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.GenerateUserFolders(handler.cfg.WorkspacePath+user.Name, handler.cfg.UserCatalogs...)
+	err := dirs.GenerateUserFolders(handler.cfg.WorkspacePath, user.Name, handler.cfg.UserCatalogs...)
 	if err != nil {
-		httperror.NewInternalHttpError(err, "Handlers.Register.data.GenerateUserFolders").Write(w)
+		ErrInternal.Append(err).WithFuncName("Handlers.Register.dirs.GenerateUserFolders").Write(w)
 	}
+
+	w.Header().Del("Content-Type")
 }

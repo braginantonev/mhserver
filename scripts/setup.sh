@@ -38,8 +38,12 @@ write_to_file() {
 #* -------- Root project tree check -------- *#
 
 if [[ !(-e mhserver) ]]; then
-    echo "Run mhserver setup script only with builded project!"
-    exit 1
+    cd ..
+
+    if [[ !(-e mhserver) ]]; then
+        echo "Run mhserver setup script only with builded project!"
+        exit 1
+    fi
 fi
 
 
@@ -215,24 +219,23 @@ if [ $? -ne 0 ]; then
 fi
 
 
-#* ---------- Create users table ---------- *#
+#* ---------- Create server tables ---------- *#
 
-echo -e "Create users table..."
+echo -e "Create server tables..."
 mariadb -u mhserver --password=$db_password -D mhs_main < $EXECUTABLE_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
 fi
 
-echo -e "Create tests users table..."
+echo -e "Create test server tables..."
 mariadb -u mhserver_tests -D mhs_main_test < $EXECUTABLE_PATH/sql/tables.sql
 if [ $? -ne 0 ]; then
     echo -e "\aError in creating database tables"
     exit 1
 fi
 
-
-#* -------------- Memory setup ------------- *#
+#* -------------- Memory setup --------------- *#
 
 echo # Skip the line
 
@@ -285,12 +288,19 @@ done
 
 echo # SKip the line
 
-sh /opt/mhserver/create-ssl-cert.sh
+sh /opt/mhserver/scripts/create-ssl-cert.sh
+
+
+#* ------- Generate register secrets ------- *#
+
+echo # SKip the line
+
+sh /opt/mhserver/scripts/generate_reg_keys.sh --db_pass=$db_password
 
 
 #* -------- Enable server service ---------- *#
 
-echo #Skip the line
+echo # Skip the line
 
 if [[ $(yn_input "Start mhserver service right now?") == 'y' ]]; then
     sudo systemctl enable mhserver

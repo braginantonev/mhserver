@@ -1,21 +1,15 @@
 package datahandler
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 	pb "github.com/braginantonev/mhserver/proto/data"
-	"github.com/gorilla/mux"
-)
-
-var (
-	RequestTimeout = 5 * time.Second
 )
 
 type Handler struct {
@@ -39,35 +33,36 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req_info pb.DataInfo
-	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.SaveData"); err.StatusCode != 0 {
+	var req_info pb.ConnectionRequest
+	if err := httpjsonutils.ConvertJsonToStruct(&req_info, r.Body, "Handlers.CreateConnection"); err != nil {
 		err.Write(w)
 		return
 	}
 
+	conn_mode, ok := pb.ConnectionMode_value[r.URL.Query().Get("mode")]
+	if !ok {
+		ErrUnexpectedConnectionMode.Write(w)
+		return
+	}
+
+	req_info.Mode = pb.ConnectionMode(conn_mode)
+
 	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
 	if !ok {
-		ErrWrongContextUsername.WithFuncName("Handlers.SaveData").Write(w)
+		ErrWrongContextUsername.WithFuncName("Handlers.CreateConnection").Write(w)
 		return
 	}
 	req_info.Username = username
 
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	conn, err := h.dataServiceClient.CreateConnection(ctx, &req_info)
+	conn, err := h.dataServiceClient.CreateConnection(r.Context(), &req_info)
 	if err != nil {
-		handleServiceError(err, w, "data.SaveData")
-	}
-
-	json_conn, err := json.Marshal(conn)
-	if err != nil {
-		ErrInternal.Append(err).WithFuncName("Handlers.CreateConnection.Marshal").Write(w)
-		return
+		handleServiceError(err, w, "data.CreateConnection")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(json_conn)
+	if err := json.NewEncoder(w).Encode(conn); err != nil {
+		ErrInternal.Append(err).WithFuncName("Handlers.CreateConnection.Marshal").Write(w)
+	}
 }
 
 // Use only with auth_middlewares.WithAuth()
@@ -81,22 +76,16 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var save_chunk pb.SaveChunk
-	if err := httpjsonutils.ConvertJsonToStruct(&save_chunk, r.Body, "Handlers.SaveData"); err.StatusCode != 0 {
+	var save_chunk pb.FilePart
+	if err := httpjsonutils.ConvertJsonToStruct(&save_chunk, r.Body, "Handlers.SaveData"); err != nil {
 		err.Write(w)
 		return
 	}
 
-	// If !ok use uuid from json. It's using for tests
-	uuid, ok := mux.Vars(r)["uuid"]
-	if ok {
-		save_chunk.UUID = uuid
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	_, err := h.dataServiceClient.SaveData(ctx, &save_chunk)
+	_, err := h.dataServiceClient.SaveData(r.Context(), &pb.SaveChunk{
+		UUID: r.URL.Query().Get("uuid"),
+		Data: &save_chunk,
+	})
 	if err != nil {
 		handleServiceError(err, w, "data.SaveData")
 	}
@@ -112,48 +101,25 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var get_chunk pb.GetChunk
-	if ch_id := r.URL.Query().Get("chunkID"); ch_id != "" {
-		res, err := strconv.Atoi(ch_id)
-		if err != nil {
-			ErrBadQuery.Write(w)
-			return
-		}
-		get_chunk.ChunkId = int32(res)
-	} else {
-		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
-			err.Write(w)
-			return
-		}
+	chunk_id, err := strconv.Atoi(r.URL.Query().Get("chunkID"))
+	if err != nil {
+		ErrBadUuidFormat.Write(w)
+		return
 	}
 
-	// If !ok use uuid from json. It's using for tests
-	uuid, ok := mux.Vars(r)["uuid"]
-	if ok {
-		get_chunk.UUID = uuid
+	get_chunk := pb.GetChunk{
+		ChunkId: int32(chunk_id),
+		UUID:    r.URL.Query().Get("uuid"),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	part, err := h.dataServiceClient.GetData(ctx, &get_chunk)
+	part, err := h.dataServiceClient.GetData(r.Context(), &get_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.GetData")
 		return
 	}
 
-	resp_file_part := struct {
-		Chunk string `json:"chunk"`
-	}{Chunk: string(part.Chunk)}
-
-	json_part, err := json.Marshal(resp_file_part)
-	if err != nil {
-		ErrInternal.Append(err).WithFuncName("Handlers.GetData.Marshal").Write(w)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(json_part)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	_, _ = w.Write(part.Chunk)
 }
 
 func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
@@ -166,37 +132,135 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var get_chunk pb.GetChunk
-	if ch_id := r.URL.Query().Get("chunkID"); ch_id != "" {
-		res, err := strconv.Atoi(ch_id)
-		if err != nil {
-			ErrBadQuery.Write(w)
-			return
-		}
-		get_chunk.ChunkId = int32(res)
-	} else {
-		if err := httpjsonutils.ConvertJsonToStruct(&get_chunk, r.Body, "Handlers.GetData"); err.StatusCode != 0 {
-			err.Write(w)
-			return
-		}
+	chunk_id, err := strconv.Atoi(r.URL.Query().Get("chunkID"))
+	if err != nil {
+		ErrBadUuidFormat.Write(w)
+		return
 	}
 
-	// If !ok use uuid from json. It's using for tests
-	uuid, ok := mux.Vars(r)["uuid"]
-	if ok {
-		get_chunk.UUID = uuid
+	get_chunk := pb.GetChunk{
+		ChunkId: int32(chunk_id),
+		UUID:    r.URL.Query().Get("uuid"),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	defer cancel()
-
-	sum, err := h.dataServiceClient.GetSum(ctx, &get_chunk)
+	sum, err := h.dataServiceClient.GetSum(r.Context(), &get_chunk)
 	if err != nil {
 		handleServiceError(err, w, "data.GetSum")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
+	_, _ = w.Write(sum.Value)
+}
 
-	_, _ = w.Write(sum.Sum)
+func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Get files list request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.GetFiles").Write(w)
+		return
+	}
+
+	files, err := h.dataServiceClient.GetFiles(r.Context(), &pb.Directory{
+		User:  username,
+		Value: r.URL.Query().Get("dir"),
+	})
+	if err != nil {
+		handleServiceError(err, w, "data.GetFiles")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(files.Value); err != nil {
+		ErrInternal.Append(err).WithFuncName("Handler.GetFiles.Marshal").Write(w)
+	}
+}
+
+func (h Handler) GetAvailableDiskSpace(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Get available disk space request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.GetAvailableDiskSpace").Write(w)
+		return
+	}
+
+	resp, err := h.dataServiceClient.GetAvailableDiskSpace(r.Context(), &pb.Directory{User: username})
+	if err != nil {
+		handleServiceError(err, w, "data.GetAvailableDiskSpace")
+		return
+	}
+
+	_, _ = fmt.Fprint(w, resp.Value)
+}
+
+func (h Handler) CreateDir(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Create dir request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.CreateDir").Write(w)
+		return
+	}
+
+	_, err := h.dataServiceClient.CreateDir(r.Context(), &pb.Directory{
+		User:  username,
+		Value: r.URL.Query().Get("dir"),
+	})
+	if err != nil {
+		handleServiceError(err, w, "data.CreateDir")
+		return
+	}
+
+	w.Header().Del("Content-Type")
+}
+
+func (h Handler) RemoveDir(w http.ResponseWriter, r *http.Request) {
+	slog.Info("Remove dir request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	if h.dataServiceClient == nil {
+		ErrUnavailable.Write(w)
+		return
+	}
+
+	username, ok := r.Context().Value(httpcontextkeys.USERNAME).(string)
+	if !ok {
+		ErrWrongContextUsername.WithFuncName("Handlers.RemoveDir").Write(w)
+		return
+	}
+
+	_, err := h.dataServiceClient.RemoveDir(r.Context(), &pb.Directory{
+		User:  username,
+		Value: r.URL.Query().Get("dir"),
+	})
+	if err != nil {
+		handleServiceError(err, w, "data.RemoveDir")
+		return
+	}
+
+	w.Header().Del("Content-Type")
 }

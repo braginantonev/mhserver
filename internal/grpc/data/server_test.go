@@ -3,6 +3,7 @@ package data_test
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,6 +16,7 @@ import (
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
+	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -27,9 +29,14 @@ const (
 	TEST_USER      string = "user"
 	CHUNK_SIZE     int    = 1024
 
-	TEST_FILE_BODY string = `Антон Чигур никого не убивал!
-Антон Чигур никого не покарал!
-Антон Чигур ничего не уничтожал!`
+	TEST_FILE_BODY string = `- Скажи, дружище, ты стихи любишь?
+	- Стихи? Ну, не особо, сэр.
+	- Тихо в лесу, только не спит только медведь... Он ещё с вечера начал пердеть. Вот и не спит медведь.
+	...
+	- Тихо в лесу, только не спит ёж. Нюхает ёж медвежий пердёжь, вот и не спит ёж.
+	- Эм... Что?
+	- Тихо в лесу, только не спит сова. Есть у совы смешная трава, вот и не спит сова.
+	- Сэр, может, заправку закончим? `
 )
 
 // Create server workspace in to test files with `File` type only
@@ -38,13 +45,13 @@ func createWorkspaceFolders(workspace_path, username string) error {
 }
 
 // Client simulation
-func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *pb.DataInfo, reader io.Reader) error {
-	conn, err := data_client.CreateConnection(ctx, data_info)
+func saveFile(ctx context.Context, data_client pb.DataServiceClient, req *pb.ConnectionRequest, reader io.Reader) error {
+	conn, err := data_client.CreateConnection(ctx, req)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("save file (%s) with size %d; chunk size = %d, count = %d", data_info.Filename, data_info.Size, conn.ChunkSize, conn.ChunksCount)
+	log.Printf("save file (%s) with size %d; chunk size = %d, count = %d", req.Filename, req.Size, conn.ChunkSize, conn.ChunksCount)
 
 	wg := sync.WaitGroup{}
 	errs := make(chan error, 1)
@@ -58,7 +65,7 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *
 		}
 
 		wg.Add(1)
-		func(ch_id int, data []byte) {
+		go func(ch_id int, data []byte) {
 			defer wg.Done()
 
 			_, err = data_client.SaveData(ctx, &pb.SaveChunk{
@@ -81,22 +88,175 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, data_info *
 	return <-errs
 }
 
-func getRPCErrorMessage(err error) string {
-	if err == nil {
-		return ""
+func errorIs(err error, target error) bool {
+	// Standard check
+	if errors.Is(err, target) {
+		return true
+	}
+
+	// GRPC error check
+
+	target_desc := ""
+	if target != nil {
+		target_desc = target.Error()
 	}
 
 	st, ok := status.FromError(err)
 	if ok {
-		return st.Message()
-	} else {
-		return err.Error()
+		return st.Message() == target_desc
+	}
+
+	return false
+}
+
+func TestCreateConnection(t *testing.T) {
+	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create data grpc client
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 25,
+		MinChunkSize: 5,
+		AvailableRAM: 1024 * 1024 * 1024,
+	})))
+
+	lis, err := net.Listen("tcp", "localhost:8084")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8084", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data_client := pb.NewDataServiceClient(grpc_connection)
+
+	cases := [...]struct {
+		name         string
+		conn_req     *pb.ConnectionRequest
+		expected_err error
+	}{
+		{
+			name: "empty directory field",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "",
+				Filename:  "123.txt",
+				Size:      5,
+			},
+			expected_err: dirs.ErrBadDirSyntax,
+		},
+		{
+			name: "going beyond directory",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/../test/",
+				Filename:  "123.txt",
+				Size:      5,
+			},
+			expected_err: dirs.ErrBadDirSyntax,
+		},
+		{
+			name: "directory start is not root",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "test/test1/",
+				Filename:  "123.txt",
+				Size:      5,
+			},
+			expected_err: dirs.ErrBadDirSyntax,
+		},
+		{
+			name: "filename bad syntax",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "123!/xyt$::..txt",
+				Size:      5,
+			},
+			expected_err: data.ErrBadFilenameSyntax,
+		},
+		{
+			name: "read unavailable file request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "unavailable_file.docx",
+			},
+			expected_err: data.ErrFileNotExist,
+		},
+		{
+			name: "save to uncreated directory request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/uncreated_dir/",
+				Filename:  "123.txt",
+				Size:      5,
+			},
+			expected_err: data.ErrDirNotFound,
+		},
+		{
+			name: "normal save request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+				Size:      5,
+			},
+		},
+		{
+			//! After - normal save request. Do not use t.Parallel()
+
+			name: "normal read request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+			},
+		},
+		{
+			//! After - normal save request. Do not use t.Parallel()
+
+			name: "rewrite file request",
+			conn_req: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "test_conn_save.txt",
+				Size:      5,
+			},
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := data_client.CreateConnection(t.Context(), test.conn_req)
+
+			if !errorIs(err, test.expected_err) {
+				t.Errorf("expected %v but got %v", test.expected_err, err)
+			}
+		})
 	}
 }
 
 func TestSaveData(t *testing.T) {
-	test_file_name := "save_data_test_file.txt"
-
 	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
 		t.Fatal(err)
 	}
@@ -135,64 +295,120 @@ func TestSaveData(t *testing.T) {
 			},
 		})
 
-		if m := getRPCErrorMessage(err); m != data.ErrUnexpectedFileChange.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrUnexpectedFileChange.Error(), m)
+		if !errorIs(err, data.ErrConnectionNotFound) {
+			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
 
-	t.Run("incorrect chunk size", func(t *testing.T) {
-		test_data_info := &pb.DataInfo{
-			Username: TEST_USER,
-			Filename: "incorrect size.txt",
-			Filetype: pb.FileType_File,
-			Size:     uint64(len(TEST_FILE_BODY)),
-		}
+	// To test: "save in test dir"
+	test_dir := "/test_dir/"
+	if err = os.MkdirAll(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test_dir), 0660); err != nil {
+		t.Fatal(err)
+	}
 
-		conn, err := data_client.CreateConnection(t.Context(), test_data_info)
-		if err != nil {
-			t.Fatal(err)
-		}
+	small_test_file := "I use arch btw"
+	small_test_file_len := uint64(len(small_test_file))
 
-		_, err = data_client.SaveData(t.Context(), &pb.SaveChunk{
-			UUID: conn.UUID,
-			Data: &pb.FilePart{
-				Chunk: []byte(TEST_FILE_BODY + "garbage"),
+	cases := [...]struct {
+		name         string
+		conn_info    *pb.ConnectionRequest
+		save_data    string
+		expected_err error
+	}{
+		{
+			name: "save in root dir",
+			conn_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "save_data_single.txt",
+				Size:      small_test_file_len,
 			},
+			save_data:    small_test_file,
+			expected_err: nil,
+		},
+		{
+			name: "save in test dir",
+			conn_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: test_dir,
+				Filename:  "test.txt",
+				Size:      small_test_file_len,
+			},
+			save_data:    small_test_file,
+			expected_err: nil,
+		},
+		{
+			name: "save in uncreated dir",
+			conn_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/stay/",
+				Filename:  "cool.txt",
+				Size:      small_test_file_len,
+			},
+			save_data:    small_test_file,
+			expected_err: data.ErrDirNotFound,
+		},
+		{
+			name: "save big file",
+			conn_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "save_data_big.txt",
+				Size:      uint64(len(TEST_FILE_BODY)),
+			},
+			save_data:    TEST_FILE_BODY,
+			expected_err: nil,
+		},
+		{
+			name: "save more than accepted",
+			conn_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDWR,
+				Directory: "/",
+				Filename:  "save_data_incorrect_chunk.txt",
+				Size:      small_test_file_len - 5,
+			},
+			save_data:    small_test_file,
+			expected_err: data.ErrUnexpectedFileChange,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			err = saveFile(t.Context(), data_client, test.conn_info, strings.NewReader(test.save_data))
+
+			if test.expected_err != nil {
+				if !errorIs(err, test.expected_err) {
+					t.Errorf("expected error %v, but got %v", test.expected_err, err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("expected nil error, but got %v", err)
+			}
+
+			// Check file type only
+			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.conn_info.Username, test.conn_info.Directory, test.conn_info.Filename), os.O_RDONLY, 0660)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got_body_file, err := io.ReadAll(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(got_body_file) != test.save_data {
+				t.Error("got file body not implement expected")
+			}
+
 		})
-
-		if m := getRPCErrorMessage(err); m != data.ErrIncorrectChunkSize.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrIncorrectChunkSize.Error(), m)
-		}
-	})
-
-	t.Run("normal save", func(t *testing.T) {
-		data_info := &pb.DataInfo{
-			Username: TEST_USER,
-			Filename: test_file_name,
-			Filetype: pb.FileType_File,
-			Size:     uint64(len(TEST_FILE_BODY)),
-		}
-
-		err = saveFile(t.Context(), data_client, data_info, strings.NewReader(TEST_FILE_BODY))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// Check file type only
-		file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_RDONLY, 0660)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		got_body_file, err := io.ReadAll(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if string(got_body_file) != TEST_FILE_BODY {
-			t.Error("got file body not implement expected")
-		}
-	})
+	}
 }
 
 func TestGetData(t *testing.T) {
@@ -229,7 +445,7 @@ func TestGetData(t *testing.T) {
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
 	// Create test file
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_CREATE|os.O_RDWR, 0660)
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, TEST_USER, test_file_name), os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,21 +463,18 @@ func TestGetData(t *testing.T) {
 			ChunkId: 0,
 		})
 
-		if m := getRPCErrorMessage(err); m != data.ErrUnexpectedFileChange.Error() {
-			t.Errorf("expected error %s, but got %s", data.ErrUnexpectedFileChange.Error(), m)
+		if !errorIs(err, data.ErrConnectionNotFound) {
+			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
 
-	// Test
-	test_file_info := &pb.DataInfo{
-		Username: TEST_USER,
-		Filename: test_file_name,
-		Filetype: pb.FileType_File,
-		Size:     uint64(len(TEST_FILE_BODY)),
-	}
-
 	t.Run("normal get", func(t *testing.T) {
-		conn, err := data_client.CreateConnection(t.Context(), test_file_info)
+		conn, err := data_client.CreateConnection(t.Context(), &pb.ConnectionRequest{
+			Username:  TEST_USER,
+			Mode:      pb.ConnectionMode_RDONLY,
+			Directory: "/",
+			Filename:  test_file_name,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -336,80 +549,89 @@ func TestGetSum(t *testing.T) {
 
 	cases := [...]struct {
 		name           string
-		data_info      *pb.DataInfo
+		data_info      *pb.ConnectionRequest
+		gen_file_size  uint64
 		bad_sum_wanted bool
 	}{
 		{
 			name: "file 500 bytes",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "500b.txt",
-				Filetype: pb.FileType_File,
-				Size:     500,
+			data_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "get_sum_500b.txt",
 			},
+			gen_file_size: 500,
 		},
 		{
 			name: "file 10 kb",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "10kb.txt",
-				Filetype: pb.FileType_File,
-				Size:     10 * 1024,
+			data_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "get_sum_10kb.txt",
 			},
+			gen_file_size: 10 * 1024,
 		},
 		{
 			name: "file 500 kb",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "500kb.txt",
-				Filetype: pb.FileType_File,
-				Size:     500 * 1024,
+			data_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "get_sum_500kb.txt",
 			},
+			gen_file_size: 500 * 1024,
 		},
 		{
 			name: "file 5 mb",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "5mb.txt",
-				Filetype: pb.FileType_File,
-				Size:     5 * 1024 * 1024,
+			data_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "get_sum_5mb.txt",
 			},
+			gen_file_size: 5 * 1024 * 1024,
 		},
 		{
 			name: "file 50 mb",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "50mb.txt",
-				Filetype: pb.FileType_File,
-				Size:     50 * 1024 * 1024,
+			data_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "get_sum_50mb.txt",
 			},
+			gen_file_size: 50 * 1024 * 1024,
 		},
 		{
 			name: "file 100mb",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "100mb.txt",
-				Filetype: pb.FileType_File,
-				Size:     100 * 1024 * 1024,
+			data_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "get_sum_100mb.txt",
 			},
+			gen_file_size: 100 * 1024 * 1024,
 		},
 		{
 			name: "file 500mb",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "500mb.txt",
-				Filetype: pb.FileType_File,
-				Size:     500 * 1024 * 1024,
+			data_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "get_sum_500mb.txt",
 			},
+			gen_file_size: 500 * 1024 * 1024,
 		},
 		{
 			name: "file 750mb",
-			data_info: &pb.DataInfo{
-				Username: TEST_USER,
-				Filename: "750mb.txt",
-				Filetype: pb.FileType_File,
-				Size:     750 * 1024 * 1024,
+			data_info: &pb.ConnectionRequest{
+				Username:  TEST_USER,
+				Mode:      pb.ConnectionMode_RDONLY,
+				Directory: "/",
+				Filename:  "get_sum_750mb.txt",
 			},
+			gen_file_size: 750 * 1024 * 1024,
 		},
 	}
 
@@ -417,18 +639,26 @@ func TestGetSum(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			file_body := genRandomFile(test.data_info.Size)
+			file_body := genRandomFile(test.gen_file_size)
 
-			if err := saveFile(t.Context(), data_client, test.data_info, strings.NewReader(file_body)); err != nil {
+			// Create test file
+			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename), os.O_CREATE|os.O_WRONLY, 0660)
+			if err != nil {
 				t.Fatal(err)
 			}
+
+			_, err = file.Write([]byte(file_body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = file.Close()
 
 			defer func(test_name string) {
 				if test.data_info.Filename == "" {
 					return
 				}
 
-				if err := os.Remove(fmt.Sprintf("%s%s/files/%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Filename)); err != nil {
+				if err := os.Remove(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename)); err != nil {
 					t.Logf("failed remove file; test name = %s; err: %v", test_name, err)
 				}
 			}(test.name)
@@ -448,19 +678,238 @@ func TestGetSum(t *testing.T) {
 				}
 
 				offset := uint64(i) * conn.ChunkSize
-				n := min(offset+conn.ChunkSize, test.data_info.Size)
+				n := min(offset+conn.ChunkSize, test.gen_file_size)
 
 				expected_sum := sha256.Sum256([]byte(file_body[offset:n]))
 				if test.bad_sum_wanted {
 					expected_sum[0] = 0
 				}
 
-				for j, n := range got_sum.Sum {
+				for j, n := range got_sum.Value {
 					if n != expected_sum[j] {
-						t.Fatalf("expected sum: %x, but got: %x", string(expected_sum[:]), string(got_sum.Sum))
+						t.Fatalf("expected sum: %x, but got: %x", string(expected_sum[:]), string(got_sum.Value))
 					}
 				}
 			}
 		})
+	}
+}
+
+func TestGetFiles(t *testing.T) {
+	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
+		t.Fatal(err)
+	}
+
+	test_dir := "/get_files_test/"
+	if err := os.MkdirAll(WORKSPACE_PATH+TEST_USER+"/files"+test_dir, 0770); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create data grpc client
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 1024,               //byte
+		MinChunkSize: 5,                  //byte
+		AvailableRAM: 1024 * 1024 * 1024, //byte
+	})))
+
+	lis, err := net.Listen("tcp", "localhost:8082")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data_client := pb.NewDataServiceClient(grpc_connection)
+
+	extensions := []string{"jpg", "png", "txt", "doc", "docx", "1c", "svg"}
+	gen_filename := func(with_ext bool) string {
+		filename := uuid.New().String()
+		if with_ext {
+			filename += "." + extensions[rand.Intn(len(extensions))]
+		}
+		return filename
+	}
+
+	// ! Кейсы должны выполняться строго последовательно
+	cases := [...]struct {
+		name          string
+		target_dir    string
+		files_count   int // Files which will be created in target dir
+		folders_count int // Dirs which will be created in target dir
+		expected_err  error
+	}{
+		{
+			name:         "empty dir request",
+			target_dir:   "",
+			expected_err: dirs.ErrBadDirSyntax,
+		},
+		{
+			name:         "bad dir syntax",
+			target_dir:   "/../",
+			expected_err: dirs.ErrBadDirSyntax,
+		},
+		{
+			name:         "empty directory",
+			target_dir:   test_dir,
+			expected_err: nil,
+		},
+		{
+			name:          "with one dir",
+			target_dir:    test_dir,
+			folders_count: 1,
+			expected_err:  nil,
+		},
+		{
+			name:         "with one file",
+			target_dir:   test_dir,
+			files_count:  1,
+			expected_err: nil,
+		},
+		{
+			name:         "with 50 files",
+			target_dir:   test_dir,
+			files_count:  50,
+			expected_err: nil,
+		},
+		{
+			name:          "with 50 folders",
+			target_dir:    test_dir,
+			folders_count: 50,
+			expected_err:  nil,
+		},
+		{
+			name:          "100 files and dirs",
+			target_dir:    test_dir,
+			files_count:   100,
+			folders_count: 100,
+			expected_err:  nil,
+		},
+	}
+
+	for _, test := range cases {
+		workspace_dir := WORKSPACE_PATH + TEST_USER + "/files" + test.target_dir
+
+		// Create folders
+		for range test.folders_count {
+			if err := os.Mkdir(workspace_dir+gen_filename(false), 0660); err != nil {
+				t.Fatalf("failed create folders: %v", err)
+			}
+		}
+
+		// Create files
+		for range test.files_count {
+			if _, err := os.Create(workspace_dir + gen_filename(true)); err != nil {
+				t.Fatalf("failed create files: %v", err)
+			}
+		}
+
+		expected_files, err := os.ReadDir(workspace_dir)
+		if err != nil {
+			t.Fatalf("failed read test dir: %v", err)
+		}
+
+		t.Run(test.name, func(t *testing.T) {
+			files_list, err := data_client.GetFiles(t.Context(), &pb.Directory{
+				User:  TEST_USER,
+				Value: test.target_dir,
+			})
+
+			if !errorIs(err, test.expected_err) {
+				t.Fatalf("expected error: %v, but got: %v", test.expected_err, err)
+			}
+
+			if test.files_count == 0 && test.folders_count == 0 {
+				return
+			}
+
+			for i, file := range files_list.Value {
+				expected_info, err := expected_files[i].Info()
+				if err != nil {
+					t.Fatalf("failed get file info: %v", err)
+				}
+
+				expected_file_info := pb.FileInfo{
+					Name:    expected_files[i].Name(),
+					IsDir:   expected_files[i].IsDir(),
+					Size:    uint64(expected_info.Size()),
+					ModTime: expected_info.ModTime().Unix(),
+				}
+
+				if file.Name != expected_file_info.Name {
+					t.Errorf("expected filename: %s, but got: %s", expected_file_info.Name, file.Name)
+				}
+
+				if file.IsDir != expected_file_info.IsDir {
+					t.Errorf("expected isDir: %t, but got: %t", expected_file_info.IsDir, file.IsDir)
+				}
+
+				if file.Size != expected_file_info.Size {
+					t.Errorf("expected file size: %d, but got: %d", expected_file_info.Size, file.Size)
+				}
+
+				if file.ModTime != expected_file_info.ModTime {
+					t.Errorf("expected modTime: %d, but got: %d", expected_file_info.ModTime, file.ModTime)
+				}
+			}
+		})
+
+		for _, file := range expected_files {
+			if test.target_dir != test_dir {
+				continue
+			}
+
+			if err = os.RemoveAll(workspace_dir + file.Name()); err != nil {
+				t.Fatalf("failed cleanup created test files: %v", err)
+			}
+		}
+	}
+
+	// Test get files with not empty dir
+	if err := os.MkdirAll(WORKSPACE_PATH+TEST_USER+"/files"+test_dir+"test1/test2/test3", 0770); err != nil {
+		t.Fatalf("failed create test dirs: %v", err)
+	}
+
+	t.Run("with dir contained another dir", func(t *testing.T) {
+		files, err := data_client.GetFiles(t.Context(), &pb.Directory{
+			User:  TEST_USER,
+			Value: test_dir,
+		})
+
+		if err != nil {
+			t.Fatalf("expected nil error, but got: %v", err)
+		}
+
+		if len(files.Value) != 1 {
+			t.Errorf("expected one file in dir, but got: %d", len(files.Value))
+		}
+
+		if files.Value[0].Name != "test1" {
+			t.Errorf("expected dir name: test1, but got: %s", files.Value[0].Name)
+		}
+	})
+
+	t.Run("dir not found", func(t *testing.T) {
+		_, err := data_client.GetFiles(t.Context(), &pb.Directory{
+			User:  TEST_USER,
+			Value: "/unexpected_dir/",
+		})
+
+		if !errorIs(err, data.ErrDirNotFound) {
+			t.Fatalf("expected ErrDirNotFound error, but got: %v", err)
+		}
+	})
+
+	if err := os.RemoveAll(WORKSPACE_PATH + TEST_USER + "/files" + test_dir); err != nil {
+		t.Errorf("failed cleanup: %v", err)
 	}
 }

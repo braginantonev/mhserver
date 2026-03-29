@@ -88,8 +88,9 @@ func TestWithAuth(t *testing.T) {
 			name:  "normal auth",
 			token: Token{},
 			user: TestUser{
-				User:     auth.NewUser("with_auth_middleware_test1", "123"),
-				Register: true,
+				User:              auth.NewUser("with_auth_middleware_test1", "123"),
+				RegisterSecretKey: TEST_REGISTER_SECRET_KEY,
+				Register:          true,
 			},
 			expected_code: http.StatusOK, // Not set
 			expected_body: "",            // Not set
@@ -101,7 +102,7 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusUnauthorized,
-			expected_body: authmiddleware.ErrUserNotAuthorized.Error(),
+			expected_body: authmiddleware.ErrUserNotAuthorized.Description(),
 		},
 		{
 			name:  "wrong token signature",
@@ -110,7 +111,7 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: authmiddleware.ErrJwtSignatureInvalid.Error(),
+			expected_body: authmiddleware.ErrJwtSignatureInvalid.Description(),
 		},
 		{
 			name:  "expired token",
@@ -119,7 +120,7 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusUnauthorized,
-			expected_body: authmiddleware.ErrAuthorizationExpired.Error(),
+			expected_body: authmiddleware.ErrAuthorizationExpired.Description(),
 		},
 	}
 
@@ -129,17 +130,27 @@ func TestWithAuth(t *testing.T) {
 
 	for _, test := range cases {
 		if test.user.Register {
-			err := auth.Register(test.user.User, db)
-			if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
+			if err := InsertRegisterKeyToDB(db, test.user.RegisterSecretKey); err != nil {
+				t.Fatalf("failed to insert register key to DB: %v", err)
+			}
+
+			err := auth.Register(auth.NewRegisterUser(test.user.User, test.user.RegisterSecretKey), db)
+			if errors.Is(err, auth.ErrInternal) {
 				t.Fatal(err)
 			}
+
+			defer func() {
+				if _, err := db.Exec("delete from users where user=?", test.user.Name); err != nil {
+					t.Fatal(err)
+				}
+			}()
 		}
 
 		t.Run(test.name, func(t *testing.T) {
 			if !test.token.IsWrong {
 				var err error
 				test.token.string, err = auth.Login(test.user.User, db, TestJWT)
-				if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
+				if errors.Is(err, auth.ErrInternal) {
 					t.Fatal(err)
 				}
 			}

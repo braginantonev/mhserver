@@ -4,28 +4,25 @@ option go_package = "github.com/braginantonev/mhserver/proto/data";
 
 import "google/protobuf/empty.proto";
 
-enum FileType {
-    File = 0;
-    Image = 1;
-    Music = 2;
-}
-
-message DataInfo {
-    string username = 1;
-    string filename = 3;
-    FileType filetype = 4;
-    uint64 size = 5;
-}
-
-message Connection {
-    string UUID = 1;
-    uint64 chunkSize = 2;
-    int32 chunksCount = 3;
+enum ConnectionMode {
+    RDONLY = 0;
+    RDWR = 1;
 }
 
 message FilePart {
     bytes chunk = 1;
     int64 offset = 2;
+}
+
+// * Requests
+
+message ConnectionRequest {
+    string username = 1;
+    ConnectionMode mode = 2;
+
+    string directory = 3;
+    string filename = 4;
+    uint64 size = 5;
 }
 
 message SaveChunk {
@@ -38,13 +35,45 @@ message GetChunk {
     int32 chunkId = 2;
 }
 
+message Directory {
+    string user = 1;
+    string value = 2;
+}
+
+// * Responses
+
+message Connection {
+    string UUID = 1;
+    uint64 chunkSize = 2;
+    int32 chunksCount = 3;
+}
+
 message SHASum {
-    bytes sum = 1;
+    bytes value = 1;
+}
+
+message FileInfo {
+    string name = 1;
+    bool isDir = 2;
+    uint64 size = 3;
+    int64 modTime = 4;
+}
+
+message FilesList {
+    repeated FileInfo value = 1;
+}
+
+message Size {
+    uint64 value = 1;
 }
 
 service DataService {
-    rpc CreateConnection (DataInfo) returns (Connection);
+    rpc CreateConnection (ConnectionRequest) returns (Connection);
     rpc SaveData (SaveChunk) returns (google.protobuf.Empty);
     rpc GetData (GetChunk) returns (FilePart);
     rpc GetSum (GetChunk) returns (SHASum);
+    rpc GetFiles (Directory) returns (FilesList);
+	rpc GetAvailableDiskSpace (Directory) returns (Size);
+	rpc CreateDir (Directory) returns (google.protobuf.Empty);
+	rpc RemoveDir (Directory) returns (google.protobuf.Empty);
 }

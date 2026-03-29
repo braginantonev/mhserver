@@ -4,27 +4,39 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"math"
 	"os"
+	"regexp"
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
-	"github.com/braginantonev/mhserver/internal/repository/filecache"
-	"github.com/braginantonev/mhserver/internal/repository/fileuuidmap"
+	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+var (
+	/* filenameRegexp check:
+	- filename can have dot in start (hidden file)
+	- filename can have letters, numbers and underscores, whitespaces and hyphens
+	- filename can't be empty
+	- filename can't be started and ended with space, underscore and hyphen
+	- file extension start with dot
+	- file extension can only have eng letters or numbers
+	- file can have several extensions separated by dot (.txt.bak)
+	- file can have empty extension (Makefile, Dockerfile etc)
+	*/
+	filenameRegexp = regexp.MustCompile(`^\.?[\p{L}\p{N}]+([ _-]+[\p{L}\p{N}]+)*(\.[a-zA-Z0-9]+)*$`)
+)
+
 type DataServer struct {
 	pb.DataServiceServer
-	cfg         dataconfig.DataServiceConfig
-	cache       *filecache.FileCache
-	activeFiles *fileuuidmap.FileUUIDMap
-	sem         chan any
+	cfg               dataconfig.DataServiceConfig
+	activeConnections *Connections
+	sem               chan any
 }
 
 func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
@@ -33,61 +45,79 @@ func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataS
 	slog.Info("Set semaphore size", "value", sem_size)
 
 	return &DataServer{
-		cfg:         cfg,
-		cache:       filecache.NewFileCache(ctx),
-		activeFiles: fileuuidmap.NewFileUUIDMap(ctx),
-		sem:         make(chan any, sem_size),
+		cfg:               cfg,
+		activeConnections: NewConnectionsMap(ctx),
+		sem:               make(chan any, sem_size),
 	}
 }
 
-func (s *DataServer) openFile(path string, flag int, perm os.FileMode) (file *os.File, err error) {
-	file, ok := s.cache.Get(path)
-	if !ok {
-		file, err = os.OpenFile(path, flag, perm)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return nil, ErrFileNotExist
-			}
-			return nil, fmt.Errorf("%w: %v", ErrInternal, err)
-		}
-		s.cache.Push(path, file)
-	}
-	return file, err
-}
-
-func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*pb.Connection, error) {
+func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionRequest) (*pb.Connection, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	if info.Filename == "" {
-		return nil, ErrEmptyFilename
-	}
-
-	filetype, ok := catalogs[info.Filetype]
-	if !ok {
-		return nil, ErrUnexpectedFileType
-	}
-
-	disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
+	file_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, req.Username, req.Directory, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
 
-	if disk_space-s.activeFiles.ExpectedSavedSpace() < info.Size {
-		return nil, ErrNotEnoughDiskSpace
+	if !filenameRegexp.MatchString(req.Filename) {
+		return nil, ErrBadFilenameSyntax
 	}
 
-	// "%s%s/%s/%s" -> "/home/srv/.mhserver/" + username + file type (File, Image, Music etc) + file path (with filename)
-	file_path := fmt.Sprintf("%s%s/%s/%s", s.cfg.WorkspacePath, info.Username, filetype, info.Filename)
+	file_path += req.Filename
 
-	file_size := info.Size
+	var file_size uint64
+	var file *os.File
 
-	// For reading, not save
-	if server_file_stat, err := os.Stat(file_path); err == nil && file_size == 0 {
-		file_size = uint64(server_file_stat.Size())
+	switch req.Mode {
+	case pb.ConnectionMode_RDONLY:
+		file, err = os.OpenFile(file_path, os.O_RDONLY, 0660)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrFileNotExist
+			}
+
+			slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		file_stat, err := file.Stat()
+		if err != nil {
+			slog.ErrorContext(ctx, "failed get file stat", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		file_size = uint64(file_stat.Size())
+
+	case pb.ConnectionMode_RDWR:
+		if req.Size == 0 {
+			return nil, ErrNullSizeToSave
+		}
+
+		disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed get available disk space", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		if disk_space-s.activeConnections.ExpectedSavedSpace() < req.Size {
+			return nil, ErrNotEnoughDiskSpace
+		}
+
+		file, err = os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrDirNotFound
+			}
+
+			slog.ErrorContext(ctx, "failed open file to save", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+
+		file_size = req.Size
 	}
 
 	var chunk_size uint64
@@ -104,9 +134,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	}
 
 	chunks_count := int(math.Ceil(float64(file_size) / float64(chunk_size)))
-
-	// Create connection & register file changes
-	uuid := s.activeFiles.Add(file_path, fileuuidmap.NewChunksInfo(chunk_size, chunks_count))
+	uuid := s.activeConnections.Push(NewConnection(NewFile(file, file_path, NewChunksInfo(chunk_size, chunks_count)), req.Mode))
 
 	return &pb.Connection{
 		UUID:        uuid.String(),
@@ -115,133 +143,219 @@ func (s *DataServer) CreateConnection(ctx context.Context, info *pb.DataInfo) (*
 	}, nil
 }
 
-func (s *DataServer) GetData(ctx context.Context, get_chunk *pb.GetChunk) (*pb.FilePart, error) {
+func (s *DataServer) GetData(ctx context.Context, chunk *pb.GetChunk) (*pb.FilePart, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	uuid, err := uuid.Parse(get_chunk.UUID)
+	uuid, err := uuid.Parse(chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
 	}
 
-	file_info, ok := s.activeFiles.Get(uuid)
+	conn, ok := s.activeConnections.Get(uuid)
 	if !ok {
-		return nil, ErrUnexpectedFileChange
+		return nil, ErrConnectionNotFound
 	}
 
-	file, err := s.openFile(file_info.GetPath(), os.O_RDONLY, 0440)
-	if err != nil {
-		return nil, err
-	}
+	file_info := conn.GetFile().GetChunksInfo()
 
-	offset := int64(file_info.GetChunkSize()) * int64(get_chunk.ChunkId)
+	offset := int64(file_info.ChunkSize) * int64(chunk.ChunkId)
 
-	read_data := make([]byte, file_info.GetChunkSize())
-	n, err := file.ReadAt(read_data, offset)
+	read_data := make([]byte, file_info.ChunkSize)
+	n, err := conn.file.ReadAt(read_data, offset)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
+		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
-	// The worst thing I've ever written
-	if n != 0 && err == io.EOF {
-		err = nil
+	if n == 0 && err == io.EOF {
+		return nil, ErrReadOutOfFile
 	}
 
 	return &pb.FilePart{
 		Chunk:  read_data[:n],
 		Offset: offset,
-	}, err
+	}, nil
 }
 
-func (s *DataServer) SaveData(ctx context.Context, save_chunk *pb.SaveChunk) (*emptypb.Empty, error) {
+func (s *DataServer) SaveData(ctx context.Context, chunk *pb.SaveChunk) (*emptypb.Empty, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	uuid, err := uuid.Parse(save_chunk.UUID)
+	uuid, err := uuid.Parse(chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
 	}
 
-	file_info, ok := s.activeFiles.Get(uuid)
+	conn, ok := s.activeConnections.Get(uuid)
 	if !ok {
+		return nil, ErrConnectionNotFound
+	}
+
+	if conn.mode != pb.ConnectionMode_RDWR {
 		return nil, ErrUnexpectedFileChange
 	}
 
-	if len(save_chunk.Data.Chunk) > int(file_info.GetChunkSize()) {
+	file := conn.GetFile()
+
+	if file.IsLoaded() {
+		return nil, ErrUnexpectedFileChange
+	}
+
+	if len(chunk.Data.Chunk) > int(file.GetChunksInfo().ChunkSize) {
 		return nil, ErrIncorrectChunkSize
 	}
 
-	file, err := s.openFile(file_info.GetPath()+".part", os.O_CREATE|os.O_WRONLY, 0660)
+	_, err = file.WriteAt(chunk.Data.Chunk, chunk.Data.Offset)
 	if err != nil {
-		return nil, err
+		slog.ErrorContext(ctx, "failed write chunk to file", slog.Any("err", err))
+		return nil, ErrInternal
 	}
 
-	_, err = file.WriteAt(save_chunk.Data.Chunk, save_chunk.Data.Offset)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInternal, err)
-	}
+	_ = s.activeConnections.UpdateLoadedFileChunks(uuid)
 
-	err = s.activeFiles.UpdateLoadedChunks(uuid)
-	if err == nil {
-		return nil, nil
-	}
-
-	// Complete save
-	if err == fileuuidmap.EOC {
-		err := os.Rename(file_info.GetPath()+".part", file_info.GetPath())
-		if err != nil {
-			return nil, ErrFileNotExist
-		}
-		slog.InfoContext(ctx, "Rename - "+file_info.GetPath())
-
-		return nil, nil
-	}
-
-	// Предположительно, программа никогда не дойдёт до этого момента
-	return nil, ErrUnexpectedFileChange
+	return nil, nil
 }
 
-func (s *DataServer) GetSum(ctx context.Context, get_chunk *pb.GetChunk) (*pb.SHASum, error) {
+func (s *DataServer) GetSum(ctx context.Context, chunk *pb.GetChunk) (*pb.SHASum, error) {
 	defer func() {
 		<-s.sem
 	}()
 
 	s.sem <- struct{}{}
 
-	uuid, err := uuid.Parse(get_chunk.UUID)
+	uuid, err := uuid.Parse(chunk.UUID)
 	if err != nil {
 		return nil, ErrBadUUID
 	}
 
-	file_info, ok := s.activeFiles.Get(uuid)
+	conn, ok := s.activeConnections.Get(uuid)
 	if !ok {
-		return nil, ErrUnexpectedFileChange
+		return nil, ErrConnectionNotFound
 	}
 
-	file, err := s.openFile(file_info.GetPath(), os.O_RDONLY, 0440)
+	file_info := conn.GetFile().GetChunksInfo()
+
+	body := make([]byte, file_info.ChunkSize)
+	n, err := conn.file.ReadAt(body, int64(file_info.ChunkSize)*int64(chunk.ChunkId))
+	if err != nil && err != io.EOF {
+		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
+	if n == 0 && err == io.EOF {
+		return nil, ErrReadOutOfFile
+	}
+
+	sha := sha256.Sum256(body[:n])
+	return &pb.SHASum{Value: sha[:]}, nil
+}
+
+func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Directory) (*pb.Size, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", "/")
 	if err != nil {
 		return nil, err
 	}
 
-	body := make([]byte, file_info.GetChunkSize())
-	n, err := file.ReadAt(body, int64(file_info.GetChunkSize())*int64(get_chunk.ChunkId))
-	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("%w: %s", ErrInternal, err.Error())
+	space, err := freemem.GetAvailableDiskSpace(dir_path)
+	if err != nil {
+		return nil, ErrDirNotFound
 	}
 
-	// The worst thing I've ever written
-	if n != 0 && err == io.EOF {
-		err = nil
+	return &pb.Size{Value: space}, nil
+}
+
+func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
+	if err != nil {
+		return nil, err
 	}
 
-	sha := sha256.Sum256(body[:n])
-	return &pb.SHASum{
-		Sum: sha[:],
-	}, err
+	files, err := os.ReadDir(dir_path)
+	if err != nil {
+		return nil, ErrDirNotFound
+	}
+
+	list := &pb.FilesList{
+		Value: make([]*pb.FileInfo, len(files)),
+	}
+
+	for i, file := range files {
+		list.Value[i] = &pb.FileInfo{
+			Name:  file.Name(),
+			IsDir: file.IsDir(),
+		}
+
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+
+		list.Value[i].Size = uint64(info.Size())
+		list.Value[i].ModTime = info.ModTime().Unix()
+	}
+
+	return list, nil
+}
+
+func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(dir_path, 0600); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return nil, ErrDirAlreadyExist
+		}
+
+		slog.ErrorContext(ctx, "failed create user direction", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
+	return nil, nil
+}
+
+func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.RemoveAll(dir_path); err != nil {
+		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
+	return nil, nil
 }

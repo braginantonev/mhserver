@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -51,8 +52,8 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 	res := w.Result()
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode != datahandler.ErrUnavailable.StatusCode {
-		return fmt.Errorf("expected code %d, but got %d", datahandler.ErrUnavailable.StatusCode, res.StatusCode)
+	if res.StatusCode != datahandler.ErrUnavailable.Status() {
+		return fmt.Errorf("expected code %d, but got %d", datahandler.ErrUnavailable.Status(), res.StatusCode)
 	}
 
 	got_body, err := io.ReadAll(res.Body)
@@ -60,8 +61,8 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 		return err
 	}
 
-	if string(got_body) != datahandler.ErrUnavailable.Error() {
-		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", datahandler.ErrUnavailable.Error(), string(got_body))
+	if string(got_body) != datahandler.ErrUnavailable.Description() {
+		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", datahandler.ErrUnavailable.Description(), string(got_body))
 	}
 
 	return nil
@@ -110,8 +111,10 @@ func TestSaveDataHandler(t *testing.T) {
 
 	cases := [...]struct {
 		TestCase
+		directory string
 		filename  string
 		save_body []byte
+		body_len  uint64
 	}{
 		{
 			TestCase: TestCase{
@@ -119,9 +122,11 @@ func TestSaveDataHandler(t *testing.T) {
 				method:                http.MethodPost,
 				expected_code:         http.StatusBadRequest,
 				expected_content_type: "text/plain",
-				expected_body:         httpjsonutils.ErrRequestBodyEmpty.Error(),
+				expected_body:         httpjsonutils.ErrRequestBodyEmpty.Description(),
 			},
-			filename: "sht normal save.txt",
+			directory: "/",
+			filename:  "sht normal save.txt",
+			body_len:  5,
 		},
 		{
 			TestCase: TestCase{
@@ -129,18 +134,21 @@ func TestSaveDataHandler(t *testing.T) {
 				method:        http.MethodPost,
 				expected_code: http.StatusOK,
 			},
+			directory: "/",
 			filename:  "sht normal save.txt",
 			save_body: []byte(TEST_FILE_BODY),
+			body_len:  uint64(len(TEST_FILE_BODY)),
 		},
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
-				Username: TEST_USERNAME,
-				Filename: test.filename,
-				Filetype: pb.FileType_File,
-				Size:     uint64(len(test.save_body)),
+			conn, err := data_client.CreateConnection(t.Context(), &pb.ConnectionRequest{
+				Mode:      pb.ConnectionMode_RDWR,
+				Username:  TEST_USERNAME,
+				Directory: test.directory,
+				Filename:  test.filename,
+				Size:      test.body_len,
 			})
 			if err != nil {
 				t.Fatalf("failed create connection; err: %v", err)
@@ -148,18 +156,13 @@ func TestSaveDataHandler(t *testing.T) {
 
 			body := []byte("")
 			if test.save_body != nil {
-				body, err = json.Marshal(pb.SaveChunk{
-					UUID: conn.UUID,
-					Data: &pb.FilePart{
-						Chunk: test.save_body,
-					},
-				})
+				body, err = json.Marshal(pb.FilePart{Chunk: test.save_body})
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
 
-			req := httptest.NewRequest(test.method, server.SAVE_DATA_ENDPOINT, bytes.NewReader(body))
+			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?uuid=%s", server.SAVE_DATA_ENDPOINT, conn.UUID), bytes.NewReader(body))
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 
@@ -230,63 +233,51 @@ func TestGetDataHandler(t *testing.T) {
 	handler := datahandler.NewDataHandler(data_client)
 
 	// Create test file
-	filename := "test_get_data_handler.txt"
-	file, err := os.OpenFile(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename), os.O_CREATE|os.O_RDWR, 0660)
+
+	test_dir := "/"
+	test_file := "test_get_data_handler.txt"
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", TEST_WORKSPACE_PATH, TEST_USERNAME, test_dir, test_file), os.O_CREATE|os.O_RDWR, 0660)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		_ = file.Close()
-		_ = os.Remove(fmt.Sprintf("%s%s/files/%s", TEST_WORKSPACE_PATH, TEST_USERNAME, filename))
+		err = os.Remove(fmt.Sprintf("%s%s/files%s%s", TEST_WORKSPACE_PATH, TEST_USERNAME, test_dir, test_file))
+		if err != nil {
+			slog.WarnContext(t.Context(), "failed remove test files", slog.Any("err", err))
+		}
 	}()
 
 	_, err = file.Write([]byte(TEST_FILE_BODY))
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = file.Close()
 
 	cases := [...]TestCase{
-		{
-			name:                  "empty body",
-			method:                http.MethodGet,
-			expected_code:         http.StatusBadRequest,
-			expected_body:         httpjsonutils.ErrRequestBodyEmpty.Error(),
-			expected_content_type: "text/plain",
-		},
 		{
 			// Compare with TEST_FILE_BODY
 			name:                  "normal get",
 			method:                http.MethodGet,
 			expected_code:         http.StatusOK,
-			expected_content_type: "application/json",
+			expected_body:         TEST_FILE_BODY,
+			expected_content_type: "application/octet-stream",
 		},
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			conn, err := data_client.CreateConnection(t.Context(), &pb.DataInfo{
-				Username: TEST_USERNAME,
-				Filename: filename,
-				Filetype: pb.FileType_File,
-				Size:     uint64(len(TEST_FILE_BODY)),
+			conn, err := data_client.CreateConnection(t.Context(), &pb.ConnectionRequest{
+				Mode:      pb.ConnectionMode_RDONLY,
+				Username:  TEST_USERNAME,
+				Directory: test_dir,
+				Filename:  test_file,
 			})
 			if err != nil {
 				t.Fatalf("failed create connection; err: %v", err)
 			}
 
-			body := []byte("")
-			if test.expected_body != httpjsonutils.ErrRequestBodyEmpty.Error() {
-				body, err = json.Marshal(pb.GetChunk{
-					UUID:    conn.UUID,
-					ChunkId: 0,
-				})
-				if err != nil {
-					t.Fatalf("failed marshal pb.GetChunk; err: %v", err)
-				}
-			}
-
-			req := httptest.NewRequest(test.method, server.GET_DATA_ENDPOINT, bytes.NewReader(body))
+			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?uuid=%s&chunkID=%d", server.GET_DATA_ENDPOINT, conn.UUID, 0), nil)
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 

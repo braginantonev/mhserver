@@ -1,8 +1,6 @@
 package datahandler
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/braginantonev/mhserver/internal/grpc/data"
@@ -12,18 +10,22 @@ import (
 
 var (
 	// Service errors
-	ErrInternal          = httperror.NewInternalHttpError(errors.New("internal error"), "")
-	ErrUnavailable       = httperror.NewExternalHttpError(errors.New("service is off or unavailable"), http.StatusServiceUnavailable)
-	SpecialServiceErrors = map[string]httperror.HttpError{
-		data.ErrNotEnoughDiskSpace.Error(): httperror.NewExternalHttpError(data.ErrNotEnoughDiskSpace, http.StatusRequestEntityTooLarge),
+	ErrInternal    = httperror.NewInternalHttpError("", "")
+	ErrUnavailable = httperror.NewExternalHttpError("service is off or unavailable", http.StatusServiceUnavailable)
+
+	// by default errors have 400 status code
+	SpecialCodes = map[string]int{
+		data.ErrNotEnoughDiskSpace.Error():   http.StatusRequestEntityTooLarge,
+		data.ErrUnexpectedFileChange.Error(): http.StatusForbidden,
 	}
 
 	// Handler errors
-	ErrWrongContextUsername = httperror.NewInternalHttpError(errors.New("context username from jwt is not string"), "")
-	ErrBadQuery             = httperror.NewExternalHttpError(errors.New("bad query format"), http.StatusBadRequest)
+	ErrWrongContextUsername     = httperror.NewInternalHttpError("context username from jwt is not string", "")
+	ErrBadUuidFormat            = httperror.NewExternalHttpError("bad uuid format", http.StatusBadRequest)
+	ErrUnexpectedConnectionMode = httperror.NewExternalHttpError("unexpected connection mode", http.StatusBadRequest)
 
 	// Data info errors
-	ErrNullFileSize = httperror.NewExternalHttpError(errors.New("file size is null"), http.StatusBadRequest)
+	ErrNullFileSize = httperror.NewExternalHttpError("file size is null", http.StatusBadRequest)
 )
 
 func handleServiceError(err error, w http.ResponseWriter, func_name string) {
@@ -34,18 +36,15 @@ func handleServiceError(err error, w http.ResponseWriter, func_name string) {
 
 	mess := st.Message()
 
-	if len(mess) >= len(data.ErrInternal.Error()) {
-		if mess[:len(data.ErrInternal.Error())] == data.ErrInternal.Error() {
-			ErrInternal.AppendStr(mess).WithFuncName(func_name).Write(w)
-			return
-		}
-	}
-
-	herr, ok := SpecialServiceErrors[mess]
-	if ok {
-		herr.Write(w)
+	if mess == data.ErrInternal.Error() {
+		ErrInternal.WithFuncName(func_name).Write(w)
 		return
 	}
 
-	httperror.NewExternalHttpError(fmt.Errorf("%s", mess), http.StatusBadRequest).Write(w)
+	cd, ok := SpecialCodes[mess]
+	if !ok {
+		cd = http.StatusBadRequest
+	}
+
+	httperror.NewExternalHttpError(mess, cd).Write(w)
 }

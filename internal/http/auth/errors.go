@@ -9,33 +9,38 @@ import (
 )
 
 var (
-	authErrors = map[error]httperror.HttpError{
-		auth.ErrNameIsEmpty:       httperror.NewExternalHttpError(auth.ErrNameIsEmpty, http.StatusBadRequest),
-		auth.ErrUserNotExist:      httperror.NewExternalHttpError(auth.ErrUserNotExist, http.StatusBadRequest),
-		auth.ErrWrongPassword:     httperror.NewExternalHttpError(auth.ErrWrongPassword, http.StatusBadRequest),
-		auth.ErrUserAlreadyExists: httperror.NewExternalHttpError(auth.ErrUserAlreadyExists, http.StatusConflict),
+	// by default errors have 400 status code
+	authSpecialCodes = map[error]int{
+		auth.ErrUserAlreadyExists:    http.StatusConflict,
+		auth.ErrRegSecretKeyNotFound: http.StatusForbidden,
 	}
 
 	// Handler
-	ErrInternal         = httperror.NewInternalHttpError(errors.New(""), "")
-	ErrRequestBodyEmpty = httperror.NewExternalHttpError(errors.New("request body empty"), http.StatusBadRequest)
-	ErrBadJsonBody      = httperror.NewExternalHttpError(errors.New("bad request json body"), http.StatusBadRequest)
-	ErrFailedReadBody   = httperror.NewInternalHttpError(errors.New("failed read request body"), "") // Use WithDesc() and WithFuncName() to write response
+	ErrInternal          = httperror.NewInternalHttpError("", "")
+	ErrRequestBodyEmpty  = httperror.NewExternalHttpError("request body empty", http.StatusBadRequest)
+	ErrBadJsonBody       = httperror.NewExternalHttpError("bad request json body", http.StatusBadRequest)
+	ErrFailedReadBody    = httperror.NewInternalHttpError("failed read request body", "") // Use WithDesc() and WithFuncName() to write response
+	ErrUsernameEmpty     = httperror.NewExternalHttpError("username is empty", http.StatusBadRequest)
+	ErrRegSecretKeyEmpty = httperror.NewExternalHttpError("register secret key is empty", http.StatusBadRequest)
 
 	// Middleware
-	ErrGetJWTClaims = httperror.NewInternalHttpError(errors.New("failed get jwt claims"), "AuthMiddleware.WithAuth")
+	ErrGetJWTClaims = httperror.NewInternalHttpError("failed get jwt claims", "AuthMiddleware.WithAuth")
 
-	ErrUserNotAuthorized   = httperror.NewExternalHttpError(errors.New("user not authorized"), http.StatusUnauthorized)
-	ErrBadJWTToken         = httperror.NewExternalHttpError(errors.New("bad jwt token"), http.StatusBadRequest)
-	ErrJwtSignatureInvalid = httperror.NewExternalHttpError(errors.New("jwt signature is invalid"), http.StatusBadRequest)
+	ErrUserNotAuthorized   = httperror.NewExternalHttpError("user not authorized", http.StatusUnauthorized)
+	ErrBadJWTToken         = httperror.NewExternalHttpError("bad jwt token", http.StatusBadRequest)
+	ErrJwtSignatureInvalid = httperror.NewExternalHttpError("jwt signature is invalid", http.StatusBadRequest)
 
-	ErrAuthorizationExpired = httperror.NewExternalHttpError(errors.New("authorization expired"), http.StatusUnauthorized)
+	ErrAuthorizationExpired = httperror.NewExternalHttpError("authorization expired", http.StatusUnauthorized)
 )
 
 func handleServiceError(w http.ResponseWriter, err error, func_name string) {
-	if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
-		ErrInternal.Append(err).WithFuncName(func_name).Write(w)
+	if errors.Is(err, auth.ErrInternal) {
+		ErrInternal.WithFuncName(func_name).Write(w)
 	} else {
-		authErrors[err].Write(w)
+		cd, ok := authSpecialCodes[err]
+		if !ok {
+			cd = http.StatusBadRequest
+		}
+		httperror.NewExternalHttpError(err.Error(), cd).Write(w)
 	}
 }

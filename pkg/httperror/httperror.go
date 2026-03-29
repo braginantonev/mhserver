@@ -1,69 +1,40 @@
 package httperror
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 )
 
-type HttpErrorType int
+// This is alias for Error struct
+type HttpError = *Error
 
-const (
-	// Errors messages
-	BAD_ERROR string = "error text doesn't match. Won't `%s`, but got `%s`"
-	BAD_CODE  string = "error code don't match. Won't `%d`, but got `%d`"
-	BAD_TYPE  string = "error type don't match. Won't `%v`, but got `%v`"
-
-	INTERNAL HttpErrorType = iota
-	EXTERNAL
-)
-
-type HttpError struct {
-	Type       HttpErrorType
-	StatusCode int
-
+type Error struct {
+	status_code int
 	description string
 	funcName    string // for internal errors only
 }
 
-// Return nil, if errors not different
-func (herr HttpError) CompareWith(http_error HttpError) error {
-	if herr.Type != http_error.Type {
-		return fmt.Errorf(BAD_TYPE, herr.Type, http_error.Type)
-	}
-
-	if herr.StatusCode != http_error.StatusCode {
-		return fmt.Errorf(BAD_CODE, herr.StatusCode, http_error.StatusCode)
-	}
-
-	if !errors.Is(http_error, herr) {
-		return fmt.Errorf(BAD_ERROR, herr.description, http_error.description)
-	}
-
-	return nil
-}
-
-func (herr HttpError) Write(w http.ResponseWriter) {
-	switch herr.Type {
-	case INTERNAL:
-		slog.Error(herr.description, slog.String("func", herr.funcName))
+func (err HttpError) Write(w http.ResponseWriter) {
+	if err == nil {
+		slog.Error("write to Writer a nil http error")
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	case EXTERNAL:
-		w.WriteHeader(herr.StatusCode)
+	w.WriteHeader(err.status_code)
 
-		_, err := w.Write([]byte(herr.description))
-		if err != nil {
-			slog.Error("error write response", slog.String("error", err.Error()))
-		}
+	if err.status_code == http.StatusInternalServerError {
+		slog.Error("INTERNAL", slog.String("func", err.funcName), slog.String("desc", err.description))
+	} else {
+		_, _ = w.Write([]byte(err.description))
 	}
 }
 
 // Change func name, which will be logged
-func (herr HttpError) WithFuncName(func_name string) HttpError {
-	herr.funcName = func_name
-	return herr
+func (err HttpError) WithFuncName(func_name string) HttpError {
+	err.funcName = func_name
+	return err
 }
 
 /*
@@ -72,14 +43,14 @@ For example:
 
 	error "internal error" + error "fatal error" = error "internal error;\nfatal error"
 */
-func (herr HttpError) AppendStr(new_err_str string) HttpError {
-	if herr.description == "" {
-		herr.description = new_err_str
+func (err HttpError) AppendStr(new_err_str string) HttpError {
+	if err.description == "" {
+		err.description = new_err_str
 	} else {
-		herr.description += ";\n" + new_err_str
+		err.description += ";\n" + new_err_str
 	}
 
-	return herr
+	return err
 }
 
 /*
@@ -88,27 +59,54 @@ For example:
 
 	error "internal error" + error "fatal error" = error "internal error;\nfatal error"
 */
-func (herr HttpError) Append(new_err error) HttpError {
-	return herr.AppendStr(new_err.Error())
+func (err HttpError) Append(new_err error) HttpError {
+	return err.AppendStr(new_err.Error())
 }
 
-func (herr HttpError) Error() string {
-	return herr.description
+// Return error description. Use Error() instead to return full error (with status code)
+func (err HttpError) Description() string {
+	if err == nil {
+		return ""
+	}
+
+	return err.description
 }
 
-func NewInternalHttpError(err error, func_name string) HttpError {
-	return HttpError{
-		Type:        INTERNAL,
-		StatusCode:  http.StatusInternalServerError,
-		description: err.Error(),
+// Return error description. Use Error() instead to return full error (with status code)
+func (err HttpError) Status() int {
+	if err == nil {
+		return 0
+	}
+
+	return err.status_code
+}
+
+// * error interface implementation
+
+// Return full error (description + status code)
+func (err HttpError) Error() string {
+	return fmt.Sprintf("%s (%d)", err.Description(), err.Status())
+}
+
+func (err HttpError) Is(target error) bool {
+	if target == err {
+		return true
+	}
+
+	return err.Error() == target.Error()
+}
+
+func NewInternalHttpError(desc string, func_name string) HttpError {
+	return &Error{
+		status_code: http.StatusInternalServerError,
+		description: desc,
 		funcName:    func_name,
 	}
 }
 
-func NewExternalHttpError(err error, status_code int) HttpError {
-	return HttpError{
-		Type:        EXTERNAL,
-		StatusCode:  status_code,
-		description: err.Error(),
+func NewExternalHttpError(desc string, status_code int) HttpError {
+	return &Error{
+		status_code: status_code,
+		description: desc,
 	}
 }
