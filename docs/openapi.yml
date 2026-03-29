@@ -273,12 +273,12 @@ paths:
                   
                   incorrectChunkSize:                  
                     $ref: "#/components/examples/IncorrectChunkSize"
-        
-        "403":
-          $ref: "#/components/responses/UnexpectedFileChangeError"
                 
         "401":
           $ref: "#/components/responses/NotAuthorized"
+        
+        "403":
+          $ref: "#/components/responses/UnexpectedFileChangeError"
 
         "500":
           $ref: "#/components/responses/InternalError"
@@ -358,7 +358,9 @@ paths:
         Используется проверки целлостности сохранённого файла. 
         
         Возвращает контрольную сумму чанка (не файла!), 
-        поэтому, чтобы проверить целостность файла, необходимо сделать столько запросов, сколько указано в поле `chunksCount` при создании соединения
+        поэтому, чтобы проверить целостность файла, необходимо сделать столько запросов, сколько указано в поле `chunksCount` при создании соединения.
+
+        Контрольная сумма считается по алгоритму SHA-256.
       
       responses:
         "200":
@@ -748,7 +750,6 @@ components:
         type: object
         required:
           - name
-          - size
           - modTime
         
         properties:
@@ -756,6 +757,11 @@ components:
             description: Имя файла
             type: string
             example: "cern secrets.docx"
+          
+          isDir:
+            description: Каталог ли файл
+            type: boolean
+            example: true
           
           size:
             description: Размер файла в байтах
