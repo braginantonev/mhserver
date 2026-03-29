@@ -694,3 +694,211 @@ func TestGetSum(t *testing.T) {
 		})
 	}
 }
+
+func TestGetFiles(t *testing.T) {
+	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
+		t.Fatal(err)
+	}
+
+	test_dir := "/get_files_test/"
+	if err := os.MkdirAll(WORKSPACE_PATH+TEST_USER+"/files"+test_dir, 0770); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create data grpc client
+	grpc_server := grpc.NewServer()
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+		MaxChunkSize: 1024,               //byte
+		MinChunkSize: 5,                  //byte
+		AvailableRAM: 1024 * 1024 * 1024, //byte
+	})))
+
+	lis, err := net.Listen("tcp", "localhost:8082")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data_client := pb.NewDataServiceClient(grpc_connection)
+
+	extensions := []string{"jpg", "png", "txt", "doc", "docx", "1c", "svg"}
+	gen_filename := func(with_ext bool) string {
+		filename := uuid.New().String()
+		if with_ext {
+			filename += "." + extensions[rand.Intn(len(extensions))]
+		}
+		return filename
+	}
+
+	// ! Кейсы должны выполняться строго последовательно
+	cases := [...]struct {
+		name          string
+		target_dir    string
+		files_count   int // Files which will be created in target dir
+		folders_count int // Dirs which will be created in target dir
+		expected_err  error
+	}{
+		{
+			name:         "empty dir request",
+			target_dir:   "",
+			expected_err: dirs.ErrBadDirSyntax,
+		},
+		{
+			name:         "bad dir syntax",
+			target_dir:   "/../",
+			expected_err: dirs.ErrBadDirSyntax,
+		},
+		{
+			name:         "empty directory",
+			target_dir:   test_dir,
+			expected_err: nil,
+		},
+		{
+			name:          "with one dir",
+			target_dir:    test_dir,
+			folders_count: 1,
+			expected_err:  nil,
+		},
+		{
+			name:         "with one file",
+			target_dir:   test_dir,
+			files_count:  1,
+			expected_err: nil,
+		},
+		{
+			name:         "with 50 files",
+			target_dir:   test_dir,
+			files_count:  50,
+			expected_err: nil,
+		},
+		{
+			name:          "with 50 folders",
+			target_dir:    test_dir,
+			folders_count: 50,
+			expected_err:  nil,
+		},
+		{
+			name:          "100 files and dirs",
+			target_dir:    test_dir,
+			files_count:   100,
+			folders_count: 100,
+			expected_err:  nil,
+		},
+	}
+
+	for _, test := range cases {
+		workspace_dir := WORKSPACE_PATH + TEST_USER + "/files" + test.target_dir
+
+		// Create folders
+		for range test.folders_count {
+			if err := os.Mkdir(workspace_dir+gen_filename(false), 0660); err != nil {
+				t.Fatalf("failed create folders: %v", err)
+			}
+		}
+
+		// Create files
+		for range test.files_count {
+			if _, err := os.Create(workspace_dir + gen_filename(true)); err != nil {
+				t.Fatalf("failed create files: %v", err)
+			}
+		}
+
+		expected_files, err := os.ReadDir(workspace_dir)
+		if err != nil {
+			t.Fatalf("failed read test dir: %v", err)
+		}
+
+		t.Run(test.name, func(t *testing.T) {
+			files_list, err := data_client.GetFiles(t.Context(), &pb.Directory{
+				User:  TEST_USER,
+				Value: test.target_dir,
+			})
+
+			if !errorIs(err, test.expected_err) {
+				t.Fatalf("expected error: %v, but got: %v", test.expected_err, err)
+			}
+
+			if test.files_count == 0 && test.folders_count == 0 {
+				return
+			}
+
+			for i, file := range files_list.Value {
+				expected_info, err := expected_files[i].Info()
+				if err != nil {
+					t.Fatalf("failed get file info: %v", err)
+				}
+
+				expected_file_info := pb.FileInfo{
+					Name:    expected_files[i].Name(),
+					IsDir:   expected_files[i].IsDir(),
+					Size:    uint64(expected_info.Size()),
+					ModTime: expected_info.ModTime().Unix(),
+				}
+
+				if file.Name != expected_file_info.Name {
+					t.Errorf("expected filename: %s, but got: %s", expected_file_info.Name, file.Name)
+				}
+
+				if file.IsDir != expected_file_info.IsDir {
+					t.Errorf("expected isDir: %t, but got: %t", expected_file_info.IsDir, file.IsDir)
+				}
+
+				if file.Size != expected_file_info.Size {
+					t.Errorf("expected file size: %d, but got: %d", expected_file_info.Size, file.Size)
+				}
+
+				if file.ModTime != expected_file_info.ModTime {
+					t.Errorf("expected modTime: %d, but got: %d", expected_file_info.ModTime, file.ModTime)
+				}
+			}
+		})
+
+		for _, file := range expected_files {
+			if test.target_dir != test_dir {
+				continue
+			}
+
+			if err = os.RemoveAll(workspace_dir + file.Name()); err != nil {
+				t.Fatalf("failed cleanup created test files: %v", err)
+			}
+		}
+	}
+
+	// Test get files with not empty dir
+	if err := os.MkdirAll(WORKSPACE_PATH+TEST_USER+"/files"+test_dir+"test1/test2/test3", 0770); err != nil {
+		t.Fatalf("failed create test dirs: %v", err)
+	}
+
+	t.Run("with dir contained another dir", func(t *testing.T) {
+		files, err := data_client.GetFiles(t.Context(), &pb.Directory{
+			User:  TEST_USER,
+			Value: test_dir,
+		})
+
+		if err != nil {
+			t.Fatalf("expected nil error, but got: %v", err)
+		}
+
+		if len(files.Value) != 1 {
+			t.Errorf("expected one file in dir, but got: %d", len(files.Value))
+		}
+
+		if files.Value[0].Name != "test1" {
+			t.Errorf("expected dir name: test1, but got: %s", files.Value[0].Name)
+		}
+	})
+
+	if err := os.RemoveAll(WORKSPACE_PATH + TEST_USER + "/files" + test_dir); err != nil {
+		t.Errorf("failed cleanup: %v", err)
+	}
+}
