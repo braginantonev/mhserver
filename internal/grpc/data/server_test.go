@@ -898,6 +898,17 @@ func TestGetFiles(t *testing.T) {
 		}
 	})
 
+	t.Run("dir not found", func(t *testing.T) {
+		_, err := data_client.GetFiles(t.Context(), &pb.Directory{
+			User:  TEST_USER,
+			Value: "/unexpected_dir/",
+		})
+
+		if !errorIs(err, data.ErrDirNotFound) {
+			t.Fatalf("expected ErrDirNotFound error, but got: %v", err)
+		}
+	})
+
 	if err := os.RemoveAll(WORKSPACE_PATH + TEST_USER + "/files" + test_dir); err != nil {
 		t.Errorf("failed cleanup: %v", err)
 	}
