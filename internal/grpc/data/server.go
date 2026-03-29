@@ -328,7 +328,7 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 		return nil, err
 	}
 
-	if err := os.MkdirAll(dir_path, 0600); err != nil {
+	if err := os.MkdirAll(dir_path, 0700); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return nil, ErrDirAlreadyExist
 		}

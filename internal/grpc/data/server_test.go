@@ -301,8 +301,8 @@ func TestSaveData(t *testing.T) {
 	})
 
 	// To test: "save in test dir"
-	test_dir := "/test_dir/"
-	if err = os.MkdirAll(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test_dir), 0660); err != nil {
+	test_dir := "/save_data_test_dir/"
+	if err = os.MkdirAll(fmt.Sprintf("%s%s/files%s", WORKSPACE_PATH, TEST_USER, test_dir), 0770); err != nil {
 		t.Fatal(err)
 	}
 
