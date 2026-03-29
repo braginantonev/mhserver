@@ -200,9 +200,6 @@ paths:
                 
                 emptyFilename:
                   $ref: "#/components/examples/EmptyFilename"
-                
-                unexpectedFiletype:
-                  $ref: "#/components/examples/UnexpectedFiletype"
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
@@ -816,11 +813,6 @@ components:
       summary: Не указано имя файла
       value:
         message: file name is empty
-
-    UnexpectedFiletype:
-      summary: Недопустимый тип файла
-      value:
-        message: unexpected file type
     
     BadConnectionSyntax:
       summary: UUID соединения записан в неправильной форме
