@@ -66,7 +66,7 @@
 ## API
 MHServer API доступен на [вики](https://github.com/braginantonev/mhserver/blob/main/docs/api-wiki.md)
 
-Также доступна [спецификация OpenAPI]([вики](https://github.com/braginantonev/mhserver/blob/main/docs/openapi.yml)) для подключения к MHServer API. Вы можете использовать её для создания своих собственных клиентов.
+Также доступна [спецификация OpenAPI](https://github.com/braginantonev/mhserver/blob/main/docs/openapi.yml) для подключения к MHServer API. Вы можете использовать её для создания своих собственных клиентов.
 
 ## FAQ
 ### Как продлить TLS или корневой сертификат, если они просрочены?
