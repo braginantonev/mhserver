@@ -200,6 +200,9 @@ paths:
                 
                 emptyFilename:
                   $ref: "#/components/examples/EmptyFilename"
+                
+                nullSizeToSave:
+                  $ref: "#/components/examples/NullSizeToSave"
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
@@ -848,6 +851,11 @@ components:
       description: Каталог уже существует
       value:
         message: directory already exist
+    
+    NullSizeToSave:
+      description: Не указан размер сохраняемого файла
+      value:
+       message: null size to save
 
   responses:
     NotAuthorized:
