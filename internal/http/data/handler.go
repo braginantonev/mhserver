@@ -16,13 +16,12 @@ type Handler struct {
 	dataServiceClient pb.DataServiceClient
 }
 
-func NewDataHandler(grpc_client pb.DataServiceClient) Handler {
+func NewHandler(grpc_client pb.DataServiceClient) Handler {
 	return Handler{
 		dataServiceClient: grpc_client,
 	}
 }
 
-// Use only with auth_middlewares.WithAuth()
 func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Create connection request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
@@ -65,7 +64,6 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Use only with auth_middlewares.WithAuth()
 func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Save data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 

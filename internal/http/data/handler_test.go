@@ -101,13 +101,13 @@ func TestSaveDataHandler(t *testing.T) {
 
 	// Test without connection to service
 	t.Run("service unavailable", func(t *testing.T) {
-		err = testEmptyConnection(t.Context(), datahttp.NewDataHandler(nil).SaveData, http.MethodPost, server.SAVE_DATA_ENDPOINT)
+		err = testEmptyConnection(t.Context(), datahttp.NewHandler(nil).SaveData, http.MethodPost, server.SAVE_DATA_ENDPOINT)
 		if err != nil {
 			t.Error(err)
 		}
 	})
 
-	handler := datahttp.NewDataHandler(data_client)
+	handler := datahttp.NewHandler(data_client)
 
 	cases := [...]struct {
 		TestCase
@@ -224,13 +224,13 @@ func TestGetDataHandler(t *testing.T) {
 
 	// Test without connection to service
 	t.Run("service unavailable", func(t *testing.T) {
-		err = testEmptyConnection(t.Context(), datahttp.NewDataHandler(nil).GetData, http.MethodGet, server.GET_DATA_ENDPOINT)
+		err = testEmptyConnection(t.Context(), datahttp.NewHandler(nil).GetData, http.MethodGet, server.GET_DATA_ENDPOINT)
 		if err != nil {
 			t.Error(err)
 		}
 	})
 
-	handler := datahttp.NewDataHandler(data_client)
+	handler := datahttp.NewHandler(data_client)
 
 	// Create test file
 
