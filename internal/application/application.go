@@ -42,7 +42,7 @@ func NewApplicationConfig() appconfig.ApplicationConfig {
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Available server ram: %d bytes", cfg.Memory.AvailableRAM))
-	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
+	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].Address, cfg.SubServers["main"].Port))
 	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", DATABASE_NAME))
 	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
 
@@ -94,7 +94,7 @@ func (app *Application) runMain() error {
 			continue
 		}
 
-		address := fmt.Sprintf("%s:%s", subserver.IP, subserver.Port)
+		address := fmt.Sprintf("%s:%s", subserver.Address, subserver.Port)
 
 		conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
@@ -117,7 +117,7 @@ func (app *Application) runMain() error {
 		DataService: data_service,
 	}
 
-	return srv.Serve(app.cfg.SubServers["main"].IP+":"+app.cfg.SubServers["main"].Port, CONFIG_DIR+"ssl/org.crt", CONFIG_DIR+"ssl/rootCA.key")
+	return srv.Serve(app.cfg.SubServers["main"].Address+":"+app.cfg.SubServers["main"].Port, CONFIG_DIR+"ssl/org.crt", CONFIG_DIR+"ssl/rootCA.key")
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {
@@ -135,7 +135,7 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 		}
 
 		// Set ip and port for grpc server
-		grpc_ip, grpc_port = subserver.IP, subserver.Port
+		grpc_ip, grpc_port = subserver.Address, subserver.Port
 
 		di.RegisterServer[name](ctx, grpc_server, app.cfg)
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
