@@ -3,7 +3,9 @@ package di
 import (
 	"context"
 	"database/sql"
+	"time"
 
+	"github.com/braginantonev/mhserver/internal/config"
 	appconfig "github.com/braginantonev/mhserver/internal/config/app"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
@@ -17,14 +19,22 @@ import (
 
 func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_catalogs []string) *domain.HttpAuthService {
 	handler := authhandler.NewAuthHandler(authconfig.AuthHandlerConfig{
-		DB:            db,
-		JWTSignature:  app_cfg.JWTSignature,
+		DB:           db,
+		JWTSignature: app_cfg.JWTSignature,
+		Requests: config.RequestsConfig{
+			MaxInInterval:   5,
+			LimiterInterval: time.Second,
+		},
 		WorkspacePath: app_cfg.WorkspacePath,
 		UserCatalogs:  user_catalogs,
 	})
 
 	middleware := authhandler.NewAuthMiddleware(authconfig.AuthMiddlewareConfig{
 		JWTSignature: app_cfg.JWTSignature,
+		Requests: config.RequestsConfig{
+			MaxInInterval:   100,
+			LimiterInterval: time.Second,
+		},
 	})
 
 	return domain.NewAuthService(handler, middleware)

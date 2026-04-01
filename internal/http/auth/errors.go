@@ -26,6 +26,8 @@ var (
 	// Middleware
 	ErrGetJWTClaims = httperror.NewInternalHttpError("failed get jwt claims", "AuthMiddleware.WithAuth")
 
+	ErrToManyRequests = httperror.NewExternalHttpError("to many requests", http.StatusTooManyRequests)
+
 	ErrUserNotAuthorized   = httperror.NewExternalHttpError("user not authorized", http.StatusUnauthorized)
 	ErrBadJWTToken         = httperror.NewExternalHttpError("bad jwt token", http.StatusBadRequest)
 	ErrJwtSignatureInvalid = httperror.NewExternalHttpError("jwt signature is invalid", http.StatusBadRequest)

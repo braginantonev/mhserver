@@ -9,11 +9,10 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/domain"
 	"github.com/gorilla/mux"
+	"golang.org/x/time/rate"
 )
 
 const (
-	NON_SERVICE_SEMAPHORE_SIZE int = 5
-
 	// Auth
 
 	LOGIN_ENDPOINT    string = "/api/v1/users/login"
@@ -53,14 +52,14 @@ func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 	r.HandleFunc(CREATE_DIR_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.CreateDir)).Methods(http.MethodPost)
 	r.HandleFunc(REMOVE_DIR_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.RemoveDir)).Methods(http.MethodPost)
 
-	ns_sem := make(chan any, NON_SERVICE_SEMAPHORE_SIZE) // Semaphore for non-service requests
+	ns_limiter := rate.NewLimiter(rate.Every(time.Second), 5) // limiter for non-service requests
 
 	r.HandleFunc("/api/v1", func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			<-ns_sem
-		}()
-		ns_sem <- struct{}{}
-		_, _ = w.Write([]byte("Welcome to the MHserver API"))
+		if !ns_limiter.Allow() {
+			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			return
+		}
+		_, _ = w.Write([]byte("Welcome to MHServer API"))
 	})
 
 	http.Handle("/api/", r)

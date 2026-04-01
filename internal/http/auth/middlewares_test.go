@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/braginantonev/mhserver/internal/config"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authmiddleware "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
@@ -126,6 +127,10 @@ func TestWithAuth(t *testing.T) {
 
 	middleware := authmiddleware.NewAuthMiddleware(authconfig.AuthMiddlewareConfig{
 		JWTSignature: TestJWT,
+		Requests: config.RequestsConfig{
+			MaxInInterval:   5,
+			LimiterInterval: time.Second,
+		},
 	})
 
 	for _, test := range cases {
