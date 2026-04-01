@@ -7,11 +7,8 @@ import (
 )
 
 type AuthHandlerConfig struct {
-	DB           *sql.DB
-	JWTSignature string
-
-	Requests config.RequestsConfig
-
+	DB            *sql.DB
+	JWTSignature  string
 	WorkspacePath string
 	UserCatalogs  []string
 }

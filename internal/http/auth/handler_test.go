@@ -9,9 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
-	"github.com/braginantonev/mhserver/internal/config"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
@@ -112,11 +110,7 @@ func TestLogin(t *testing.T) {
 
 	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
 		JWTSignature: TEST_JWT_SIG,
-		Requests: config.RequestsConfig{
-			MaxInInterval:   5,
-			LimiterInterval: time.Second,
-		},
-		DB: db,
+		DB:           db,
 	})
 
 	for _, test := range cases {
@@ -232,11 +226,7 @@ func TestRegister(t *testing.T) {
 	}
 
 	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
-		DB: db,
-		Requests: config.RequestsConfig{
-			MaxInInterval:   5,
-			LimiterInterval: time.Second,
-		},
+		DB:           db,
 		JWTSignature: TEST_JWT_SIG,
 	})
 

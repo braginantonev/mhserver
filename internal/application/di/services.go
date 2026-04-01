@@ -19,12 +19,8 @@ import (
 
 func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_catalogs []string) *domain.HttpAuthService {
 	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
-		DB:           db,
-		JWTSignature: app_cfg.JWTSignature,
-		Requests: config.RequestsConfig{
-			MaxInInterval:   5,
-			LimiterInterval: time.Second,
-		},
+		DB:            db,
+		JWTSignature:  app_cfg.JWTSignature,
 		WorkspacePath: app_cfg.WorkspacePath,
 		UserCatalogs:  user_catalogs,
 	})
