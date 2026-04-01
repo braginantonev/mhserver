@@ -9,6 +9,7 @@ type AuthHandler interface {
 
 type AuthMiddleware interface {
 	WithAuth(handler http.HandlerFunc) http.HandlerFunc
+	WithRateLimit(http.HandlerFunc) http.HandlerFunc
 }
 
 type HttpAuthService struct {
