@@ -20,7 +20,7 @@ func NewMiddleware(req_cfg config.RequestsConfig) Middleware {
 func (mid Middleware) WithRateLimit(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !mid.limiter.Allow() {
-			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			ErrToManyRequests.Write(w)
 			return
 		}
 		next.ServeHTTP(w, r)
