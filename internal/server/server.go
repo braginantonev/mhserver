@@ -43,14 +43,14 @@ func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 	r.HandleFunc(REGISTER_ENDPOINT, s.AuthService.Handlers.Register).Methods(http.MethodPost)
 
 	// Data service
-	r.HandleFunc(CREATE_CONNECTION_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.CreateConnection)).Methods(http.MethodPost)
-	r.HandleFunc(SAVE_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.SaveData)).Methods(http.MethodPost)
-	r.HandleFunc(GET_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetData)).Methods(http.MethodGet)
-	r.HandleFunc(GET_DATA_SUM_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetSum)).Methods(http.MethodGet)
-	r.HandleFunc(GET_FILES_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetFiles)).Methods(http.MethodGet)
-	r.HandleFunc(GET_AVAILABLE_SPACE_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.GetAvailableDiskSpace)).Methods(http.MethodGet)
-	r.HandleFunc(CREATE_DIR_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.CreateDir)).Methods(http.MethodPost)
-	r.HandleFunc(REMOVE_DIR_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.RemoveDir)).Methods(http.MethodPost)
+	r.HandleFunc(CREATE_CONNECTION_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.CreateConnection)).Methods(http.MethodPost)
+	r.HandleFunc(SAVE_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.SaveData)).Methods(http.MethodPost)
+	r.HandleFunc(GET_DATA_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.GetData)).Methods(http.MethodGet)
+	r.HandleFunc(GET_DATA_SUM_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.GetSum)).Methods(http.MethodGet)
+	r.HandleFunc(GET_FILES_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.GetFiles)).Methods(http.MethodGet)
+	r.HandleFunc(GET_AVAILABLE_SPACE_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.GetAvailableDiskSpace)).Methods(http.MethodGet)
+	r.HandleFunc(CREATE_DIR_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.CreateDir)).Methods(http.MethodPost)
+	r.HandleFunc(REMOVE_DIR_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.RemoveDir)).Methods(http.MethodPost)
 
 	ns_limiter := rate.NewLimiter(rate.Every(time.Second), 5) // limiter for non-service requests
 

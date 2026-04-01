@@ -13,12 +13,18 @@ type DataHandler interface {
 	RemoveDir(http.ResponseWriter, *http.Request)
 }
 
-type HttpDataService struct {
-	Handler DataHandler
+type DataMiddleware interface {
+	WithRateLimit(http.HandlerFunc) http.HandlerFunc
 }
 
-func NewDataService(handler DataHandler) *HttpDataService {
+type HttpDataService struct {
+	DataHandler
+	DataMiddleware
+}
+
+func NewDataService(handler DataHandler, middleware DataMiddleware) *HttpDataService {
 	return &HttpDataService{
-		Handler: handler,
+		DataHandler:    handler,
+		DataMiddleware: middleware,
 	}
 }
