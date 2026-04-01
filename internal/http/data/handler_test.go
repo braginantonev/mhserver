@@ -1,4 +1,4 @@
-package datahandler_test
+package datahttp_test
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 
 	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
-	datahandler "github.com/braginantonev/mhserver/internal/http/data"
+	datahttp "github.com/braginantonev/mhserver/internal/http/data"
 	"github.com/braginantonev/mhserver/internal/server"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
@@ -52,8 +52,8 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 	res := w.Result()
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode != datahandler.ErrUnavailable.Status() {
-		return fmt.Errorf("expected code %d, but got %d", datahandler.ErrUnavailable.Status(), res.StatusCode)
+	if res.StatusCode != datahttp.ErrUnavailable.Status() {
+		return fmt.Errorf("expected code %d, but got %d", datahttp.ErrUnavailable.Status(), res.StatusCode)
 	}
 
 	got_body, err := io.ReadAll(res.Body)
@@ -61,8 +61,8 @@ func testEmptyConnection(ctx context.Context, handler_func http.HandlerFunc, met
 		return err
 	}
 
-	if string(got_body) != datahandler.ErrUnavailable.Description() {
-		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", datahandler.ErrUnavailable.Description(), string(got_body))
+	if string(got_body) != datahttp.ErrUnavailable.Description() {
+		return fmt.Errorf("expected body: `%s`\nbut got: `%s`", datahttp.ErrUnavailable.Description(), string(got_body))
 	}
 
 	return nil
@@ -101,13 +101,13 @@ func TestSaveDataHandler(t *testing.T) {
 
 	// Test without connection to service
 	t.Run("service unavailable", func(t *testing.T) {
-		err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).SaveData, http.MethodPost, server.SAVE_DATA_ENDPOINT)
+		err = testEmptyConnection(t.Context(), datahttp.NewDataHandler(nil).SaveData, http.MethodPost, server.SAVE_DATA_ENDPOINT)
 		if err != nil {
 			t.Error(err)
 		}
 	})
 
-	handler := datahandler.NewDataHandler(data_client)
+	handler := datahttp.NewDataHandler(data_client)
 
 	cases := [...]struct {
 		TestCase
@@ -224,13 +224,13 @@ func TestGetDataHandler(t *testing.T) {
 
 	// Test without connection to service
 	t.Run("service unavailable", func(t *testing.T) {
-		err = testEmptyConnection(t.Context(), datahandler.NewDataHandler(nil).GetData, http.MethodGet, server.GET_DATA_ENDPOINT)
+		err = testEmptyConnection(t.Context(), datahttp.NewDataHandler(nil).GetData, http.MethodGet, server.GET_DATA_ENDPOINT)
 		if err != nil {
 			t.Error(err)
 		}
 	})
 
-	handler := datahandler.NewDataHandler(data_client)
+	handler := datahttp.NewDataHandler(data_client)
 
 	// Create test file
 

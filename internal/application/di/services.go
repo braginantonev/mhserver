@@ -12,7 +12,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/domain"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	authhandler "github.com/braginantonev/mhserver/internal/http/auth"
-	datahandler "github.com/braginantonev/mhserver/internal/http/data"
+	datahttp "github.com/braginantonev/mhserver/internal/http/data"
 	data_pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/grpc"
 )
@@ -41,7 +41,7 @@ func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_cata
 }
 
 func SetupDataService(client data_pb.DataServiceClient) *domain.HttpDataService {
-	return domain.NewDataService(datahandler.NewDataHandler(client))
+	return domain.NewDataService(datahttp.NewDataHandler(client))
 }
 
 //* GRPC
