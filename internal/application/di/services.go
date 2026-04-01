@@ -41,7 +41,13 @@ func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_cata
 }
 
 func SetupDataService(client data_pb.DataServiceClient) *domain.HttpDataService {
-	return domain.NewDataService(datahttp.NewDataHandler(client))
+	return domain.NewDataService(
+		datahttp.NewHandler(client),
+		datahttp.NewMiddleware(config.RequestsConfig{
+			MaxInInterval:   100,
+			LimiterInterval: time.Second,
+		}),
+	)
 }
 
 //* GRPC
