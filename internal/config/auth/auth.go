@@ -1,10 +1,16 @@
 package authconfig
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"github.com/braginantonev/mhserver/internal/config"
+)
 
 type AuthHandlerConfig struct {
 	DB           *sql.DB
 	JWTSignature string
+
+	Requests config.RequestsConfig
 
 	WorkspacePath string
 	UserCatalogs  []string
@@ -12,4 +18,5 @@ type AuthHandlerConfig struct {
 
 type AuthMiddlewareConfig struct {
 	JWTSignature string
+	Requests     config.RequestsConfig
 }
