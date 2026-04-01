@@ -23,14 +23,19 @@ func NewAuthMiddleware(cfg authconfig.AuthMiddlewareConfig) Middleware {
 	}
 }
 
-// Extract username from jwt and put him in request context
-func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (mid Middleware) WithRateLimit(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if !mid.limiter.Allow() {
 			ErrToManyRequests.Write(w)
 			return
 		}
+		next.ServeHTTP(w, r)
+	}
+}
 
+// Extract username from jwt and put him in request context
+func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
 		if token == "" {
 			ErrUserNotAuthorized.Write(w)
