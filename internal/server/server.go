@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	NON_SERVICE_SEMAPHORE_SIZE int = 5
+
 	// Auth
 
 	LOGIN_ENDPOINT    string = "/api/v1/users/login"
@@ -51,7 +53,15 @@ func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 	r.HandleFunc(CREATE_DIR_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.CreateDir)).Methods(http.MethodPost)
 	r.HandleFunc(REMOVE_DIR_ENDPOINT, s.AuthService.Middlewares.WithAuth(s.DataService.Handler.RemoveDir)).Methods(http.MethodPost)
 
-	r.HandleFunc("/api/v1/ping", func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodPost)
+	ns_sem := make(chan any, NON_SERVICE_SEMAPHORE_SIZE) // Semaphore for non-service requests
+
+	r.HandleFunc("/api/v1", func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			<-ns_sem
+		}()
+		ns_sem <- struct{}{}
+		_, _ = w.Write([]byte("Welcome to the MHserver API"))
+	})
 
 	http.Handle("/api/", r)
 
