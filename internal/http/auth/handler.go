@@ -8,27 +8,19 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
-	"golang.org/x/time/rate"
 )
 
 type Handler struct {
-	cfg     authconfig.AuthHandlerConfig
-	limiter *rate.Limiter
+	cfg authconfig.AuthHandlerConfig
 }
 
 func NewHandler(cfg authconfig.AuthHandlerConfig) Handler {
 	return Handler{
-		cfg:     cfg,
-		limiter: rate.NewLimiter(rate.Every(cfg.Requests.LimiterInterval), cfg.Requests.MaxInInterval),
+		cfg: cfg,
 	}
 }
 
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
-	if !handler.limiter.Allow() {
-		ErrToManyRequests.Write(w)
-		return
-	}
-
 	slog.Info("Login request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
 	w.Header().Add("Content-Type", "plain/text")
@@ -55,11 +47,6 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
-	if !handler.limiter.Allow() {
-		ErrToManyRequests.Write(w)
-		return
-	}
-
 	slog.Info("Register request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
 	w.Header().Add("Content-Type", "plain/text")
