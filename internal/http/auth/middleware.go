@@ -16,7 +16,7 @@ type Middleware struct {
 	limiter *rate.Limiter
 }
 
-func NewAuthMiddleware(cfg authconfig.AuthMiddlewareConfig) Middleware {
+func NewMiddleware(cfg authconfig.AuthMiddlewareConfig) Middleware {
 	return Middleware{
 		cfg:     cfg,
 		limiter: rate.NewLimiter(rate.Every(cfg.Requests.LimiterInterval), cfg.Requests.MaxInInterval),

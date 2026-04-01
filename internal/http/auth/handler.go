@@ -16,7 +16,7 @@ type Handler struct {
 	limiter *rate.Limiter
 }
 
-func NewAuthHandler(cfg authconfig.AuthHandlerConfig) Handler {
+func NewHandler(cfg authconfig.AuthHandlerConfig) Handler {
 	return Handler{
 		cfg:     cfg,
 		limiter: rate.NewLimiter(rate.Every(cfg.Requests.LimiterInterval), cfg.Requests.MaxInInterval),

@@ -110,7 +110,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	handler := authhttp.NewAuthHandler(authconfig.AuthHandlerConfig{
+	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
 		JWTSignature: TEST_JWT_SIG,
 		Requests: config.RequestsConfig{
 			MaxInInterval:   5,
@@ -231,7 +231,7 @@ func TestRegister(t *testing.T) {
 		},
 	}
 
-	handler := authhttp.NewAuthHandler(authconfig.AuthHandlerConfig{
+	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
 		DB: db,
 		Requests: config.RequestsConfig{
 			MaxInInterval:   5,

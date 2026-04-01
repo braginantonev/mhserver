@@ -18,7 +18,7 @@ import (
 )
 
 func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_catalogs []string) *domain.HttpAuthService {
-	handler := authhttp.NewAuthHandler(authconfig.AuthHandlerConfig{
+	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
 		DB:           db,
 		JWTSignature: app_cfg.JWTSignature,
 		Requests: config.RequestsConfig{
@@ -29,7 +29,7 @@ func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_cata
 		UserCatalogs:  user_catalogs,
 	})
 
-	middleware := authhttp.NewAuthMiddleware(authconfig.AuthMiddlewareConfig{
+	middleware := authhttp.NewMiddleware(authconfig.AuthMiddlewareConfig{
 		JWTSignature: app_cfg.JWTSignature,
 		Requests: config.RequestsConfig{
 			MaxInInterval:   100,
