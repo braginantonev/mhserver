@@ -7,7 +7,8 @@ CONFIG_NAME=mhserver.conf
 
 EXECUTABLE_PATH=/opt/mhserver
 
-SUB_SERVERS=(main files music images llm)
+SUB_SERVERS=(files music images llm)
+SS_BASE_PORT=30543
 
 MAX_CHUNK_SIZE=52428800 # bytes = 50 mb
 MIN_CHUNK_SIZE=4096 # bytes = 4 kb
@@ -254,35 +255,70 @@ write_to_file "min_chunk_size = $MIN_CHUNK_SIZE # bytes" $CONFIG_NAME
 
 #* ------------ Subservers setup ----------- *#
 
-for server in ${SUB_SERVERS[*]}
-do
+echo -e "\nSetup main server..."
+
+write_to_file "\n[subservers.main]" $CONFIG_NAME
+write_to_file "enabled = true" $CONFIG_NAME
+
+main_address=""
+while [ -z $main_address ]; do
+    read -e -p "Enter address of your server (e.g. my.server.com, 145.123.123.12, localhost): " main_address
+done
+write_to_file "address = \"$main_address\"" $CONFIG_NAME
+
+main_port=""
+while [ -z $main_port ]; do
+    read -e -p "Enter port of your server (use a port higher than 30000): " main_port
+done
+write_to_file "port = $main_port" $CONFIG_NAME
+
+echo -e "\nSetup subservers..."
+
+local_ss_base_port=$SS_BASE_PORT
+if [[ $local_ss_base_port -eq $main_port ]]; then
+    local_ss_base_port=$((local_ss_base_port+1))
+fi
+
+echo "Server used $local_ss_base_port port for subservers by default (without main)"
+echo "Each individual port of the subserver will count from the base. That is: $local_ss_base_port+0, $local_ss_base_port+1 etc"
+
+# SS ports setup
+while true; do
+    echo -n "This all ports which server will be use:"
+
+    for sid in ${!SUB_SERVERS[@]}; do
+        echo -n " $((local_ss_base_port+sid))"
+    done
+
     echo # Skip the line
 
+    if [[ $(yn_input "Do you want use this ports?") == 'y' ]]; then
+        break
+    fi
+
+    local_ss_base_port=""
+
+    echo -e "\nUse individual ports for subservers! The port of the main server cannot match any of the ports of the subservers!"
+    while [ -z $local_ss_base_port ] || [ $local_ss_base_port -le 0 ] || [ $local_ss_base_port -gt 65535 ] || [ $local_ss_base_port -eq $main_port ]; do
+        read -e -p "Enter your base subservers port: " local_ss_base_port
+    done
+done
+
+echo # SKip the line
+
+for sid in ${!SUB_SERVERS[@]}; do
+    server=${SUB_SERVERS[sid]}
     write_to_file "\n[subservers.$server]" $CONFIG_NAME
 
     if [[ $(yn_input "Do you want use $server subserver?") == 'n' ]]; then
         write_to_file "enabled = false" $CONFIG_NAME
-        continue
-    fi
-
-    write_to_file "enabled = true" $CONFIG_NAME
-
-    ip=""
-    read -e -p "Enter subserver IP (localhost by default): " ip
-
-    if [[ -z $ip ]]; then
-        write_to_file "ip = \"localhost\"" $CONFIG_NAME
     else
-        write_to_file "ip = \"$ip\"" $CONFIG_NAME
+        write_to_file "enabled = true" $CONFIG_NAME
     fi
 
-    port=""
-    while [ -z $port ]; do
-        read -e -p "Enter subserver port (use a unique port): " port
-    done
-    write_to_file "port = \"$port\"" $CONFIG_NAME
+    write_to_file "address = \"localhost\"" $CONFIG_NAME
+    write_to_file "port = $((local_ss_base_port+sid))" $CONFIG_NAME
 done
-
 
 #* ------- HTTPS/TLS configuration --------- *#
 
