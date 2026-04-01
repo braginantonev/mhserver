@@ -1,4 +1,4 @@
-package authhandler
+package authhttp
 
 import (
 	"context"
