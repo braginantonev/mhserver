@@ -23,7 +23,7 @@ func NewHandler(cfg authconfig.AuthHandlerConfig) Handler {
 func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Login request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	w.Header().Add("Content-Type", "plain/text")
+	w.Header().Add("Content-Type", "text/plain")
 
 	var user auth.User
 	if err := httpjsonutils.ConvertJsonToStruct(&user, r.Body, "Handlers.Login"); err != nil {
@@ -49,7 +49,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Register request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
-	w.Header().Add("Content-Type", "plain/text")
+	w.Header().Add("Content-Type", "text/plain")
 
 	var user auth.RegisterUser
 	if err := httpjsonutils.ConvertJsonToStruct(&user, r.Body, "Handlers.Register"); err != nil {
