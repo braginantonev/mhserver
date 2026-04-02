@@ -32,8 +32,31 @@ tags:
 
   - name: Файлы
     description: Работа с файлами
+  
+  - name: Инструменты
+    description: Инструменты сервера
 
 paths:
+  /:
+   post:
+    operationId: ping
+
+    tags: ["Инструменты"]
+    summary: Приветствие
+    description: Используется для пинга сервера
+
+    responses:
+      "200":
+        description: Сервер доступен
+        content:
+          plain/text:
+            schema:
+              type: string
+            example: Welcome to MHServer API
+      
+      "404":
+        description: Сервер выключен
+        
   /users/login:
     post:
       summary: Получение JWT пользователя
