@@ -60,7 +60,7 @@ func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 			return
 		}
 		_, _ = w.Write([]byte("Welcome to MHServer API"))
-	})
+	}).Methods(http.MethodPost)
 
 	http.Handle("/api/", r)
 
