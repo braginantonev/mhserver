@@ -54,7 +54,7 @@ func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 
 	ns_limiter := rate.NewLimiter(rate.Every(time.Second), 5) // limiter for non-service requests
 
-	r.HandleFunc("/api/v1", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/tools/ping", func(w http.ResponseWriter, r *http.Request) {
 		if !ns_limiter.Allow() {
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
