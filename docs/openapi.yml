@@ -56,9 +56,11 @@ paths:
       
       "404":
         description: Сервер выключен
-        
+
   /users/login:
     post:
+      operationId: usersLogin
+
       summary: Получение JWT пользователя
       tags: ["Аутентификация", "Сервис"]
 
@@ -113,6 +115,8 @@ paths:
 
   /users/register:
     post:
+      operationId: usersRegister
+
       summary: Регистрация пользователя
       tags: ["Аутентификация", "Сервис"]
 
@@ -154,6 +158,8 @@ paths:
   
   /files/connect:
     post:
+      operationId: filesCreateConnection
+
       parameters:
         - name: mode
           in: query
@@ -247,6 +253,8 @@ paths:
   
   /files/save:
     post:
+      operationId: filesSaveChunk
+
       parameters:
         - $ref: "#/components/parameters/ConnectionID"
       
@@ -311,6 +319,8 @@ paths:
   
   /files/get:
     get:
+      operationId: filesGetChunk
+
       parameters:
         - $ref: "#/components/parameters/ConnectionID"
         - $ref: "#/components/parameters/GetChunk"
@@ -367,6 +377,8 @@ paths:
   
   /files/sum:
     get:
+      operationId: filesGetSum
+
       parameters:
         - $ref: "#/components/parameters/ConnectionID"
         - $ref: "#/components/parameters/GetChunk"
@@ -430,6 +442,8 @@ paths:
   
   /files:
     get:
+      operationId: getFilesList
+
       parameters:
         - $ref: "#/components/parameters/Directory"
       
@@ -461,6 +475,7 @@ paths:
   
   /files/space:
     get:      
+      operationId: filesGetAvailableSpace
       security:
         - BearerAuth: []
 
@@ -500,6 +515,8 @@ paths:
   
   /files/mkdir:
     post:
+      operationId: filesMakeDirectory
+      
       parameters:
         - $ref: "#/components/parameters/Directory"
       
@@ -546,6 +563,8 @@ paths:
 
   /files/rmdir:
     post:
+      operationId: filesRemoveDirectory
+
       parameters:
         - $ref: "#/components/parameters/Directory"
       
