@@ -23,6 +23,16 @@
 * 401 (Unauthorized) &mdash; поле `Authorization` отсутствует, либо пустое
 * 401 (Unauthorized) &mdash; `jwt` токен просрочен
 
+
+### Пинг сервера
+✳️ `POST /api/v1`
+
+Проверяет доступность сервера
+
+#### Статусы
+* 200 (OK) &mdash; сервер доступен
+* 404 (Not found) &mdash; сервер выключен или недоступен
+
 ### Регистрация
 ✳️ `POST /api/v1/users/register`
 
