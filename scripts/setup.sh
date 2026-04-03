@@ -8,7 +8,7 @@ CONFIG_NAME=mhserver.conf
 EXECUTABLE_PATH=/opt/mhserver
 
 SUB_SERVERS=(files music images llm)
-SS_BASE_PORT=30543
+BASE_PORT=30543
 
 MAX_CHUNK_SIZE=52428800 # bytes = 50 mb
 MIN_CHUNK_SIZE=4096 # bytes = 4 kb
@@ -266,48 +266,29 @@ while [ -z $main_address ]; do
 done
 write_to_file "address = \"$main_address\"" $CONFIG_NAME
 
-main_port=""
-while [ -z $main_port ]; do
-    read -e -p "Enter port of your server (use a port higher than 30000): " main_port
-done
+main_port=$BASE_PORT
+if [[ $(yn_input "Do you want use own port ($main_port using by default)?") == 'y' ]]; then
+    while [ -z $main_port ] || [ $main_port -eq $BASE_PORT ]; do
+        read -e -p "Enter your server port: " main_port
+    done
+fi
 write_to_file "port = $main_port" $CONFIG_NAME
 
-echo -e "\nSetup subservers..."
+echo -e "\nSetup services..."
 
-local_ss_base_port=$SS_BASE_PORT
-if [[ $local_ss_base_port -eq $main_port ]]; then
-    local_ss_base_port=$((local_ss_base_port+1))
+grpc_port=$((main_port+1))
+if [[ $(yn_input "Do you want use own port for services ($grpc_port using by default)?") == 'y' ]]; then
+    while [ -z $grpc_port ] || [ $grpc_port -eq $main_port ]; do
+        read -e -p "Enter your port for services: " main_port
+    done
 fi
-
-echo "Server used $local_ss_base_port port for subservers by default (without main)"
-echo "Each individual port of the subserver will count from the base. That is: $local_ss_base_port+0, $local_ss_base_port+1 etc"
-
-# SS ports setup
-while true; do
-    echo -n "This all ports which server will be use:"
-
-    for sid in ${!SUB_SERVERS[@]}; do
-        echo -n " $((local_ss_base_port+sid))"
-    done
-
-    echo # Skip the line
-
-    if [[ $(yn_input "Do you want use this ports?") == 'y' ]]; then
-        break
-    fi
-
-    local_ss_base_port=""
-
-    echo -e "\nUse individual ports for subservers! The port of the main server cannot match any of the ports of the subservers!"
-    while [ -z $local_ss_base_port ] || [ $local_ss_base_port -le 0 ] || [ $local_ss_base_port -gt 65535 ] || [ $local_ss_base_port -eq $main_port ]; do
-        read -e -p "Enter your base subservers port: " local_ss_base_port
-    done
-done
 
 echo # SKip the line
 
-for sid in ${!SUB_SERVERS[@]}; do
-    server=${SUB_SERVERS[sid]}
+write_to_file "\n# Subservers have duplicate 'address' and 'port' fields for backward compatibility," $CONFIG_NAME
+write_to_file "# in case I want to revert to microservice architecture in the future." $CONFIG_NAME
+
+for server in ${SUB_SERVERS[*]}; do
     write_to_file "\n[subservers.$server]" $CONFIG_NAME
 
     if [[ $(yn_input "Do you want use $server subserver?") == 'n' ]]; then
@@ -316,8 +297,8 @@ for sid in ${!SUB_SERVERS[@]}; do
         write_to_file "enabled = true" $CONFIG_NAME
     fi
 
-    write_to_file "address = \"localhost\"" $CONFIG_NAME
-    write_to_file "port = $((local_ss_base_port+sid))" $CONFIG_NAME
+    write_to_file "address = \"localhost\" # 'localhost' for monolithic arch" $CONFIG_NAME
+    write_to_file "port = $grpc_port" $CONFIG_NAME
 done
 
 #* ------- HTTPS/TLS configuration --------- *#
