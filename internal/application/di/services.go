@@ -55,10 +55,10 @@ var (
 )
 
 func RegisterDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) {
-	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, dataconfig.DataServiceConfig{
-		WorkspacePath: app_cfg.WorkspacePath,
-		Memory:        app_cfg.Memory,
-	}))
+	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, dataconfig.NewDataServerConfig(
+		app_cfg.WorkspacePath,
+		app_cfg.Memory,
+	)))
 }
 
 func GetDataServerClient(conn *grpc.ClientConn) data_pb.DataServiceClient {
