@@ -1,4 +1,4 @@
-package authhandler_test
+package authhttp_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
-	authhandler "github.com/braginantonev/mhserver/internal/http/auth"
+	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
 	"github.com/braginantonev/mhserver/internal/service/auth"
@@ -84,7 +84,7 @@ func TestLogin(t *testing.T) {
 				IsConvertibleToJSON: false, // Empty json request
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: authhandler.ErrRequestBodyEmpty.Description(),
+			expected_body: authhttp.ErrRequestBodyEmpty.Description(),
 		},
 		{
 			name:   "bad password",
@@ -108,7 +108,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	handler := authhandler.NewAuthHandler(authconfig.AuthHandlerConfig{
+	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
 		JWTSignature: TEST_JWT_SIG,
 		DB:           db,
 	})
@@ -203,7 +203,7 @@ func TestRegister(t *testing.T) {
 				IsConvertibleToJSON: true,
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: authhandler.ErrUsernameEmpty.Description(),
+			expected_body: authhttp.ErrUsernameEmpty.Description(),
 		},
 		{
 			name: "empty secret key",
@@ -212,7 +212,7 @@ func TestRegister(t *testing.T) {
 				IsConvertibleToJSON: true,
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: authhandler.ErrRegSecretKeyEmpty.Description(),
+			expected_body: authhttp.ErrRegSecretKeyEmpty.Description(),
 		},
 		{
 			name: "empty request",
@@ -221,11 +221,11 @@ func TestRegister(t *testing.T) {
 				IsConvertibleToJSON: false,
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: authhandler.ErrRequestBodyEmpty.Description(),
+			expected_body: authhttp.ErrRequestBodyEmpty.Description(),
 		},
 	}
 
-	handler := authhandler.NewAuthHandler(authconfig.AuthHandlerConfig{
+	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
 		DB:           db,
 		JWTSignature: TEST_JWT_SIG,
 	})

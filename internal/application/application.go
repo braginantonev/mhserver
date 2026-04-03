@@ -42,7 +42,7 @@ func NewApplicationConfig() appconfig.ApplicationConfig {
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Available server ram: %d bytes", cfg.Memory.AvailableRAM))
-	slog.Info(fmt.Sprintf("Server will be started at %s:%s", cfg.SubServers["main"].IP, cfg.SubServers["main"].Port))
+	slog.Info(fmt.Sprintf("Server will be started at %s:%d", cfg.SubServers["main"].Address, cfg.SubServers["main"].Port))
 	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", DATABASE_NAME))
 	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
 
@@ -94,7 +94,7 @@ func (app *Application) runMain() error {
 			continue
 		}
 
-		address := fmt.Sprintf("%s:%s", subserver.IP, subserver.Port)
+		address := fmt.Sprintf("%s:%d", subserver.Address, subserver.Port)
 
 		conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
@@ -117,12 +117,13 @@ func (app *Application) runMain() error {
 		DataService: data_service,
 	}
 
-	return srv.Serve(app.cfg.SubServers["main"].IP+":"+app.cfg.SubServers["main"].Port, CONFIG_DIR+"ssl/org.crt", CONFIG_DIR+"ssl/rootCA.key")
+	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIR+"ssl/org.crt", CONFIG_DIR+"ssl/rootCA.key")
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize)))
-	var grpc_ip, grpc_port string
+	var grpc_address string
+	var grpc_port int
 
 	wg := sync.WaitGroup{}
 
@@ -134,18 +135,25 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 			continue
 		}
 
-		// Set ip and port for grpc server
-		grpc_ip, grpc_port = subserver.IP, subserver.Port
+		// Use the last subserver addr and port, for grpc
+		grpc_address = subserver.Address
+		grpc_port = subserver.Port
 
-		di.RegisterServer[name](ctx, grpc_server, app.cfg)
+		reg, ok := di.RegisterServer[name]
+		if !ok {
+			slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", name))
+			continue
+		}
+
+		reg(ctx, grpc_server, app.cfg)
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
 	}
 
 	wg.Add(1)
-	go func(ip, port string) {
+	go func(address string, port int) {
 		defer wg.Done()
 
-		addr := fmt.Sprintf("%s:%s", ip, port)
+		addr := fmt.Sprintf("%s:%d", address, port)
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			slog.Error("error listen grpc", slog.String("err", err.Error()))
@@ -157,7 +165,7 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 		if err := grpc_server.Serve(lis); err != nil {
 			slog.Error("error serve grpc server", slog.String("err", err.Error()))
 		}
-	}(grpc_ip, grpc_port)
+	}(grpc_address, grpc_port)
 
 	if wait {
 		wg.Wait()

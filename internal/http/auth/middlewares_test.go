@@ -1,4 +1,4 @@
-package authhandler_test
+package authhttp_test
 
 import (
 	"errors"
@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/braginantonev/mhserver/internal/config"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
-	authmiddleware "github.com/braginantonev/mhserver/internal/http/auth"
+	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
@@ -102,7 +103,7 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusUnauthorized,
-			expected_body: authmiddleware.ErrUserNotAuthorized.Description(),
+			expected_body: authhttp.ErrUserNotAuthorized.Description(),
 		},
 		{
 			name:  "wrong token signature",
@@ -111,7 +112,7 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusBadRequest,
-			expected_body: authmiddleware.ErrJwtSignatureInvalid.Description(),
+			expected_body: authhttp.ErrJwtSignatureInvalid.Description(),
 		},
 		{
 			name:  "expired token",
@@ -120,12 +121,16 @@ func TestWithAuth(t *testing.T) {
 				User: auth.NewUser("123", "123"),
 			},
 			expected_code: http.StatusUnauthorized,
-			expected_body: authmiddleware.ErrAuthorizationExpired.Description(),
+			expected_body: authhttp.ErrAuthorizationExpired.Description(),
 		},
 	}
 
-	middleware := authmiddleware.NewAuthMiddleware(authconfig.AuthMiddlewareConfig{
+	middleware := authhttp.NewMiddleware(authconfig.AuthMiddlewareConfig{
 		JWTSignature: TestJWT,
+		Requests: config.RequestsConfig{
+			MaxInInterval:   5,
+			LimiterInterval: time.Second,
+		},
 	})
 
 	for _, test := range cases {

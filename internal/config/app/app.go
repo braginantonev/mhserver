@@ -14,6 +14,6 @@ type ApplicationConfig struct {
 
 type SubServer struct {
 	Enabled bool
-	IP      string
-	Port    string
+	Address string
+	Port    int
 }

@@ -1,4 +1,4 @@
-package datahandler
+package datahttp
 
 import (
 	"net/http"
@@ -26,6 +26,8 @@ var (
 
 	// Data info errors
 	ErrNullFileSize = httperror.NewExternalHttpError("file size is null", http.StatusBadRequest)
+
+	ErrToManyRequests = httperror.NewExternalHttpError("to many requests", http.StatusTooManyRequests)
 )
 
 func handleServiceError(err error, w http.ResponseWriter, func_name string) {

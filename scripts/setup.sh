@@ -7,7 +7,8 @@ CONFIG_NAME=mhserver.conf
 
 EXECUTABLE_PATH=/opt/mhserver
 
-SUB_SERVERS=(main files music images llm)
+SUB_SERVERS=(files music images llm)
+BASE_PORT=30543
 
 MAX_CHUNK_SIZE=52428800 # bytes = 50 mb
 MIN_CHUNK_SIZE=4096 # bytes = 4 kb
@@ -254,35 +255,51 @@ write_to_file "min_chunk_size = $MIN_CHUNK_SIZE # bytes" $CONFIG_NAME
 
 #* ------------ Subservers setup ----------- *#
 
-for server in ${SUB_SERVERS[*]}
-do
-    echo # Skip the line
+echo -e "\nSetup main server..."
 
+write_to_file "\n[subservers.main]" $CONFIG_NAME
+write_to_file "enabled = true" $CONFIG_NAME
+
+main_address=""
+while [ -z $main_address ]; do
+    read -e -p "Enter address of your server (e.g. my.server.com, 145.123.123.12, localhost): " main_address
+done
+write_to_file "address = \"$main_address\"" $CONFIG_NAME
+
+main_port=$BASE_PORT
+if [[ $(yn_input "Do you want use own port ($main_port using by default)?") == 'y' ]]; then
+    while [ -z $main_port ] || [ $main_port -eq $BASE_PORT ]; do
+        read -e -p "Enter your server port: " main_port
+    done
+fi
+write_to_file "port = $main_port" $CONFIG_NAME
+
+echo -e "\nSetup services..."
+
+grpc_port=$((main_port+1))
+if [[ $(yn_input "Do you want use own port for services ($grpc_port using by default)?") == 'y' ]]; then
+    while [ -z $grpc_port ] || [ $grpc_port -eq $main_port ]; do
+        read -e -p "Enter your port for services: " main_port
+    done
+fi
+
+echo # SKip the line
+
+write_to_file "\n# Subservers have duplicate 'address' and 'port' fields for backward compatibility," $CONFIG_NAME
+write_to_file "# in case I want to revert to microservice architecture in the future." $CONFIG_NAME
+
+for server in ${SUB_SERVERS[*]}; do
     write_to_file "\n[subservers.$server]" $CONFIG_NAME
 
     if [[ $(yn_input "Do you want use $server subserver?") == 'n' ]]; then
         write_to_file "enabled = false" $CONFIG_NAME
-        continue
-    fi
-
-    write_to_file "enabled = true" $CONFIG_NAME
-
-    ip=""
-    read -e -p "Enter subserver IP (localhost by default): " ip
-
-    if [[ -z $ip ]]; then
-        write_to_file "ip = \"localhost\"" $CONFIG_NAME
     else
-        write_to_file "ip = \"$ip\"" $CONFIG_NAME
+        write_to_file "enabled = true" $CONFIG_NAME
     fi
 
-    port=""
-    while [ -z $port ]; do
-        read -e -p "Enter subserver port (use a unique port): " port
-    done
-    write_to_file "port = \"$port\"" $CONFIG_NAME
+    write_to_file "address = \"localhost\" # 'localhost' for monolithic arch" $CONFIG_NAME
+    write_to_file "port = $grpc_port" $CONFIG_NAME
 done
-
 
 #* ------- HTTPS/TLS configuration --------- *#
 

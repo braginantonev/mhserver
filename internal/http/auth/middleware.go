@@ -1,4 +1,4 @@
-package authhandler
+package authhttp
 
 import (
 	"context"
@@ -8,15 +8,28 @@ import (
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/time/rate"
 )
 
 type Middleware struct {
-	cfg authconfig.AuthMiddlewareConfig
+	cfg     authconfig.AuthMiddlewareConfig
+	limiter *rate.Limiter
 }
 
-func NewAuthMiddleware(cfg authconfig.AuthMiddlewareConfig) Middleware {
+func NewMiddleware(cfg authconfig.AuthMiddlewareConfig) Middleware {
 	return Middleware{
-		cfg: cfg,
+		cfg:     cfg,
+		limiter: rate.NewLimiter(rate.Every(cfg.Requests.LimiterInterval), cfg.Requests.MaxInInterval),
+	}
+}
+
+func (mid Middleware) WithRateLimit(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !mid.limiter.Allow() {
+			ErrToManyRequests.Write(w)
+			return
+		}
+		next.ServeHTTP(w, r)
 	}
 }
 

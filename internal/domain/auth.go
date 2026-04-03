@@ -9,16 +9,17 @@ type AuthHandler interface {
 
 type AuthMiddleware interface {
 	WithAuth(handler http.HandlerFunc) http.HandlerFunc
+	WithRateLimit(http.HandlerFunc) http.HandlerFunc
 }
 
 type HttpAuthService struct {
-	Handlers    AuthHandler
-	Middlewares AuthMiddleware
+	AuthHandler
+	AuthMiddleware
 }
 
-func NewAuthService(hand AuthHandler, mid AuthMiddleware) *HttpAuthService {
+func NewAuthService(handler AuthHandler, middleware AuthMiddleware) *HttpAuthService {
 	return &HttpAuthService{
-		Handlers:    hand,
-		Middlewares: mid,
+		AuthHandler:    handler,
+		AuthMiddleware: middleware,
 	}
 }

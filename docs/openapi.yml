@@ -2,7 +2,7 @@ openapi: '3.0.3'
 
 info:
   title: MHServer API
-  version: '2.0.0'
+  version: '2.1.0'
   description: API для работы с MHServer (My Home Server)
   license:
     name: MIT
@@ -32,10 +32,35 @@ tags:
 
   - name: Файлы
     description: Работа с файлами
+  
+  - name: Инструменты
+    description: Инструменты сервера
 
 paths:
+  /tools/ping:
+   post:
+    operationId: ping
+
+    tags: ["Инструменты"]
+    summary: Приветствие
+    description: Используется для пинга сервера
+
+    responses:
+      "200":
+        description: Сервер доступен
+        content:
+          text/plain:
+            schema:
+              type: string
+            example: Welcome to MHServer API
+      
+      "404":
+        description: Сервер выключен
+
   /users/login:
     post:
+      operationId: usersLogin
+
       summary: Получение JWT пользователя
       tags: ["Аутентификация", "Сервис"]
 
@@ -50,16 +75,17 @@ paths:
         "200":
           description: Получен JWT токен
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
+                format: jwt
               example:
                 value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzExODY5MjAsImlhdCI6MTc3MTEwMDUyMCwibmFtZSI6IlRlc3QxIiwibmJmIjoxNzcxMTAwNTIwfQ.rRD0ViwdgZxd9GG9RbW5lzThlnMN_5yX4ngcdWMSyhw
         
         "400":
           description: Плохой запрос
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               examples:
@@ -90,6 +116,8 @@ paths:
 
   /users/register:
     post:
+      operationId: usersRegister
+
       summary: Регистрация пользователя
       tags: ["Аутентификация", "Сервис"]
 
@@ -110,7 +138,7 @@ paths:
         "403":
           description: Введённый секретный ключ не существует
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               example: wrong register secret key
@@ -121,7 +149,7 @@ paths:
         "409":
           description: Пользователь уже зарегистрирован
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               example: user already exist
@@ -131,6 +159,8 @@ paths:
   
   /files/connect:
     post:
+      operationId: filesCreateConnection
+
       parameters:
         - name: mode
           in: query
@@ -176,7 +206,7 @@ paths:
         "400":
           description: Плохой запрос
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               examples:
@@ -210,7 +240,7 @@ paths:
         "413":
           description: Размер сохраняемого файла, больше свободного места на сервере
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               example:
@@ -224,6 +254,8 @@ paths:
   
   /files/save:
     post:
+      operationId: filesSaveChunk
+
       parameters:
         - $ref: "#/components/parameters/ConnectionID"
       
@@ -252,7 +284,7 @@ paths:
         "400":
             description: Плохой запрос
             content:
-              plain/text:
+              text/plain:
                 schema:
                   type: string
                 examples:
@@ -288,6 +320,8 @@ paths:
   
   /files/get:
     get:
+      operationId: filesGetChunk
+
       parameters:
         - $ref: "#/components/parameters/ConnectionID"
         - $ref: "#/components/parameters/GetChunk"
@@ -314,7 +348,7 @@ paths:
         "400":
             description: Плохой запрос
             content:
-              plain/text:
+              text/plain:
                 schema:
                   type: string
                 examples:
@@ -344,6 +378,8 @@ paths:
   
   /files/sum:
     get:
+      operationId: filesGetSum
+
       parameters:
         - $ref: "#/components/parameters/ConnectionID"
         - $ref: "#/components/parameters/GetChunk"
@@ -377,7 +413,7 @@ paths:
         "400":
           description: Плохой запрос
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               examples:
@@ -407,6 +443,8 @@ paths:
   
   /files:
     get:
+      operationId: getFilesList
+
       parameters:
         - $ref: "#/components/parameters/Directory"
       
@@ -438,6 +476,7 @@ paths:
   
   /files/space:
     get:      
+      operationId: filesGetAvailableSpace
       security:
         - BearerAuth: []
 
@@ -448,7 +487,7 @@ paths:
         "200":
           description: Количество свободного места в байтах получен
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: integer
               example: 1560
@@ -456,7 +495,7 @@ paths:
         "400":
           description: Плохой запрос
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               examples:
@@ -477,6 +516,8 @@ paths:
   
   /files/mkdir:
     post:
+      operationId: filesMakeDirectory
+      
       parameters:
         - $ref: "#/components/parameters/Directory"
       
@@ -493,7 +534,7 @@ paths:
         "400":
           description: Плохой запрос
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               examples:
@@ -523,6 +564,8 @@ paths:
 
   /files/rmdir:
     post:
+      operationId: filesRemoveDirectory
+
       parameters:
         - $ref: "#/components/parameters/Directory"
       
@@ -539,7 +582,7 @@ paths:
         "400":
           description: Плохой запрос
           content:
-            plain/text:
+            text/plain:
               schema:
                 type: string
               examples:
@@ -867,7 +910,7 @@ components:
     NotAuthorized:
       description: Не авторизован
       content:
-        plain/text:
+        text/plain:
           schema:
             type: string
           examples:
@@ -883,7 +926,7 @@ components:
     AuthRequestError:
       description: Плохой запрос
       content:
-        plain/text:
+        text/plain:
           schema:
             type: string
           examples:
@@ -899,7 +942,7 @@ components:
     FilesDirectoryError:
       description: Ошибка в записи каталога
       content:
-        plain/text:
+        text/plain:
           schema:
             type: string
           examples:
@@ -915,7 +958,7 @@ components:
     UnexpectedFileChangeError:
       description: Несоответствующий файл или директория
       content:
-        plain/text:
+        text/plain:
           schema:
             type: string
           example:
@@ -924,7 +967,7 @@ components:
     InternalError:
       description: Внутренняя ошибка сервера
       content:
-        plain/text:
+        text/plain:
           schema:
             type: string
           example:
@@ -933,7 +976,7 @@ components:
     ServiceUnavailable:
       description: Сервис отключен или недоступен
       content:
-        plain/text:
+        text/plain:
           schema:
             type: string
           example:
