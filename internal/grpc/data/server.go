@@ -121,7 +121,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 	}
 
 	var chunk_size uint64
-	if file_size < s.cfg.Memory.MinChunkSize {
+	if file_size <= s.cfg.Memory.MinChunkSize {
 		chunk_size = file_size
 	} else {
 		file_based := uint64(float64(dataconfig.BASE_CHUNK_SIZE) * math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
