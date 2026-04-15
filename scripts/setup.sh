@@ -54,8 +54,7 @@ if [[ !(-e $EXECUTABLE_PATH) ]]; then
     sudo mkdir $EXECUTABLE_PATH
 else
     if [[ $(yn_input "MHServer already installed. Reinstall (Update)?") == 'y' ]]; then
-        sudo rm -rf $EXECUTABLE_PATH
-        sudo mkdir $EXECUTABLE_PATH
+        sudo rm -rf $EXECUTABLE_PATH/*
     fi
 fi
 
@@ -65,23 +64,13 @@ sudo cp -r * $EXECUTABLE_PATH
 
 #* --------- Create config path ------------ *#
 
-echo # Skip line
-
 if [[ !(-e $CONFIG_PATH) ]]; then
     sudo mkdir $CONFIG_PATH
 fi
 
-if [[ -e mhserver.service ]]; then
-    if [[ $(yn_input "Create mhserver systemd service?") == 'y' ]]; then
-        sudo cp mhserver.service $CONFIG_PATH
-        sudo cp $CONFIG_PATH/mhserver.service /etc/systemd/system
-
-        sudo systemctl daemon-reload
-    fi
-fi
-
-
 #* ------- Create configuration file ------- *#
+
+echo # Skip line
 
 cd $CONFIG_PATH
 
@@ -319,11 +308,13 @@ sh /opt/mhserver/scripts/generate_reg_keys.sh --db_pass=$db_password
 
 echo # Skip the line
 
-if [[ $(yn_input "Start mhserver service right now?") == 'y' ]]; then
-    sudo systemctl enable mhserver
-    sudo systemctl start mhserver
-    echo -e "MHServer will been configured and started successfully"
-    exit 0
+if [[ $(yn_input "Create mhserver systemd service?") == 'y' ]]; then
+    sudo cp $EXECUTABLE_PATH/mhserver.service /etc/systemd/system
+    sudo systemctl daemon-reload
+
+    if [[ $(yn_input "Start mhserver service right now?") == 'y' ]]; then
+        sudo systemctl enable --now mhserver
+    fi
 fi
 
 echo -e "MHServer will be configured successfully"
