@@ -18,7 +18,7 @@ sudo pacman -S mariadb
 Скайте последнюю версию [из списка релизов](https://github.com/braginantonev/mhserver/releases) сервера, распакуйте скачанный архив и запустите скрипт настройки:
 ``` bash
 mkdir /tmp/mhserver-build && tar -zxvf путь_до_архива/mhserver.tar.gz -C /tmp/mhserver-build
-cd tmp/mhserver/scripts
+cd tmp/mhserver-build/scripts
 ./setup.sh
 ```
 
