@@ -165,15 +165,9 @@ paths:
         - name: mode
           in: query
           required: true
-          description: |
-            Тип подключения. 
-            `RDWR` - подключение для создания, редактирования и чтения файлов. При использовании - обязательно указывать размер файла в теле запроса.
-            `RDONLY` - подключение только для чтения фаилов. При использовании - указывать размер файла не обязательно.
           schema:
-            type: string
-            enum:
-             - RDWR
-             - RDONLY
+            $ref: "#/components/schemas/ConnectionMode"
+            
 
       security:
         - BearerAuth: []
@@ -642,7 +636,7 @@ components:
       name: dir
       in: query
       required: true
-      description: | 
+      description: |
         Каталог с файлами на сервере. 
         Параметр всегда должен начинаться с корневого каталога: `/`
       schema:
@@ -695,6 +689,16 @@ components:
       
       example:
         $ref: "./examples/auth/login-request.json"
+    
+    ConnectionMode:
+      description: |
+        `RDWR` - подключение для создания, редактирования и чтения файлов. При использовании - обязательно указывать размер файла в теле запроса.
+        `RDONLY` - подключение только для чтения фаилов. При использовании - указывать размер файла не обязательно.    
+
+      type: string
+      enum:
+        - RDWR
+        - RDONLY
     
     ConnectionRequest:
       type: object
