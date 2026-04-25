@@ -65,7 +65,7 @@ func (h Handler) CreateConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
-	slog.Info("Save data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+	//slog.Info("Save data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
 	w.Header().Add("Content-Type", "text/plain")
 
@@ -90,7 +90,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
-	slog.Info("Get data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+	//slog.Info("Get data request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
 	w.Header().Add("Content-Type", "text/plain")
 
@@ -121,7 +121,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
-	slog.Info("Get sum request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+	//slog.Info("Get sum request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
 	w.Header().Add("Content-Type", "text/plain")
 
@@ -152,7 +152,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
-	slog.Info("Get files list request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
+	//slog.Info("Get files list request", slog.String("method", r.Method), slog.String("ip", r.RemoteAddr))
 
 	w.Header().Add("Content-Type", "text/plain")
 
