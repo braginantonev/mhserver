@@ -2,6 +2,7 @@ package httpjsonutils
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -9,24 +10,16 @@ import (
 )
 
 var (
-	ErrFailedReadBody   = httperror.NewInternalHttpError("failed read request body", "") // Use WithDesc() and WithFuncName() to write response
 	ErrRequestBodyEmpty = httperror.NewExternalHttpError("request body empty", http.StatusBadRequest)
 	ErrBadJsonBody      = httperror.NewExternalHttpError("bad request json body", http.StatusBadRequest)
 )
 
 func ConvertJsonToStruct[T any](s *T, body io.ReadCloser, handler_name string) httperror.HttpError {
-	read, err := io.ReadAll(body)
-	if err != nil {
-		return ErrFailedReadBody.Append(err).WithFuncName(handler_name + ".io.ReadAll")
-	}
-
-	if len(read) == 0 {
-		return ErrRequestBodyEmpty
-	}
-
-	if err = json.Unmarshal(read, s); err != nil {
+	if err := json.NewDecoder(body).Decode(s); err != nil {
+		if errors.Is(err, io.EOF) {
+			return ErrRequestBodyEmpty
+		}
 		return ErrBadJsonBody.Append(err)
 	}
-
 	return nil
 }
