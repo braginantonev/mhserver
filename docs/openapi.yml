@@ -761,14 +761,9 @@ components:
       
       properties:
         chunk:
-          description: Массив байт, представляющий собой часть файла для записи
-          type: array
-          items:
-            type: integer
-            minimum: 0
-            maximum: 255
-          
-          example: [104, 101, 108, 108, 111]
+          description: base64 байтовая запись чанка файла
+          type: string
+          format: byte
         
         offset:
           description: Отступ от начала файла, после которого будет сохранён чанк
@@ -780,15 +775,9 @@ components:
         $ref: "./examples/data/save-chunk-request.json"
     
     FilePart:
-      description: Массив байт, часть файла
-      type: array
-      items:
-        type: integer
-        minimum: 0
-        maximum: 255
-        example: 123
-
-      example: [104, 101, 108, 108, 111]
+      description: base64 байтовая запись чанка файла
+      type: string
+      format: byte
     
     FilesList:
       type: array
