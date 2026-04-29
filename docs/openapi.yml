@@ -6,6 +6,7 @@ info:
   description: API для работы с MHServer (My Home Server)
   license:
     name: MIT
+    url: https://opensource.org/licenses/MIT
 
 servers:
   - url: https://{domain}/api/v1
@@ -729,7 +730,7 @@ components:
       readOnly: true      
       required:
         - UUID
-        - chunksSize
+        - chunkSize
         - chunksCount
       
       properties:
@@ -738,7 +739,7 @@ components:
           format: uuid
           example: 2dfab521-6eed-4202-a215-1c58284c9d79
         
-        chunksSize:
+        chunkSize:
           description: Размер части файла в байтах для записи или чтения
           type: integer
           minimum: 0
