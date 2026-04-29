@@ -81,7 +81,7 @@ func (h Handler) SaveData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := h.dataServiceClient.SaveData(r.Context(), &pb.SaveChunk{
-		UUID: r.URL.Query().Get("uuid"),
+		UUID: r.URL.Query().Get("connID"),
 		Data: &save_chunk,
 	})
 	if err != nil {
@@ -106,8 +106,8 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	get_chunk := pb.GetChunk{
+		UUID:    r.URL.Query().Get("connID"),
 		ChunkId: int32(chunk_id),
-		UUID:    r.URL.Query().Get("uuid"),
 	}
 
 	part, err := h.dataServiceClient.GetData(r.Context(), &get_chunk)
@@ -138,7 +138,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 
 	get_chunk := pb.GetChunk{
 		ChunkId: int32(chunk_id),
-		UUID:    r.URL.Query().Get("uuid"),
+		UUID:    r.URL.Query().Get("connID"),
 	}
 
 	sum, err := h.dataServiceClient.GetSum(r.Context(), &get_chunk)
