@@ -21,9 +21,9 @@ const (
 	// Data
 
 	CREATE_CONNECTION_ENDPOINT   string = "/api/v1/files/connect"
-	SAVE_DATA_ENDPOINT           string = "/api/v1/files/{uuid:[a-z0-9-]{36}}/save"
-	GET_DATA_ENDPOINT            string = "/api/v1/files/{uuid:[a-z0-9-]{36}}/get"
-	GET_DATA_SUM_ENDPOINT        string = "/api/v1/files/{uuid:[a-z0-9-]{36}}/sum"
+	SAVE_DATA_ENDPOINT           string = "/api/v1/files/save"
+	GET_DATA_ENDPOINT            string = "/api/v1/files/get"
+	GET_DATA_SUM_ENDPOINT        string = "/api/v1/files/sum"
 	GET_FILES_ENDPOINT           string = "/api/v1/files"
 	GET_AVAILABLE_SPACE_ENDPOINT string = "/api/v1/files/space"
 	CREATE_DIR_ENDPOINT          string = "/api/v1/files/mkdir"
