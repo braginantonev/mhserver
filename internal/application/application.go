@@ -121,7 +121,7 @@ func (app *Application) runMain() error {
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {
-	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize)))
+	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize + 1024))) // additional bytes to avoid panic (out of memory), when max chunk size is very small
 	var grpc_address string
 	var grpc_port int
 

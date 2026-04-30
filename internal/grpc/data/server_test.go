@@ -261,11 +261,13 @@ func TestSaveData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	grpc_server := grpc.NewServer()
+	max_chunk_size := 10
+
+	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_chunk_size + 256))
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
-		MaxChunkSize: 25,                 //byte
-		MinChunkSize: 5,                  //byte
-		AvailableRAM: 1024 * 1024 * 1024, //byte
+		MaxChunkSize: uint64(max_chunk_size), //byte
+		MinChunkSize: 5,                      //byte
+		AvailableRAM: 1024 * 1024 * 1024,     //byte
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8081")
