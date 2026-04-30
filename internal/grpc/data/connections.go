@@ -192,7 +192,9 @@ func (m *Connections) ExpectedSavedSpace() uint64 {
 
 	var res uint64
 	for _, conn := range m.value {
-		res += conn.file.chunks.ChunkSize * uint64(conn.file.chunks.Count-conn.file.chunks.Loaded)
+		if conn.mode != pb.ConnectionMode_RDONLY {
+			res += conn.file.chunks.ChunkSize * uint64(conn.file.chunks.Count-conn.file.chunks.Loaded)
+		}
 	}
 	return res
 }
