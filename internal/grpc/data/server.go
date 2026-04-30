@@ -264,7 +264,7 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Director
 
 	s.sem <- struct{}{}
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "files", "/")
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "/", s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Director
 		return nil, ErrDirNotFound
 	}
 
-	return &pb.Size{Value: space}, nil
+	return &pb.Size{Value: space - s.activeConnections.ExpectedSavedSpace()}, nil
 }
 
 func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
