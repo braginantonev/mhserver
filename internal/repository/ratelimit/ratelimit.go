@@ -92,7 +92,7 @@ func (u *UserRate) RegisterRequest() {
 }
 
 type Limiter struct {
-	mux      *sync.RWMutex
+	mux      *sync.Mutex
 	limit    int
 	interval time.Duration
 	occupied map[string]*UserRate
@@ -100,7 +100,7 @@ type Limiter struct {
 
 func NewLimiter(ctx context.Context, max_requests int, interval time.Duration) *Limiter {
 	limiter := &Limiter{
-		mux:      &sync.RWMutex{},
+		mux:      &sync.Mutex{},
 		limit:    max_requests,
 		interval: interval,
 		occupied: make(map[string]*UserRate),
@@ -139,49 +139,29 @@ func (l *Limiter) Limit() int {
 	return l.limit
 }
 
-// Возвращает true, если пользователь не достиг лимита запросов.
-func (l *Limiter) Allow(ip string) bool {
-	l.mux.RLock()
-	defer l.mux.RUnlock()
-	if rate, ok := l.occupied[ip]; ok {
-		return l.limit-rate.AcceptedRequests() != 0
-	}
-	return true // Если пользователь отсутствует, то это его первый запрос
-}
-
-func (l *Limiter) AllowAfter(ip string) int64 {
-	l.mux.RLock()
-	defer l.mux.RUnlock()
-
-	rate, ok := l.occupied[ip]
-	if !ok {
-		return 0
-	}
-
-	if l.limit-rate.AcceptedRequests() != 0 {
-		return 0
-	}
-
-	return rate.ResetRequestsAfter()
-}
-
-func (l *Limiter) Occupy(ip string) {
+// Возвращает true, если пользователь не достиг лимита запросов. Если пользователь достиг лимита, возвращается false с временем ожидания в секундах
+func (l *Limiter) Allow(ip string) (bool, int64) {
 	l.mux.Lock()
-	if rate, ok := l.occupied[ip]; ok {
-		rate.RegisterRequest()
-	} else {
-		l.occupied[ip] = NewUserRate(l.interval)
-	}
-	l.mux.Unlock()
-}
-
-func (l *Limiter) Remaining(ip string) int {
-	l.mux.RLock()
-	defer l.mux.RUnlock()
+	defer l.mux.Unlock()
 
 	rate, ok := l.occupied[ip]
 	if !ok {
-		return l.limit
+		rate = NewUserRate(l.interval)
+		l.occupied[ip] = rate
 	}
-	return l.limit - rate.AcceptedRequests()
+
+	remained := l.limit - rate.AcceptedRequests()
+	if remained == 0 {
+		return false, rate.ResetRequestsAfter()
+	}
+
+	rate.RegisterRequest()
+	return true, 0
+}
+
+// Can cause a panic. Use only after Allow().
+func (l *Limiter) Remaining(ip string) int {
+	// I don't use a mutex in this place, because func used after Allow(), so *UserRate for this ip already exist
+	// And a race condition here - it's good, because we take a last accepted requests or current
+	return l.limit - l.occupied[ip].AcceptedRequests()
 }
