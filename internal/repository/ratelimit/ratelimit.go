@@ -19,7 +19,8 @@ type AcceptedRequests struct {
 
 func NewAcceptedRequests(reset_duration time.Duration) *AcceptedRequests {
 	reqs := &AcceptedRequests{
-		delete: make(chan any),
+		delete:     make(chan any),
+		next_reset: time.Now().Add(reset_duration).Unix(),
 	}
 	go reqs.startResetTicker(reset_duration)
 	return reqs
@@ -77,6 +78,7 @@ func (u *UserRate) UpdateExpiration() {
 }
 
 func (u *UserRate) ResetRequestsAfter() int64 {
+	// Сброс запросов в интервале всегда будет больше текущего времени
 	return u.reqs.NextReset() - time.Now().Unix()
 }
 
@@ -133,6 +135,10 @@ func (l *Limiter) startCleaner(ctx context.Context) {
 	}
 }
 
+func (l *Limiter) Limit() int {
+	return l.limit
+}
+
 // Возвращает true, если пользователь не достиг лимита запросов.
 func (l *Limiter) Allow(ip string) bool {
 	l.mux.RLock()
@@ -156,8 +162,7 @@ func (l *Limiter) AllowAfter(ip string) int64 {
 		return 0
 	}
 
-	// Сброс запросов в интервале всегда будет больше текущего времени
-	return rate.ResetRequestsAfter() - time.Now().Unix()
+	return rate.ResetRequestsAfter()
 }
 
 func (l *Limiter) Occupy(ip string) {
