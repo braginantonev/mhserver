@@ -28,8 +28,8 @@ func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_cata
 	middleware := authhttp.NewMiddleware(authconfig.AuthMiddlewareConfig{
 		JWTSignature: app_cfg.JWTSignature,
 		Requests: config.RequestsConfig{
-			MaxInInterval:   100,
-			LimiterInterval: time.Second,
+			MaxInInterval:   10,
+			LimiterInterval: time.Minute,
 		},
 	})
 
