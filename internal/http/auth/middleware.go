@@ -3,33 +3,39 @@ package authhttp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
+	"github.com/braginantonev/mhserver/internal/repository/ratelimit"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/time/rate"
 )
 
 type Middleware struct {
 	cfg     authconfig.AuthMiddlewareConfig
-	limiter *rate.Limiter
+	limiter *ratelimit.Limiter
 }
 
 func NewMiddleware(cfg authconfig.AuthMiddlewareConfig) Middleware {
 	return Middleware{
 		cfg:     cfg,
-		limiter: rate.NewLimiter(rate.Every(cfg.Requests.LimiterInterval), cfg.Requests.MaxInInterval),
+		limiter: ratelimit.NewLimiter(context.TODO(), cfg.Requests.MaxInInterval, cfg.Requests.LimiterInterval),
 	}
 }
 
 func (mid Middleware) WithRateLimit(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !mid.limiter.Allow() {
+		req_ip := r.Header.Get("X-Forwarded-For")
+		allowed, after := mid.limiter.Allow(req_ip)
+		if !allowed {
+			w.Header().Add("Retry-After", fmt.Sprint(after))
 			ErrToManyRequests.Write(w)
 			return
 		}
-		next.ServeHTTP(w, r)
+
+		w.Header().Add("X-RateLimit-Remaining", fmt.Sprint(mid.limiter.Remaining(req_ip)))
+		w.Header().Add("X-RateLimit-Limit", fmt.Sprint(mid.limiter.Limit()))
 	}
 }
 
