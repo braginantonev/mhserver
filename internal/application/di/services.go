@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_catalogs []string) *domain.HttpAuthService {
+func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, db *sql.DB, user_catalogs []string) *domain.HttpAuthService {
 	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
 		DB:            db,
 		JWTSignature:  app_cfg.JWTSignature,
@@ -25,7 +25,7 @@ func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_cata
 		UserCatalogs:  user_catalogs,
 	})
 
-	middleware := authhttp.NewMiddleware(authconfig.AuthMiddlewareConfig{
+	middleware := authhttp.NewMiddleware(ctx, authconfig.AuthMiddlewareConfig{
 		JWTSignature: app_cfg.JWTSignature,
 		Requests: config.RequestsConfig{
 			MaxInInterval:   10,
@@ -36,10 +36,10 @@ func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB, user_cata
 	return domain.NewAuthService(handler, middleware)
 }
 
-func SetupDataService(client data_pb.DataServiceClient) *domain.HttpDataService {
+func SetupDataService(ctx context.Context, client data_pb.DataServiceClient) *domain.HttpDataService {
 	return domain.NewDataService(
 		datahttp.NewHandler(client),
-		datahttp.NewMiddleware(config.RequestsConfig{
+		datahttp.NewMiddleware(ctx, config.RequestsConfig{
 			MaxInInterval:   100,
 			LimiterInterval: time.Second,
 		}),

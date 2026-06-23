@@ -13,9 +13,9 @@ type Middleware struct {
 	limiter *ratelimit.Limiter
 }
 
-func NewMiddleware(req_cfg config.RequestsConfig) Middleware {
+func NewMiddleware(ctx context.Context, req_cfg config.RequestsConfig) Middleware {
 	return Middleware{
-		limiter: ratelimit.NewLimiter(context.TODO(), req_cfg.MaxInInterval, req_cfg.LimiterInterval),
+		limiter: ratelimit.NewLimiter(ctx, req_cfg.MaxInInterval, req_cfg.LimiterInterval),
 	}
 }
 

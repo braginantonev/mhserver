@@ -76,7 +76,7 @@ func (app *Application) InitDB() (err error) {
 	return
 }
 
-func (app *Application) runMain() error {
+func (app *Application) runMain(ctx context.Context) error {
 	if !app.cfg.SubServers["main"].Enabled {
 		slog.Warn("main server is disabled. Use -S to use subservers only!")
 		return nil
@@ -109,8 +109,8 @@ func (app *Application) runMain() error {
 
 	data_client := di.GetDataClient(connections["files"])
 
-	auth_service := di.SetupAuthService(app.cfg, app.db, user_catalogs)
-	data_service := di.SetupDataService(data_client)
+	auth_service := di.SetupAuthService(ctx, app.cfg, app.db, user_catalogs)
+	data_service := di.SetupDataService(ctx, data_client)
 
 	srv := server.Server{
 		AuthService: auth_service,
@@ -192,7 +192,7 @@ func (app *Application) Run(mode ApplicationMode) error {
 	}
 
 	if mode != AppMode_SubServersOnly {
-		err := app.runMain()
+		err := app.runMain(ctx)
 		if err != nil {
 			return err
 		}

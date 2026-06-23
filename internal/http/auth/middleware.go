@@ -17,10 +17,10 @@ type Middleware struct {
 	limiter *ratelimit.Limiter
 }
 
-func NewMiddleware(cfg authconfig.AuthMiddlewareConfig) Middleware {
+func NewMiddleware(ctx context.Context, cfg authconfig.AuthMiddlewareConfig) Middleware {
 	return Middleware{
 		cfg:     cfg,
-		limiter: ratelimit.NewLimiter(context.TODO(), cfg.Requests.MaxInInterval, cfg.Requests.LimiterInterval),
+		limiter: ratelimit.NewLimiter(ctx, cfg.Requests.MaxInInterval, cfg.Requests.LimiterInterval),
 	}
 }
 
