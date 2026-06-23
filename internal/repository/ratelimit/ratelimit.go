@@ -8,7 +8,7 @@ import (
 
 const (
 	USER_RATE_LIFETIME     = time.Minute
-	LIMITER_CLEAN_DURATION = USER_RATE_LIFETIME // temp
+	LIMITER_CLEAN_DURATION = USER_RATE_LIFETIME / 2
 )
 
 type AcceptedRequests struct {
@@ -91,6 +91,10 @@ func (u *UserRate) RegisterRequest() {
 	u.UpdateExpiration()
 }
 
+func (u *UserRate) Delete() {
+	u.reqs.Delete()
+}
+
 type Limiter struct {
 	mux      *sync.Mutex
 	limit    int
@@ -115,6 +119,7 @@ func (l *Limiter) cleanExpired() {
 	l.mux.Lock()
 	for ip, rate := range l.occupied {
 		if rate.exp <= now {
+			rate.Delete()
 			delete(l.occupied, ip)
 		}
 	}
@@ -151,7 +156,7 @@ func (l *Limiter) Allow(ip string) (bool, int64) {
 	}
 
 	remained := l.limit - rate.AcceptedRequests()
-	if remained == 0 {
+	if remained <= 0 {
 		return false, rate.ResetRequestsAfter()
 	}
 
@@ -159,9 +164,12 @@ func (l *Limiter) Allow(ip string) (bool, int64) {
 	return true, 0
 }
 
-// Can cause a panic. Use only after Allow().
 func (l *Limiter) Remaining(ip string) int {
-	// I don't use a mutex in this place, because func used after Allow(), so *UserRate for this ip already exist
-	// And a race condition here - it's good, because we take a last accepted requests or current
-	return l.limit - l.occupied[ip].AcceptedRequests()
+	l.mux.Lock()
+	if rate, ok := l.occupied[ip]; ok {
+		return l.limit - rate.AcceptedRequests()
+	}
+	l.mux.Unlock()
+
+	return l.limit
 }
