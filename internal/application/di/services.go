@@ -17,12 +17,17 @@ import (
 	"google.golang.org/grpc"
 )
 
-func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, db *sql.DB, user_catalogs []string) *domain.HttpAuthService {
+func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, db *sql.DB) *domain.HttpAuthService {
+	user_catalogs := make([]string, 0, len(app_cfg.SubServers))
+	for sub := range app_cfg.SubServers {
+		user_catalogs = append(user_catalogs, sub)
+	}
+
 	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
 		DB:            db,
 		JWTSignature:  app_cfg.JWTSignature,
 		WorkspacePath: app_cfg.WorkspacePath,
-		UserCatalogs:  user_catalogs,
+		UserCatalogs:  user_catalogs[1:], // remove main subserver
 	})
 
 	middleware := authhttp.NewMiddleware(ctx, authconfig.AuthMiddlewareConfig{

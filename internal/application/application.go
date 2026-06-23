@@ -83,7 +83,6 @@ func (app *Application) runMain(ctx context.Context) error {
 	}
 
 	connections := make(map[string]*grpc.ClientConn)
-	user_catalogs := make([]string, 0, len(app.cfg.SubServers)-1)
 
 	//* Sub servers connections
 	for name, subserver := range app.cfg.SubServers {
@@ -102,15 +101,11 @@ func (app *Application) runMain(ctx context.Context) error {
 		}
 
 		slog.Info("Create subserver client", slog.String("subserver_name", name), slog.String("address", address))
-
 		connections[name] = conn
-		user_catalogs = append(user_catalogs, name)
 	}
 
-	data_client := di.GetDataClient(connections["files"])
-
-	auth_service := di.SetupAuthService(ctx, app.cfg, app.db, user_catalogs)
-	data_service := di.SetupDataService(ctx, data_client)
+	auth_service := di.SetupAuthService(ctx, app.cfg, app.db)
+	data_service := di.SetupDataService(ctx, di.GetDataClient(connections["files"]))
 
 	srv := server.Server{
 		AuthService: auth_service,
