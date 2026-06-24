@@ -75,6 +75,11 @@ paths:
       responses:
         "200":
           description: Получен JWT токен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -85,6 +90,11 @@ paths:
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -111,6 +121,9 @@ paths:
         
         "404":
           $ref: "#/components/responses/AuthServiceUnavailable"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
 
         "500":
           $ref: "#/components/responses/InternalError" 
@@ -132,12 +145,22 @@ paths:
       responses:
         "200":
           description: Пользователь зарегистрирован
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
         
         "400":
           $ref: "#/components/responses/AuthRequestError"
         
         "403":
           description: Введённый секретный ключ не существует
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -149,6 +172,11 @@ paths:
         
         "409":
           description: Пользователь уже зарегистрирован
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -193,6 +221,11 @@ paths:
       responses:
         "200":
           description: Соединение создано и получены его параметры
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             application/json:
               schema:
@@ -200,6 +233,11 @@ paths:
                     
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -234,6 +272,11 @@ paths:
         
         "413":
           description: Размер сохраняемого файла, больше свободного места на сервере
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -275,31 +318,41 @@ paths:
       responses:
         "200":
           description: Чанк сохранен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           
         "400":
-            description: Плохой запрос
-            content:
-              text/plain:
-                schema:
-                  type: string
-                examples:
-                  badJwtSyntax:
-                    $ref: "#/components/examples/BadJwtSyntax"
+          description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
 
-                  badJwtSignature:
-                    $ref: "#/components/examples/BadJwtSignature"
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
 
-                  emptyRequestBody:
-                    $ref: "#/components/examples/EmptyRequestBody"
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
                   
-                  badConnectionSyntax:
-                    $ref: "#/components/examples/BadConnectionSyntax"
+                badConnectionSyntax:
+                  $ref: "#/components/examples/BadConnectionSyntax"
                     
-                  connectionNotExists:
-                    $ref: "#/components/examples/ConnectionNotExists"
+                connectionNotExists:
+                  $ref: "#/components/examples/ConnectionNotExists"
                   
-                  incorrectChunkSize:                  
-                    $ref: "#/components/examples/IncorrectChunkSize"
+                incorrectChunkSize:                  
+                  $ref: "#/components/examples/IncorrectChunkSize"
                 
         "401":
           $ref: "#/components/responses/NotAuthorized"
@@ -335,32 +388,42 @@ paths:
       responses:
         "200":
           description: Чанк получен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             application/octet-stream:
               schema:
                 $ref: "#/components/schemas/FilePart"
         
         "400":
-            description: Плохой запрос
-            content:
-              text/plain:
-                schema:
-                  type: string
-                examples:
-                  badJwtSyntax:
-                    $ref: "#/components/examples/BadJwtSyntax"
+          description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
 
-                  badJwtSignature:
-                    $ref: "#/components/examples/BadJwtSignature"
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
 
-                  emptyRequestBody:
-                    $ref: "#/components/examples/EmptyRequestBody"
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
                   
-                  badConnectionSyntax:
-                    $ref: "#/components/examples/BadConnectionSyntax"
+                badConnectionSyntax:
+                  $ref: "#/components/examples/BadConnectionSyntax"
                     
-                  connectionNotExists:
-                    $ref: "#/components/examples/ConnectionNotExists"
+                connectionNotExists:
+                  $ref: "#/components/examples/ConnectionNotExists"
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
@@ -396,6 +459,11 @@ paths:
       responses:
         "200":
           description: Контрольная сумма получена
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             application/octet-stream:
               schema:
@@ -407,6 +475,11 @@ paths:
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -452,6 +525,11 @@ paths:
       responses:
         "200":
           description: Список файлов получен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             application/json:
               schema:
@@ -481,6 +559,11 @@ paths:
       responses:
         "200":
           description: Количество свободного места в байтах получен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -489,6 +572,11 @@ paths:
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -525,9 +613,19 @@ paths:
       responses:
         "200":
           description: Каталог создан
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -573,9 +671,19 @@ paths:
       responses:
         "200":
           description: Каталог удалён
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           content:
             text/plain:
               schema:
@@ -645,6 +753,25 @@ components:
         minLength: 1
         pattern: "^/.*"
         example: "/docs/secrets/"
+  
+  headers:
+    X-RateLimit-Limit:
+      description: "Максимальное количество запросов в временном окне"
+      schema:
+        type: integer
+        example: 200
+
+    X-RateLimit-Remaining:
+      description: "Оставшееся количество запросов клиента в временном окне"
+      schema:
+        type: integer
+        example: 14
+    
+    Retry-After:
+      description: "Время в секундах, которое необходимо подождать перед следующим запросом"
+      schema:
+        type: integer
+        example: 123
   
   schemas:
     UserRegisterRequest:
@@ -901,8 +1028,24 @@ components:
        message: null size to save
 
   responses:
+    ToManyRequests:
+        description: Одновременно отправлено слишком много запросов
+        headers:
+          Retry-After:
+            $ref: "#/components/headers/Retry-After"
+        content:
+          text/plain:
+            schema:
+              type: string
+            example: to many request
+
     NotAuthorized:
       description: Не авторизован
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
       content:
         text/plain:
           schema:
@@ -910,15 +1053,24 @@ components:
           examples:
             emptyAuthorizationField:
               $ref: "#/components/examples/EmptyAuthorizationField"
-
             jwtIsExpired:
               $ref: "#/components/examples/JwtIsExpired"
 
     AuthServiceUnavailable:
       description: Сервис аутентификации недоступен
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
     
     AuthRequestError:
       description: Плохой запрос
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
       content:
         text/plain:
           schema:
@@ -935,6 +1087,11 @@ components:
     
     FilesDirectoryError:
       description: Ошибка в записи каталога
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
       content:
         text/plain:
           schema:
@@ -951,6 +1108,11 @@ components:
     
     UnexpectedFileChangeError:
       description: Несоответствующий файл или директория
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
       content:
         text/plain:
           schema:
@@ -960,6 +1122,11 @@ components:
 
     InternalError:
       description: Внутренняя ошибка сервера
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
       content:
         text/plain:
           schema:
@@ -969,6 +1136,11 @@ components:
     
     ServiceUnavailable:
       description: Сервис отключен или недоступен
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
       content:
         text/plain:
           schema:
