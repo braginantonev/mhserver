@@ -182,6 +182,9 @@ paths:
               schema:
                 type: string
               example: user already exist
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
 
         "500":
           $ref: "#/components/responses/InternalError"
@@ -284,6 +287,9 @@ paths:
               example:
                 value: not enough disk space
         
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+        
         "500":
           $ref: "#/components/responses/InternalError"
         
@@ -359,6 +365,9 @@ paths:
         
         "403":
           $ref: "#/components/responses/UnexpectedFileChangeError"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
 
         "500":
           $ref: "#/components/responses/InternalError"
@@ -427,6 +436,9 @@ paths:
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
         
         "500":
           $ref: "#/components/responses/InternalError"
@@ -503,6 +515,9 @@ paths:
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+        
         "500":
           $ref: "#/components/responses/InternalError"
         
@@ -540,6 +555,9 @@ paths:
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
         
         "500":
           $ref: "#/components/responses/InternalError"
@@ -590,6 +608,9 @@ paths:
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
         
         "500":
           $ref: "#/components/responses/InternalError"
@@ -649,6 +670,9 @@ paths:
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+        
         "500":
           $ref: "#/components/responses/InternalError"
         
@@ -706,6 +730,9 @@ paths:
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
         
         "500":
           $ref: "#/components/responses/InternalError"
