@@ -74,3 +74,12 @@ func TestLimiter(t *testing.T) {
 		t.Run(test.name, test.f)
 	}
 }
+
+func BenchmarkAllow(b *testing.B) {
+	limiter := ratelimit.NewLimiter(b.Context(), 10000, time.Second)
+
+	b.ResetTimer()
+	for b.Loop() {
+		limiter.Allow("0.0.0.0")
+	}
+}
