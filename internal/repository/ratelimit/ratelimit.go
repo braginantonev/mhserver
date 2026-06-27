@@ -166,10 +166,10 @@ func (l *Limiter) Allow(ip string) (bool, int64) {
 
 func (l *Limiter) Remaining(ip string) int {
 	l.mux.Lock()
+	defer l.mux.Unlock()
 	if rate, ok := l.occupied[ip]; ok {
 		return l.limit - rate.AcceptedRequests()
 	}
-	l.mux.Unlock()
 
 	return l.limit
 }
