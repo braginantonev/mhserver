@@ -127,9 +127,9 @@ func TestWithAuth(t *testing.T) {
 
 	middleware := authhttp.NewMiddleware(t.Context(), authconfig.AuthMiddlewareConfig{
 		JWTSignature: TestJWT,
-		Requests: config.RequestsConfig{
-			MaxInInterval:   5,
-			LimiterInterval: time.Second,
+		Requests: config.LimiterConfig{
+			Limit:    5,
+			Interval: time.Second,
 		},
 	})
 
