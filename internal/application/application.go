@@ -8,9 +8,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/BurntSushi/toml"
-	"github.com/braginantonev/mhserver/internal/application/di"
-	appconfig "github.com/braginantonev/mhserver/internal/config/app"
+	appconfig "github.com/braginantonev/mhserver/internal/config/application"
+	"github.com/braginantonev/mhserver/internal/di"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
 	"github.com/go-sql-driver/mysql"
@@ -25,29 +24,10 @@ const (
 	AppMode_SubServersOnly
 	AppMode_AllServers
 
-	DATABASE_NAME string = "mhserver"
+	DATABASE_NAME    string = "mhserver"
+	CONFIG_DIRECTORY string = "/usr/share/mhserver/"
+	CONFIG_FILENAME  string = "mhserver.conf"
 )
-
-const (
-	CONFIG_DIR  string = "/usr/share/mhserver/"
-	CONFIG_FILE string = CONFIG_DIR + "mhserver.conf"
-)
-
-func NewApplicationConfig() appconfig.ApplicationConfig {
-	var cfg appconfig.ApplicationConfig
-
-	if _, err := toml.DecodeFile(CONFIG_FILE, &cfg); err != nil {
-		panic(fmt.Errorf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
-	}
-
-	slog.Info("Configuration loaded.")
-	slog.Info(fmt.Sprintf("Available server ram: %d bytes", cfg.Memory.AvailableRAM))
-	slog.Info(fmt.Sprintf("Server will be started at %s:%d", cfg.SubServers["main"].Address, cfg.SubServers["main"].Port))
-	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", DATABASE_NAME))
-	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
-
-	return cfg
-}
 
 type Application struct {
 	cfg appconfig.ApplicationConfig
@@ -56,7 +36,7 @@ type Application struct {
 
 func NewApplication() *Application {
 	return &Application{
-		cfg: NewApplicationConfig(),
+		cfg: appconfig.NewApplicationConfig(CONFIG_DIRECTORY+CONFIG_FILENAME, DATABASE_NAME),
 	}
 }
 
@@ -112,7 +92,7 @@ func (app *Application) runMain(ctx context.Context) error {
 		DataService: data_service,
 	}
 
-	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIR+"ssl/org.crt", CONFIG_DIR+"ssl/rootCA.key")
+	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIRECTORY+"ssl/org.crt", CONFIG_DIRECTORY+"ssl/rootCA.key")
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {
