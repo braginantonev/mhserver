@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	datahttp "github.com/braginantonev/mhserver/internal/http/data"
 	"github.com/braginantonev/mhserver/internal/server"
@@ -75,7 +75,7 @@ func TestSaveDataHandler(t *testing.T) {
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(TEST_WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 512 * 1024 * 1024,
 		MinChunkSize: 4 * 1024,
 		AvailableRAM: 1024 * 1024 * 1024,
@@ -198,7 +198,7 @@ func TestGetDataHandler(t *testing.T) {
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(TEST_WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 512 * 1024 * 1024,
 		MinChunkSize: 4 * 1024,
 		AvailableRAM: 1024 * 1024 * 1024,

@@ -1,4 +1,4 @@
-package domain
+package authhttp
 
 import "net/http"
 
@@ -12,13 +12,13 @@ type AuthMiddleware interface {
 	WithRateLimit(http.HandlerFunc) http.HandlerFunc
 }
 
-type HttpAuthService struct {
+type AuthTransport struct {
 	AuthHandler
 	AuthMiddleware
 }
 
-func NewAuthService(handler AuthHandler, middleware AuthMiddleware) *HttpAuthService {
-	return &HttpAuthService{
+func NewAuthTransport(handler AuthHandler, middleware AuthMiddleware) *AuthTransport {
+	return &AuthTransport{
 		AuthHandler:    handler,
 		AuthMiddleware: middleware,
 	}

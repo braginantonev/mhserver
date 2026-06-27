@@ -8,7 +8,6 @@ import (
 	"github.com/braginantonev/mhserver/internal/config"
 	appconfig "github.com/braginantonev/mhserver/internal/config/application"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
-	"github.com/braginantonev/mhserver/internal/domain"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
 	datahttp "github.com/braginantonev/mhserver/internal/http/data"
@@ -16,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, db *sql.DB) *domain.HttpAuthService {
+func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, db *sql.DB) *authhttp.AuthTransport {
 	user_catalogs := make([]string, 0, len(app_cfg.SubServers))
 	for sub := range app_cfg.SubServers {
 		user_catalogs = append(user_catalogs, sub)
@@ -37,11 +36,11 @@ func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, 
 		},
 	})
 
-	return domain.NewAuthService(handler, middleware)
+	return authhttp.NewAuthTransport(handler, middleware)
 }
 
-func SetupDataService(ctx context.Context, client data_pb.DataServiceClient) *domain.HttpDataService {
-	return domain.NewDataService(
+func SetupDataService(ctx context.Context, client data_pb.DataServiceClient) *datahttp.DataTransport {
+	return datahttp.NewDataTransport(
 		datahttp.NewHandler(client),
 		datahttp.NewMiddleware(ctx, config.LimiterConfig{
 			Limit:    100,
