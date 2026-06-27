@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	appconfig "github.com/braginantonev/mhserver/internal/config/app"
+	appconfig "github.com/braginantonev/mhserver/internal/config/application"
 	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
-	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/domain"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
@@ -32,9 +31,9 @@ func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, 
 
 	middleware := authhttp.NewMiddleware(ctx, authconfig.AuthMiddlewareConfig{
 		JWTSignature: app_cfg.JWTSignature,
-		Requests: config.RequestsConfig{
-			MaxInInterval:   10,
-			LimiterInterval: time.Minute,
+		Requests: config.LimiterConfig{
+			Limit:    10,
+			Interval: time.Minute,
 		},
 	})
 
@@ -44,9 +43,9 @@ func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, 
 func SetupDataService(ctx context.Context, client data_pb.DataServiceClient) *domain.HttpDataService {
 	return domain.NewDataService(
 		datahttp.NewHandler(client),
-		datahttp.NewMiddleware(ctx, config.RequestsConfig{
-			MaxInInterval:   100,
-			LimiterInterval: time.Second,
+		datahttp.NewMiddleware(ctx, config.LimiterConfig{
+			Limit:    100,
+			Interval: time.Second,
 		}),
 	)
 }
@@ -60,7 +59,7 @@ var (
 )
 
 func RegisterDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) {
-	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, dataconfig.NewDataServerConfig(
+	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, data.NewDataServerConfig(
 		app_cfg.WorkspacePath,
 		app_cfg.Memory,
 	)))
