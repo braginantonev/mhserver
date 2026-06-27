@@ -7,7 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/braginantonev/mhserver/internal/domain"
+	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
+	datahttp "github.com/braginantonev/mhserver/internal/http/data"
 	"github.com/gorilla/mux"
 	"golang.org/x/time/rate"
 )
@@ -31,8 +32,8 @@ const (
 )
 
 type Server struct {
-	AuthService *domain.HttpAuthService
-	DataService *domain.HttpDataService
+	AuthService *authhttp.AuthTransport
+	DataService *datahttp.DataTransport
 }
 
 func (s *Server) Serve(addr, tls_cert, tls_key string) error {

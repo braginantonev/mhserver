@@ -10,7 +10,6 @@ var (
 	//JWT errors
 	ErrJwtSignatureInvalid error = errors.New("wrong token signature")
 	ErrWrongJWTName        error = errors.New("wrong username from jwt token")
-	ErrBadClaims           error = errors.New("failed get claims from jwt token")
 
 	// External errors
 	ErrNameTooLong          error = errors.New("name is too long")

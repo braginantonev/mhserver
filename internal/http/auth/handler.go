@@ -4,19 +4,17 @@ import (
 	"log/slog"
 	"net/http"
 
-	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
-	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httpjsonutils"
 )
 
 type Handler struct {
-	cfg authconfig.AuthHandlerConfig
+	service *auth.AuthService
 }
 
-func NewHandler(cfg authconfig.AuthHandlerConfig) Handler {
+func NewHandler(service *auth.AuthService) Handler {
 	return Handler{
-		cfg: cfg,
+		service,
 	}
 }
 
@@ -36,7 +34,7 @@ func (handler Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.Login(user, handler.cfg.DB, handler.cfg.JWTSignature)
+	token, err := handler.service.Login(user)
 	if err != nil {
 		handleServiceError(w, err, "auth.Login")
 	} else {
@@ -67,14 +65,9 @@ func (handler Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := auth.Register(user, handler.cfg.DB); err != nil {
+	if err := handler.service.Register(user); err != nil {
 		handleServiceError(w, err, "auth.Register")
 		return
-	}
-
-	err := dirs.GenerateUserFolders(handler.cfg.WorkspacePath, user.Name, handler.cfg.UserCatalogs...)
-	if err != nil {
-		ErrInternal.Append(err).WithFuncName("Handlers.Register.dirs.GenerateUserFolders").Write(w)
 	}
 
 	w.Header().Del("Content-Type")

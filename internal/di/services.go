@@ -7,10 +7,10 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/config"
 	appconfig "github.com/braginantonev/mhserver/internal/config/application"
-	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
 	datahttp "github.com/braginantonev/mhserver/internal/http/data"
+	"github.com/braginantonev/mhserver/internal/service/auth"
 	data_pb "github.com/braginantonev/mhserver/proto/data"
 	"google.golang.org/grpc"
 )
@@ -21,22 +21,19 @@ func SetupAuthService(ctx context.Context, app_cfg appconfig.ApplicationConfig, 
 		user_catalogs = append(user_catalogs, sub)
 	}
 
-	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
-		DB:            db,
+	service := auth.NewAuthService(auth.AuthConfig{
 		JWTSignature:  app_cfg.JWTSignature,
 		WorkspacePath: app_cfg.WorkspacePath,
-		UserCatalogs:  user_catalogs[1:], // remove main subserver
-	})
+		UserCatalogs:  user_catalogs[1:],
+	}, db)
 
-	middleware := authhttp.NewMiddleware(ctx, authconfig.AuthMiddlewareConfig{
-		JWTSignature: app_cfg.JWTSignature,
-		Requests: config.LimiterConfig{
+	return authhttp.NewAuthTransport(
+		authhttp.NewHandler(service),
+		authhttp.NewMiddleware(ctx, service, config.LimiterConfig{
 			Limit:    10,
 			Interval: time.Minute,
-		},
-	})
-
-	return authhttp.NewAuthTransport(handler, middleware)
+		}),
+	)
 }
 
 func SetupDataService(ctx context.Context, client data_pb.DataServiceClient) *datahttp.DataTransport {

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/service/auth"
@@ -125,21 +124,24 @@ func TestWithAuth(t *testing.T) {
 		},
 	}
 
-	middleware := authhttp.NewMiddleware(t.Context(), authconfig.AuthMiddlewareConfig{
-		JWTSignature: TestJWT,
-		Requests: config.LimiterConfig{
-			Limit:    5,
-			Interval: time.Second,
-		},
+	service := auth.NewAuthService(auth.AuthConfig{
+		JWTSignature:  TestJWT,
+		WorkspacePath: "/tmp/mhserver_tests/",
+		UserCatalogs:  []string{},
+	}, db)
+
+	middleware := authhttp.NewMiddleware(t.Context(), service, config.LimiterConfig{
+		Limit:    5,
+		Interval: time.Second,
 	})
 
 	for _, test := range cases {
 		if test.user.Register {
-			if err := InsertRegisterKeyToDB(db, test.user.RegisterSecretKey); err != nil {
+			if err := insertRegisterKeyToDB(db, test.user.RegisterSecretKey); err != nil {
 				t.Fatalf("failed to insert register key to DB: %v", err)
 			}
 
-			err := auth.Register(auth.NewRegisterUser(test.user.User, test.user.RegisterSecretKey), db)
+			err := service.Register(auth.NewRegisterUser(test.user.User, test.user.RegisterSecretKey))
 			if errors.Is(err, auth.ErrInternal) {
 				t.Fatal(err)
 			}
@@ -154,7 +156,7 @@ func TestWithAuth(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if !test.token.IsWrong {
 				var err error
-				test.token.string, err = auth.Login(test.user.User, db, TestJWT)
+				test.token.string, err = service.Login(test.user.User)
 				if errors.Is(err, auth.ErrInternal) {
 					t.Fatal(err)
 				}

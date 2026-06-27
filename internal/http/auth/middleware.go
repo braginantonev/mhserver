@@ -6,21 +6,22 @@ import (
 	"fmt"
 	"net/http"
 
-	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/repository/ratelimit"
+	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type Middleware struct {
-	cfg     authconfig.AuthMiddlewareConfig
+	service *auth.AuthService
 	limiter *ratelimit.Limiter
 }
 
-func NewMiddleware(ctx context.Context, cfg authconfig.AuthMiddlewareConfig) Middleware {
+func NewMiddleware(ctx context.Context, service *auth.AuthService, limiter_cfg config.LimiterConfig) Middleware {
 	return Middleware{
-		cfg:     cfg,
-		limiter: ratelimit.NewLimiter(ctx, cfg.Requests.Limit, cfg.Requests.Interval),
+		service: service,
+		limiter: ratelimit.NewLimiter(ctx, limiter_cfg.Limit, limiter_cfg.Interval),
 	}
 }
 
@@ -52,13 +53,7 @@ func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 			token = token[7:]
 		}
 
-		parsed_token, err := jwt.Parse(token, func(t *jwt.Token) (any, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, ErrBadJWTToken
-			}
-
-			return []byte(mid.cfg.JWTSignature), nil
-		})
+		parsed, err := mid.service.ParseToJWT(token)
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
 				ErrAuthorizationExpired.Write(w)
@@ -70,7 +65,7 @@ func (mid Middleware) WithAuth(handler http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := parsed_token.Claims.(jwt.MapClaims)
+		claims, ok := parsed.Claims.(jwt.MapClaims)
 		if !ok {
 			ErrInternal.Write(w)
 			return

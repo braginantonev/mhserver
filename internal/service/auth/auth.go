@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -44,10 +45,22 @@ func NewRegisterUser(user User, key string) RegisterUser {
 	}
 }
 
+type AuthService struct {
+	cfg AuthConfig
+	db  *sql.DB
+}
+
+func NewAuthService(cfg AuthConfig, db *sql.DB) *AuthService {
+	return &AuthService{
+		cfg,
+		db,
+	}
+}
+
 // If user exist in database, return personal jwt token
-func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
+func (s *AuthService) Login(user User) (string, error) {
 	db_user := User{}
-	row := db.QueryRow(SELECT_USER, user.Name)
+	row := s.db.QueryRow(SELECT_USER, user.Name)
 	if err := row.Scan(&db_user.Name, &db_user.Password); err != nil {
 		if err == sql.ErrNoRows {
 			return "", ErrUserNotExist
@@ -69,7 +82,7 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 		"iat":  now.Unix(),
 	})
 
-	token_str, err := token.SignedString([]byte(jwt_signature))
+	token_str, err := token.SignedString([]byte(s.cfg.JWTSignature))
 	if err != nil {
 		slog.Error("failed complete signed jwt token", slog.Any("err", err))
 		return "", ErrInternal
@@ -79,18 +92,18 @@ func Login(user User, db *sql.DB, jwt_signature string) (string, error) {
 }
 
 // Crypt user password and put them to database
-func Register(user RegisterUser, db *sql.DB) error {
+func (s *AuthService) Register(user RegisterUser) error {
 	if len(user.Name) > USER_NAME_MAX_LENGTH {
 		return ErrNameTooLong
 	}
 
-	row := db.QueryRow(SELECT_USERID, user.Name)
+	row := s.db.QueryRow(SELECT_USERID, user.Name)
 	if err := row.Scan(); err != sql.ErrNoRows {
 		return ErrUserAlreadyExists
 	}
 
 	var key_id int
-	key_row := db.QueryRow(SELECT_REGISTER_SECRET_KEY, user.Key)
+	key_row := s.db.QueryRow(SELECT_REGISTER_SECRET_KEY, user.Key)
 	if err := key_row.Scan(&key_id); errors.Is(err, sql.ErrNoRows) {
 		return ErrRegSecretKeyNotFound
 	}
@@ -101,39 +114,29 @@ func Register(user RegisterUser, db *sql.DB) error {
 		return ErrInternal
 	}
 
-	if _, err = db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
+	if _, err = s.db.Exec(INSERT_USER, user.Name, string(hash)); err != nil {
 		slog.Error("failed insert user to sql", slog.Any("err", err))
 		return ErrInternal
 	}
 
-	if _, err = db.Exec(DELETE_REGISTRATION_SECRET_KEY, key_id); err != nil {
+	if _, err = s.db.Exec(DELETE_REGISTRATION_SECRET_KEY, key_id); err != nil {
 		slog.Error("failed delete registration secret key from sql", slog.Any("err", err))
+		return ErrInternal
+	}
+
+	if err = dirs.GenerateUserFolders(s.cfg.WorkspacePath, user.Name, s.cfg.UserCatalogs...); err != nil {
+		slog.Error("failed create service catalogs", slog.Any("err", err))
 		return ErrInternal
 	}
 
 	return nil
 }
 
-func CheckJWTUserMatch(username string, token string, signature string) error {
-	tokenFromString, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("%w: %s", ErrJwtSignatureInvalid, token.Header["alg"])
+func (s *AuthService) ParseToJWT(token string) (*jwt.Token, error) {
+	return jwt.Parse(token, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("%w: %s", ErrJwtSignatureInvalid, t.Header["alg"])
 		}
-
-		return []byte(signature), nil
+		return []byte(s.cfg.JWTSignature), nil
 	})
-
-	if err != nil {
-		return err
-	}
-
-	if claims, ok := tokenFromString.Claims.(jwt.MapClaims); ok {
-		if claims["name"] != username {
-			return fmt.Errorf("%w\n\texpected user name: `%s`, but got `%s`", ErrWrongJWTName, username, claims["name"])
-		}
-	} else {
-		return ErrBadClaims
-	}
-
-	return nil
 }

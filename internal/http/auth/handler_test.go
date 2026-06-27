@@ -5,17 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	authconfig "github.com/braginantonev/mhserver/internal/config/auth"
 	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
 	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/go-sql-driver/mysql"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
@@ -24,9 +25,25 @@ const (
 	INSERT_REGISTER_SECRET_KEY string = "INSERT INTO register_secret_keys (secret_key) VALUES (?)"
 )
 
-func InsertRegisterKeyToDB(db *sql.DB, secret_key string) error {
+func insertRegisterKeyToDB(db *sql.DB, secret_key string) error {
 	_, err := db.Exec(INSERT_REGISTER_SECRET_KEY, secret_key)
 	return err
+}
+
+func checkJWTUserMatch(s *auth.AuthService, username, token string) error {
+	parsed, err := s.ParseToJWT(token)
+	if err != nil {
+		return err
+	}
+
+	if claims, ok := parsed.Claims.(jwt.MapClaims); ok {
+		if claims["name"] != username {
+			return fmt.Errorf("expected user name: `%s`, but got `%s`", username, claims["name"])
+		}
+	} else {
+		return errors.New("failed get jwt claims")
+	}
+	return nil
 }
 
 type TestUser struct {
@@ -108,18 +125,21 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
-		JWTSignature: TEST_JWT_SIG,
-		DB:           db,
-	})
+	service := auth.NewAuthService(auth.AuthConfig{
+		JWTSignature:  TEST_JWT_SIG,
+		WorkspacePath: "/tmp/mhserver_tests/",
+		UserCatalogs:  []string{},
+	}, db)
+
+	handler := authhttp.NewHandler(service)
 
 	for _, test := range cases {
 		if test.user.Register {
-			if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+			if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
 				t.Fatalf("failed to insert register key to DB: %v", err)
 			}
 
-			err := auth.Register(auth.NewRegisterUser(test.user.User, test.user.RegisterSecretKey), db)
+			err := service.Register(auth.NewRegisterUser(test.user.User, test.user.RegisterSecretKey))
 			if errors.Is(errors.Unwrap(err), auth.ErrInternal) {
 				t.Fatal(err)
 			}
@@ -148,7 +168,7 @@ func TestLogin(t *testing.T) {
 			}
 
 			if test.expected_code == http.StatusOK {
-				if err := auth.CheckJWTUserMatch(test.user.Name, string(received_body), TEST_JWT_SIG); err != nil {
+				if err := checkJWTUserMatch(service, test.user.Name, string(received_body)); err != nil {
 					t.Error(err)
 				}
 			} else {
@@ -225,15 +245,18 @@ func TestRegister(t *testing.T) {
 		},
 	}
 
-	handler := authhttp.NewHandler(authconfig.AuthHandlerConfig{
-		DB:           db,
-		JWTSignature: TEST_JWT_SIG,
-	})
+	service := auth.NewAuthService(auth.AuthConfig{
+		JWTSignature:  TEST_JWT_SIG,
+		WorkspacePath: "/tmp/mhserver_tests/",
+		UserCatalogs:  []string{},
+	}, db)
+
+	handler := authhttp.NewHandler(service)
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			if test.user.RegisterSecretKey != "" {
-				if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+				if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
 					t.Fatalf("failed to insert register key to DB: %v", err)
 				}
 			}
