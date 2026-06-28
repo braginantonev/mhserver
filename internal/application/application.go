@@ -85,8 +85,8 @@ func (app *Application) runMain(ctx context.Context) error {
 	}
 
 	srv := server.Server{
-		AuthService: di.SetupAuthTransport(ctx, di.SetupAuthService(app.cfg, app.db)),
-		DataService: di.SetupDataTransport(ctx, di.GetDataServerClient(connections["files"])),
+		AuthTransport: di.SetupAuthTransport(ctx, di.SetupAuthService(app.cfg, app.db)),
+		DataTransport: di.SetupDataTransport(ctx, di.GetDataServerClient(connections["files"])),
 	}
 
 	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIRECTORY+"ssl/org.crt", CONFIG_DIRECTORY+"ssl/rootCA.key")
