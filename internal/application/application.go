@@ -84,12 +84,9 @@ func (app *Application) runMain(ctx context.Context) error {
 		connections[name] = conn
 	}
 
-	auth_service := di.SetupAuthService(ctx, app.cfg, app.db)
-	data_service := di.SetupDataService(ctx, di.GetDataClient(connections["files"]))
-
 	srv := server.Server{
-		AuthService: auth_service,
-		DataService: data_service,
+		AuthService: di.SetupAuthTransport(ctx, di.SetupAuthService(app.cfg, app.db)),
+		DataService: di.SetupDataTransport(ctx, di.GetDataServerClient(connections["files"])),
 	}
 
 	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIRECTORY+"ssl/org.crt", CONFIG_DIRECTORY+"ssl/rootCA.key")
@@ -114,13 +111,11 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 		grpc_address = subserver.Address
 		grpc_port = subserver.Port
 
-		reg, ok := di.RegisterServer[name]
-		if !ok {
+		if !di.RegisterGrpcServer(ctx, name, grpc_server, app.cfg) {
 			slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", name))
 			continue
 		}
 
-		reg(ctx, grpc_server, app.cfg)
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
 	}
 
