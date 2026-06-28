@@ -14,7 +14,7 @@ import (
 	"sync"
 	"testing"
 
-	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	pb "github.com/braginantonev/mhserver/proto/data"
@@ -116,7 +116,7 @@ func TestCreateConnection(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 25,
 		MinChunkSize: 5,
 		AvailableRAM: 1024 * 1024 * 1024,
@@ -264,7 +264,7 @@ func TestSaveData(t *testing.T) {
 	max_chunk_size := 10
 
 	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_chunk_size + 256))
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: uint64(max_chunk_size), //byte
 		MinChunkSize: 5,                      //byte
 		AvailableRAM: 1024 * 1024 * 1024,     //byte
@@ -422,7 +422,7 @@ func TestGetData(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 1024,               //byte
 		MinChunkSize: 5,                  //byte
 		AvailableRAM: 1024 * 1024 * 1024, //byte
@@ -512,7 +512,7 @@ func TestGetSum(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_GRPC_message), grpc.MaxSendMsgSize(max_GRPC_message))
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: uint64(max_GRPC_message) / 2,
 		MinChunkSize: 4 * 1024,
 		AvailableRAM: 1024 * 1024 * 1024,
@@ -709,7 +709,7 @@ func TestGetFiles(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 1024,               //byte
 		MinChunkSize: 5,                  //byte
 		AvailableRAM: 1024 * 1024 * 1024, //byte

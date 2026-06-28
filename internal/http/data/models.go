@@ -1,4 +1,4 @@
-package domain
+package datahttp
 
 import "net/http"
 
@@ -17,13 +17,13 @@ type DataMiddleware interface {
 	WithRateLimit(http.HandlerFunc) http.HandlerFunc
 }
 
-type HttpDataService struct {
+type DataTransport struct {
 	DataHandler
 	DataMiddleware
 }
 
-func NewDataService(handler DataHandler, middleware DataMiddleware) *HttpDataService {
-	return &HttpDataService{
+func NewDataTransport(handler DataHandler, middleware DataMiddleware) *DataTransport {
+	return &DataTransport{
 		DataHandler:    handler,
 		DataMiddleware: middleware,
 	}
