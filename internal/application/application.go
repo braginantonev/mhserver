@@ -26,7 +26,6 @@ const (
 
 	DATABASE_NAME    string = "mhserver"
 	CONFIG_DIRECTORY string = "/usr/share/mhserver/"
-	CONFIG_FILENAME  string = "mhserver_test.conf"
 )
 
 type Application struct {
@@ -34,26 +33,28 @@ type Application struct {
 	db  *sql.DB
 }
 
-func NewApplication() *Application {
-	return &Application{
-		cfg: appconfig.NewApplicationConfig(CONFIG_DIRECTORY+CONFIG_FILENAME, DATABASE_NAME),
-	}
-}
-
-func (app *Application) InitDB() (err error) {
-	if app.db != nil {
-		return nil
+func NewApplication() (*Application, error) {
+	cfg := appconfig.NewApplicationConfig(true)
+	if err := cfg.Init(CONFIG_DIRECTORY, DATABASE_NAME); err != nil {
+		return nil, fmt.Errorf("failed init config: %w", err)
 	}
 
-	app.db, err = database.OpenDB(mysql.Config{
+	db, err := database.OpenDB(mysql.Config{
 		User:                 "mhserver",
-		Passwd:               app.cfg.DB_Pass,
+		Passwd:               cfg.DB_Pass,
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "mhs_main",
 		AllowNativePasswords: true,
 	})
-	return
+	if err != nil {
+		return nil, fmt.Errorf("failed open database: %w", err)
+	}
+
+	return &Application{
+		cfg: cfg,
+		db:  db,
+	}, nil
 }
 
 func (app *Application) runMain(ctx context.Context) error {
@@ -148,11 +149,6 @@ func (app *Application) Run(mode ApplicationMode) error {
 	slog.Info("Run application with", slog.Int("mode", int(mode)))
 
 	ctx := context.Background()
-
-	if err := app.InitDB(); err != nil {
-		slog.Error("Failed init database", slog.String("error", err.Error()))
-		return err
-	}
 
 	if mode != AppMode_MainServerOnly {
 		err := app.runSubserver(ctx, mode == AppMode_SubServersOnly)
