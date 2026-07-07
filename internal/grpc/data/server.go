@@ -39,7 +39,7 @@ type DataServer struct {
 }
 
 func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
-	sem_size := cfg.Memory.AvailableRAM / cfg.Memory.MaxChunkSize
+	sem_size := cfg.Memory.Allocated / cfg.Memory.MaxChunkSize
 
 	slog.Info("Set semaphore size", "value", sem_size)
 

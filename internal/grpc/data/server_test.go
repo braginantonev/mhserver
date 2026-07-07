@@ -119,7 +119,7 @@ func TestCreateConnection(t *testing.T) {
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 25,
 		MinChunkSize: 5,
-		AvailableRAM: 1024 * 1024 * 1024,
+		Allocated:    1024 * 1024 * 1024,
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8084")
@@ -267,7 +267,7 @@ func TestSaveData(t *testing.T) {
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: uint64(max_chunk_size), //byte
 		MinChunkSize: 5,                      //byte
-		AvailableRAM: 1024 * 1024 * 1024,     //byte
+		Allocated:    1024 * 1024 * 1024,     //byte
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8081")
@@ -425,7 +425,7 @@ func TestGetData(t *testing.T) {
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 1024,               //byte
 		MinChunkSize: 5,                  //byte
-		AvailableRAM: 1024 * 1024 * 1024, //byte
+		Allocated:    1024 * 1024 * 1024, //byte
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8082")
@@ -515,7 +515,7 @@ func TestGetSum(t *testing.T) {
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: uint64(max_GRPC_message) / 2,
 		MinChunkSize: 4 * 1024,
-		AvailableRAM: 1024 * 1024 * 1024,
+		Allocated:    1024 * 1024 * 1024,
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8083")
@@ -712,7 +712,7 @@ func TestGetFiles(t *testing.T) {
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 1024,               //byte
 		MinChunkSize: 5,                  //byte
-		AvailableRAM: 1024 * 1024 * 1024, //byte
+		Allocated:    1024 * 1024 * 1024, //byte
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8082")

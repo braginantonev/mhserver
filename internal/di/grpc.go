@@ -9,17 +9,17 @@ import (
 	"google.golang.org/grpc"
 )
 
-func regDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) {
+func regDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig, server_cfg appconfig.SubServer) {
 	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, data.NewDataServerConfig(
 		app_cfg.WorkspacePath,
-		app_cfg.Memory,
+		app_cfg.Memory.WithAllocated(server_cfg.Extra.AllocatedMemory),
 	)))
 }
 
-func RegisterGrpcServer(ctx context.Context, service_name string, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) bool {
-	switch service_name {
+func RegisterGrpcServer(ctx context.Context, server_name string, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) bool {
+	switch server_name {
 	case "files":
-		regDataServer(ctx, grpc, app_cfg)
+		regDataServer(ctx, grpc, app_cfg, *app_cfg.SubServers[server_name])
 	default:
 		return false
 	}

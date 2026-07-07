@@ -26,7 +26,7 @@ const (
 
 	DATABASE_NAME    string = "mhserver"
 	CONFIG_DIRECTORY string = "/usr/share/mhserver/"
-	CONFIG_FILENAME  string = "mhserver.conf"
+	CONFIG_FILENAME  string = "mhserver_test.conf"
 )
 
 type Application struct {
@@ -84,10 +84,9 @@ func (app *Application) runMain(ctx context.Context) error {
 		connections[name] = conn
 	}
 
-	srv := server.Server{
-		AuthTransport: di.SetupAuthTransport(ctx, di.SetupAuthService(app.cfg, app.db)),
-		DataTransport: di.SetupDataTransport(ctx, di.GetDataServerClient(connections["files"])),
-	}
+	srv := server.NewServer(app.cfg.Memory.WithAllocated(app.cfg.SubServers["main"].Extra.AllocatedMemory))
+	srv.AuthTransport = di.SetupAuthTransport(ctx, di.SetupAuthService(app.cfg, app.db))
+	srv.DataTransport = di.SetupDataTransport(ctx, di.GetDataServerClient(connections["files"]))
 
 	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIRECTORY+"ssl/org.crt", CONFIG_DIRECTORY+"ssl/rootCA.key")
 }
@@ -97,13 +96,13 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 	var grpc_address string
 	var grpc_port int
 
-	wg := sync.WaitGroup{}
-
 	for name, subserver := range app.cfg.SubServers {
-		if !subserver.Enabled || name == "main" {
-			if name != "main" {
-				slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", name))
-			}
+		if !subserver.Enabled {
+			slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", name))
+			continue
+		}
+
+		if name == "main" {
 			continue
 		}
 
@@ -119,6 +118,7 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
 	}
 
+	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func(address string, port int) {
 		defer wg.Done()

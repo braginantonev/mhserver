@@ -78,7 +78,7 @@ func TestSaveDataHandler(t *testing.T) {
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(TEST_WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 512 * 1024 * 1024,
 		MinChunkSize: 4 * 1024,
-		AvailableRAM: 1024 * 1024 * 1024,
+		Allocated:    1024 * 1024 * 1024,
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8100")
@@ -201,7 +201,7 @@ func TestGetDataHandler(t *testing.T) {
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(TEST_WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 512 * 1024 * 1024,
 		MinChunkSize: 4 * 1024,
-		AvailableRAM: 1024 * 1024 * 1024,
+		Allocated:    1024 * 1024 * 1024,
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8101")
