@@ -3,7 +3,6 @@ module github.com/braginantonev/mhserver
 go 1.25.1
 
 require (
-	github.com/BurntSushi/toml v1.6.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
@@ -13,6 +12,8 @@ require (
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 )
+
+require github.com/pelletier/go-toml/v2 v2.4.3
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect

@@ -2,11 +2,20 @@
 package appconfig
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
+	"os"
 
-	"github.com/BurntSushi/toml"
 	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/pelletier/go-toml/v2"
+)
+
+const (
+	CONFIG_FILENAME         string = "mhserver.conf"
+	DEFAULT_CONFIG_FILENAME string = CONFIG_FILENAME + ".default"
 )
 
 type SubServer struct {
@@ -27,13 +36,53 @@ type ApplicationConfig struct {
 	DB_Pass       string `toml:"db_pass"`
 	Memory        config.MemoryConfig
 	SubServers    map[string]*SubServer
+
+	with_default bool
 }
 
-func NewApplicationConfig(config_path, db_name string) ApplicationConfig {
-	var cfg ApplicationConfig
+func NewApplicationConfig(load_default bool) ApplicationConfig {
+	return ApplicationConfig{
+		with_default: load_default,
+	}
+}
 
-	if _, err := toml.DecodeFile(config_path, &cfg); err != nil {
-		panic(fmt.Errorf("%s\n%s", "configuration file have an errors or not found", err.Error()))
+func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
+	if cfg.with_default {
+		def, err := os.ReadFile(config_dir + DEFAULT_CONFIG_FILENAME)
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+
+			// download from github
+			resp, err := http.Get("https://github.com/braginantonev/mhserver/blob/main/" + DEFAULT_CONFIG_FILENAME)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != 200 {
+				return fmt.Errorf("default file not found (%d)", resp.StatusCode)
+			}
+
+			def, err = io.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := toml.Unmarshal(def, &cfg); err != nil {
+			return err
+		}
+	}
+
+	from_file, err := os.ReadFile(config_dir + CONFIG_FILENAME)
+	if err != nil {
+		return err
+	}
+
+	if err := toml.Unmarshal(from_file, &cfg); err != nil {
+		return err
 	}
 
 	slog.Info("Configuration loaded.")
@@ -50,14 +99,17 @@ func NewApplicationConfig(config_path, db_name string) ApplicationConfig {
 		}
 	}
 
-	mem_chunk := cfg.Memory.Allocated / uint64(priority_sum)
-	for _, srv := range cfg.SubServers {
-		if srv.Enabled && srv.Extra.AllocatedMemory == 0 {
-			srv.Extra.AllocatedMemory = mem_chunk * uint64(srv.Extra.Priority)
+	if priority_sum != 0 {
+		mem_chunk := cfg.Memory.Allocated / uint64(priority_sum)
+		for n, srv := range cfg.SubServers {
+			if srv.Enabled && srv.Extra.AllocatedMemory == 0 {
+				srv.Extra.AllocatedMemory = mem_chunk * uint64(srv.Extra.Priority)
+				slog.Info("Allocate memory for", slog.String("subserver", n), slog.Any("value", srv.Extra.AllocatedMemory))
+			}
 		}
 	}
 
 	// ^ mb that's look like a shit
 
-	return cfg
+	return nil
 }
