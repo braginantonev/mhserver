@@ -9,8 +9,7 @@ else
     rm -rf build/*
 fi
 
-go build -C cmd/ -o ../build/mhserver -ldflags="-s -w -X=github.com/braginantonev/version.Version=${VERSION}"
-mv cmd/mhserver build/
+go build -C cmd/ -o ../build/mhserver -ldflags="-s -w -X=github.com/braginantonev/mhserver/version.Version=${VERSION}"
 
 cp -r scripts/ build/scripts/
 cp -r sql/ build/
