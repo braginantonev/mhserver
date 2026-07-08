@@ -536,17 +536,35 @@ func TestGetSum(t *testing.T) {
 
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
-	genRandomFile := func(ln uint64) string {
-		var letters = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n\t")
-		letters_len := len(letters)
-
-		result := make([]rune, ln)
-
-		for i := range result {
-			result[i] = letters[rand.Intn(letters_len)]
+	// Вместо создания всей строки в памяти
+	genRandomFile := func(size uint64) (*os.File, error) {
+		file, err := os.CreateTemp(WORKSPACE_PATH, fmt.Sprintf("%d-*.txt", size))
+		if err != nil {
+			return nil, err
 		}
 
-		return string(result)
+		const CHUNK_SIZE = 64 * 1024
+		buffer := make([]byte, CHUNK_SIZE)
+		letters := []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n\t")
+
+		for written := uint64(0); written < size; {
+			toWrite := CHUNK_SIZE
+			if size-written < CHUNK_SIZE {
+				toWrite = int(size - written)
+			}
+
+			for i := 0; i < toWrite; i++ {
+				buffer[i] = letters[rand.Intn(len(letters))]
+			}
+
+			n, err := file.Write(buffer[:toWrite])
+			if err != nil {
+				return nil, err
+			}
+			written += uint64(n)
+		}
+
+		return file, nil
 	}
 
 	cases := [...]struct {
@@ -641,29 +659,25 @@ func TestGetSum(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			file_body := genRandomFile(test.gen_file_size)
-
-			// Create test file
-			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename), os.O_CREATE|os.O_WRONLY, 0660)
+			expected, err := genRandomFile(test.gen_file_size)
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer os.Remove(expected.Name())
 
-			_, err = file.Write([]byte(file_body))
+			// Create test file
+			filepath := fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename)
+			file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY, 0660)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(filepath)
+
+			_, err = io.Copy(file, expected)
 			if err != nil {
 				t.Fatal(err)
 			}
 			_ = file.Close()
-
-			defer func(test_name string) {
-				if test.data_info.Filename == "" {
-					return
-				}
-
-				if err := os.Remove(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename)); err != nil {
-					t.Logf("failed remove file; test name = %s; err: %v", test_name, err)
-				}
-			}(test.name)
 
 			conn, err := data_client.CreateConnection(t.Context(), test.data_info)
 			if err != nil {
@@ -679,10 +693,13 @@ func TestGetSum(t *testing.T) {
 					t.Fatalf("failed get chunk sum. err: %v", err)
 				}
 
-				offset := uint64(i) * conn.ChunkSize
-				n := min(offset+conn.ChunkSize, test.gen_file_size)
+				expected_data := make([]byte, conn.ChunkSize)
+				read, err := expected.ReadAt(expected_data, int64(uint64(i)*conn.ChunkSize))
+				if err != nil {
+					t.Fatal(err)
+				}
 
-				expected_sum := sha256.Sum256([]byte(file_body[offset:n]))
+				expected_sum := sha256.Sum256(expected_data[:read])
 				if test.bad_sum_wanted {
 					expected_sum[0] = 0
 				}
