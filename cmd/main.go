@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/application"
+	"github.com/braginantonev/mhserver/version"
 )
 
 var (
@@ -15,6 +17,8 @@ var (
 )
 
 func main() {
+	fmt.Println("Mhserver", version.Version)
+
 	app, err := application.NewApplication()
 	if err != nil {
 		slog.Error("failed init application", slog.Any("error", err))
