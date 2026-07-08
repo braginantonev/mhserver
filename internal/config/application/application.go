@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/version"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -55,7 +56,7 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 			}
 
 			// download from github
-			resp, err := http.Get("https://github.com/braginantonev/mhserver/blob/main/" + DEFAULT_CONFIG_FILENAME)
+			resp, err := http.Get(fmt.Sprintf("https://github.com/braginantonev/mhserver/blob/%s/%s", version.Version, DEFAULT_CONFIG_FILENAME))
 			if err != nil {
 				return err
 			}
