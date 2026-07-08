@@ -663,7 +663,9 @@ func TestGetSum(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer os.Remove(expected.Name())
+			defer func() {
+				_ = os.Remove(expected.Name())
+			}()
 
 			// Create test file
 			filepath := fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename)
@@ -671,7 +673,9 @@ func TestGetSum(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer os.Remove(filepath)
+			defer func() {
+				_ = os.Remove(filepath)
+			}()
 
 			_, err = io.Copy(file, expected)
 			if err != nil {

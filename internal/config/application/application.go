@@ -60,7 +60,9 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 
 			if resp.StatusCode != 200 {
 				return fmt.Errorf("default file not found (%d)", resp.StatusCode)
