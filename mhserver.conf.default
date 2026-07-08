@@ -1,11 +1,9 @@
-workspace_path = "/home/anton/.mhserver/"
-jwt_signature = "YnjJih+Vcs6wHKzeH421m0w+8PW+UXZNWy3uRgMR2qM="
-db_pass = "123"
+workspace_path = "~/.mhserver/"
 
 [memory]
-available_ram = 12500063232 # bytes
-max_chunk_size = 50 # bytes
-min_chunk_size = 1 # bytes
+available_ram = 1073741824 # bytes
+max_chunk_size = 52428800 # bytes
+min_chunk_size = 4096 # bytes
 
 [subservers.main]
 enabled = true
@@ -20,7 +18,7 @@ allocated_memory = 0
 # in case I want to revert to microservice architecture in the future.
 
 [subservers.files]
-enabled = true
+enabled = false
 address = "localhost" # 'localhost' for monolithic arch
 port = 30544
 
@@ -29,7 +27,7 @@ priority = 5
 allocated_memory = 0
 
 [subservers.music]
-enabled = true
+enabled = false
 address = "localhost" # 'localhost' for monolithic arch
 port = 30544
 
