@@ -17,7 +17,7 @@ var (
 )
 
 func main() {
-	fmt.Println("Mhserver", version.Version)
+	fmt.Printf("Mhserver (ver. %s)\n", version.Version)
 
 	app, err := application.NewApplication()
 	if err != nil {

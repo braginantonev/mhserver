@@ -39,8 +39,11 @@ type Server struct {
 }
 
 func NewServer(memory_cfg config.MemoryConfig) *Server {
+	sem_size := (memory_cfg.Allocated * 99 / 100) / (memory_cfg.MaxChunkSize + 1024)
+	slog.Info("Set semaphore size", slog.String("subserver", "main"), slog.Int("value", int(sem_size)))
+
 	return &Server{
-		sem: make(chan any, memory_cfg.Allocated/(memory_cfg.MaxChunkSize+1024)),
+		sem: make(chan any, sem_size),
 	}
 }
 

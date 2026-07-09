@@ -39,9 +39,8 @@ type DataServer struct {
 }
 
 func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
-	sem_size := cfg.Memory.Allocated / cfg.Memory.MaxChunkSize
-
-	slog.Info("Set semaphore size", "value", sem_size)
+	sem_size := (cfg.Memory.Allocated * 985 / 1000) / cfg.Memory.MaxChunkSize
+	slog.Info("Set semaphore size", slog.String("subserver", string(cfg.ServiceName)), slog.Int("value", int(sem_size)))
 
 	return &DataServer{
 		cfg:               cfg,
