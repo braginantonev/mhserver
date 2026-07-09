@@ -20,6 +20,7 @@ servers:
       host:
         default: localhost
         description: Имя сервера или его IP
+
       port:
         default: "8080"
         description: Порт сервера
@@ -41,7 +42,6 @@ paths:
   /tools/ping:
    post:
     operationId: ping
-
     tags: ["Инструменты"]
     summary: Приветствие
     description: Используется для пинга сервера
@@ -61,9 +61,8 @@ paths:
   /users/login:
     post:
       operationId: usersLogin
-
-      summary: Получение JWT пользователя
       tags: ["Аутентификация", "Сервис"]
+      summary: Получение JWT пользователя
 
       requestBody:
         required: true
@@ -75,20 +74,34 @@ paths:
       responses:
         "200":
           description: Получен JWT токен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
                 format: jwt
-              example:
-                value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzExODY5MjAsImlhdCI6MTc3MTEwMDUyMCwibmFtZSI6IlRlc3QxIiwibmJmIjoxNzcxMTAwNTIwfQ.rRD0ViwdgZxd9GG9RbW5lzThlnMN_5yX4ngcdWMSyhw
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzExODY5MjAsImlhdCI6MTc3MTEwMDUyMCwibmFtZSI6IlRlc3QxIiwibmJmIjoxNzcxMTAwNTIwfQ.rRD0ViwdgZxd9GG9RbW5lzThlnMN_5yX4ngcdWMSyhw
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
+
               examples:
                 emptyUsername:
                   $ref: "#/components/examples/EmptyUsername"
@@ -111,6 +124,9 @@ paths:
         
         "404":
           $ref: "#/components/responses/AuthServiceUnavailable"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
 
         "500":
           $ref: "#/components/responses/InternalError" 
@@ -118,9 +134,8 @@ paths:
   /users/register:
     post:
       operationId: usersRegister
-
-      summary: Регистрация пользователя
       tags: ["Аутентификация", "Сервис"]
+      summary: Регистрация пользователя
 
       requestBody:
         required: true
@@ -132,12 +147,25 @@ paths:
       responses:
         "200":
           description: Пользователь зарегистрирован
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
         
         "400":
           $ref: "#/components/responses/AuthRequestError"
         
         "403":
           description: Введённый секретный ключ не существует
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
@@ -149,11 +177,21 @@ paths:
         
         "409":
           description: Пользователь уже зарегистрирован
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
               example: user already exist
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
 
         "500":
           $ref: "#/components/responses/InternalError"
@@ -161,20 +199,7 @@ paths:
   /files/connect:
     post:
       operationId: filesCreateConnection
-
-      parameters:
-        - name: mode
-          in: query
-          required: true
-          schema:
-            $ref: "#/components/schemas/ConnectionMode"
-            
-
-      security:
-        - BearerAuth: []
-      
       tags: ["Файлы", "Сервис"]
-      
       summary: Получение параметров получения или отправки чанков
       description: |
         "Пропуск" к работе с файлами на сервере. Создаёт инструкцию для сервера, что конкретный файл будет использоваться (создание, изменение и т.д.). Без этой инструкции, работа с файлами не допускается.
@@ -182,6 +207,16 @@ paths:
         Также передаёт пользователю информацию о количестве чанков и их размере, необходимые для сохранения файла.
 
         Соединение существует 5 минут, либо пока файл не будет полностью сохранён (очевидно, при сохранении файла)
+      
+      parameters:
+        - name: mode
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/ConnectionMode"       
+
+      security:
+        - BearerAuth: []
 
       requestBody:
         required: true
@@ -193,6 +228,13 @@ paths:
       responses:
         "200":
           description: Соединение создано и получены его параметры
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             application/json:
               schema:
@@ -200,10 +242,18 @@ paths:
                     
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
+
               examples:
                 badJwtSyntax:
                   $ref: "#/components/examples/BadJwtSyntax"
@@ -234,12 +284,21 @@ paths:
         
         "413":
           description: Размер сохраняемого файла, больше свободного места на сервере
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
-              example:
-                value: not enough disk space
+              example: not enough disk space
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
         
         "500":
           $ref: "#/components/responses/InternalError"
@@ -250,20 +309,18 @@ paths:
   /files/save:
     post:
       operationId: filesSaveChunk
-
-      parameters:
-        - $ref: "#/components/parameters/ConnectionID"
-      
-      security:
-        - BearerAuth: []
-      
       tags: ["Файлы", "Сервис"]
-
       summary: Сохранить часть файла
       description: |
         Сохраняет часть файла (чанк) на сервере. 
         
         Чтобы сохранить полный файл, необходимо отправить запрос столько раз, сколько указано в поле `chunksCount` созданного соединения.
+      
+      parameters:
+        - $ref: "#/components/parameters/ConnectionID"
+      
+      security:
+        - BearerAuth: []
       
       requestBody:
         required: true
@@ -275,37 +332,54 @@ paths:
       responses:
         "200":
           description: Чанк сохранен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
           
         "400":
-            description: Плохой запрос
-            content:
-              text/plain:
-                schema:
-                  type: string
-                examples:
-                  badJwtSyntax:
-                    $ref: "#/components/examples/BadJwtSyntax"
+          description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
 
-                  badJwtSignature:
-                    $ref: "#/components/examples/BadJwtSignature"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
 
-                  emptyRequestBody:
-                    $ref: "#/components/examples/EmptyRequestBody"
+          content:
+            text/plain:
+              schema:
+                type: string
+
+              examples:
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
+
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
+
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
                   
-                  badConnectionSyntax:
-                    $ref: "#/components/examples/BadConnectionSyntax"
+                badConnectionSyntax:
+                  $ref: "#/components/examples/BadConnectionSyntax"
                     
-                  connectionNotExists:
-                    $ref: "#/components/examples/ConnectionNotExists"
+                connectionNotExists:
+                  $ref: "#/components/examples/ConnectionNotExists"
                   
-                  incorrectChunkSize:                  
-                    $ref: "#/components/examples/IncorrectChunkSize"
+                incorrectChunkSize:                  
+                  $ref: "#/components/examples/IncorrectChunkSize"
                 
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
         "403":
           $ref: "#/components/responses/UnexpectedFileChangeError"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
 
         "500":
           $ref: "#/components/responses/InternalError"
@@ -316,7 +390,13 @@ paths:
   /files/get:
     get:
       operationId: filesGetChunk
+      tags: ["Файлы", "Сервис"]
+      summary: Получить часть файла
+      description: |
+        Запрос возвращает файл по чанкам. 
 
+        Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения
+      
       parameters:
         - $ref: "#/components/parameters/ConnectionID"
         - $ref: "#/components/parameters/GetChunk"
@@ -324,46 +404,56 @@ paths:
       security:
         - BearerAuth: []
       
-      tags: ["Файлы", "Сервис"]
-
-      summary: Получить часть файла
-      description: |
-        Запрос возвращает файл по чанкам. 
-
-        Чтобы получить полный файл, необходимо отправить столько запросов, сколько записано в поле `chunksCount` при создании соединения
-      
       responses:
         "200":
           description: Чанк получен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             application/octet-stream:
               schema:
                 $ref: "#/components/schemas/FilePart"
         
         "400":
-            description: Плохой запрос
-            content:
-              text/plain:
-                schema:
-                  type: string
-                examples:
-                  badJwtSyntax:
-                    $ref: "#/components/examples/BadJwtSyntax"
+          description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
 
-                  badJwtSignature:
-                    $ref: "#/components/examples/BadJwtSignature"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
 
-                  emptyRequestBody:
-                    $ref: "#/components/examples/EmptyRequestBody"
+          content:
+            text/plain:
+              schema:
+                type: string
+
+              examples:
+                badJwtSyntax:
+                  $ref: "#/components/examples/BadJwtSyntax"
+
+                badJwtSignature:
+                  $ref: "#/components/examples/BadJwtSignature"
+
+                emptyRequestBody:
+                  $ref: "#/components/examples/EmptyRequestBody"
                   
-                  badConnectionSyntax:
-                    $ref: "#/components/examples/BadConnectionSyntax"
+                badConnectionSyntax:
+                  $ref: "#/components/examples/BadConnectionSyntax"
                     
-                  connectionNotExists:
-                    $ref: "#/components/examples/ConnectionNotExists"
+                connectionNotExists:
+                  $ref: "#/components/examples/ConnectionNotExists"
         
         "401":
           $ref: "#/components/responses/NotAuthorized"
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
         
         "500":
           $ref: "#/components/responses/InternalError"
@@ -374,16 +464,7 @@ paths:
   /files/sum:
     get:
       operationId: filesGetSum
-
-      parameters:
-        - $ref: "#/components/parameters/ConnectionID"
-        - $ref: "#/components/parameters/GetChunk"
-      
-      security:
-        - BearerAuth: []
-      
       tags: ["Файлы", "Сервис"]
-
       summary: Получить контрольную сумму части файла
       description: |
         Используется проверки целлостности сохранённого файла. 
@@ -393,9 +474,23 @@ paths:
 
         Контрольная сумма считается по алгоритму SHA-256.
       
+      parameters:
+        - $ref: "#/components/parameters/ConnectionID"
+        - $ref: "#/components/parameters/GetChunk"
+      
+      security:
+        - BearerAuth: []
+      
       responses:
         "200":
           description: Контрольная сумма получена
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             application/octet-stream:
               schema:
@@ -407,10 +502,18 @@ paths:
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
+
               examples:
                 badJwtSyntax:
                   $ref: "#/components/examples/BadJwtSyntax"
@@ -430,6 +533,9 @@ paths:
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+        
         "500":
           $ref: "#/components/responses/InternalError"
         
@@ -439,6 +545,8 @@ paths:
   /files:
     get:
       operationId: getFilesList
+      tags: ["Файлы", "Сервис"]
+      summary: Получить список файлов в каталоге
 
       parameters:
         - $ref: "#/components/parameters/Directory"
@@ -446,12 +554,16 @@ paths:
       security:
         - BearerAuth: []
       
-      tags: ["Файлы", "Сервис"]
-      summary: Получить список файлов в каталоге
-      
       responses:
         "200":
           description: Список файлов получен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             application/json:
               schema:
@@ -463,6 +575,9 @@ paths:
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+        
         "500":
           $ref: "#/components/responses/InternalError"
         
@@ -472,15 +587,22 @@ paths:
   /files/space:
     get:      
       operationId: filesGetAvailableSpace
-      security:
-        - BearerAuth: []
-
       tags: ["Файлы", "Сервис"]
       summary: Получить количество свободного места
+
+      security:
+        - BearerAuth: []
 
       responses:
         "200":
           description: Количество свободного места в байтах получен
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
@@ -489,10 +611,18 @@ paths:
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
+
               examples:
                 badJwtSignature:
                   $ref: "#/components/examples/BadJwtSignature"
@@ -503,6 +633,9 @@ paths:
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+        
         "500":
           $ref: "#/components/responses/InternalError"
         
@@ -512,26 +645,39 @@ paths:
   /files/mkdir:
     post:
       operationId: filesMakeDirectory
-      
+      tags: ["Файлы", "Сервис"]
+      summary: Создать каталог
+
       parameters:
         - $ref: "#/components/parameters/Directory"
       
       security:
         - BearerAuth: []
-      
-      tags: ["Файлы", "Сервис"]
-      summary: Создать каталог
 
       responses:
         "200":
           description: Каталог создан
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
+
               examples:
                 badJwtSignature:
                   $ref: "#/components/examples/BadJwtSignature"
@@ -551,6 +697,9 @@ paths:
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+        
         "500":
           $ref: "#/components/responses/InternalError"
         
@@ -560,26 +709,39 @@ paths:
   /files/rmdir:
     post:
       operationId: filesRemoveDirectory
+      tags: ["Файлы", "Сервис"]
+      summary: Удалить каталог
 
       parameters:
         - $ref: "#/components/parameters/Directory"
       
       security:
         - BearerAuth: []
-      
-      tags: ["Файлы", "Сервис"]
-      summary: Удалить каталог
 
       responses:
         "200":
           description: Каталог удалён
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
         
         "400":
           description: Плохой запрос
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+
           content:
             text/plain:
               schema:
                 type: string
+
               examples:
                 badJwtSignature:
                   $ref: "#/components/examples/BadJwtSignature"
@@ -599,6 +761,9 @@ paths:
         "401":
           $ref: "#/components/responses/NotAuthorized"
         
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+        
         "500":
           $ref: "#/components/responses/InternalError"
         
@@ -614,37 +779,51 @@ components:
 
   parameters:
     GetChunk:
+      description: Индекс чанка файла, контрольную сумму нужно вернуть
       name: chunkID
       in: query
       required: true
-      description: Индекс чанка файла, контрольную сумму нужно вернуть
       schema:
         type: integer
         minimum: 0
         
     ConnectionID:
+      description: UUID соединения, созданного с помощью `/files/connect`
       name: connID
       in: query
       required: true
-      description: UUID соединения, созданного с помощью `/files/connect`
       schema:
         type: string
         format: uuid
-        minLength: 32
-        maxLength: 36
     
     Directory:
-      name: dir
-      in: query
-      required: true
       description: |
         Каталог с файлами на сервере. 
         Параметр всегда должен начинаться с корневого каталога: `/`
+      name: dir
+      in: query
+      required: true
       schema:
         type: string
         minLength: 1
         pattern: "^/.*"
-        example: "/docs/secrets/"
+      example: "/docs/secrets/"
+  
+  headers:
+    X-RateLimit-Limit:
+      description: "Максимальное количество запросов в временном окне"
+      schema:
+        type: integer
+
+    X-RateLimit-Remaining:
+      description: "Оставшееся количество запросов клиента в временном окне"
+      schema:
+        type: integer
+    
+    Retry-After:
+      description: "Время в секундах, которое необходимо подождать перед следующим запросом"
+      schema:
+        type: integer
   
   schemas:
     UserRegisterRequest:
@@ -901,12 +1080,32 @@ components:
        message: null size to save
 
   responses:
+    ToManyRequests:
+        description: Одновременно отправлено слишком много запросов
+        headers:
+          Retry-After:
+            $ref: "#/components/headers/Retry-After"
+
+        content:
+          text/plain:
+            schema:
+              type: string
+            example: to many request
+
     NotAuthorized:
       description: Не авторизован
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+
       content:
         text/plain:
           schema:
             type: string
+
           examples:
             emptyAuthorizationField:
               $ref: "#/components/examples/EmptyAuthorizationField"
@@ -916,13 +1115,27 @@ components:
 
     AuthServiceUnavailable:
       description: Сервис аутентификации недоступен
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
     
     AuthRequestError:
       description: Плохой запрос
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+
       content:
         text/plain:
           schema:
             type: string
+
           examples:
             emptyUsername:
               $ref: "#/components/examples/EmptyUsername"
@@ -935,10 +1148,18 @@ components:
     
     FilesDirectoryError:
       description: Ошибка в записи каталога
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+
       content:
         text/plain:
           schema:
             type: string
+
           examples:
             unspecifiedDirectory:
               $ref: "#/components/examples/UnspecifiedDirectory"
@@ -951,28 +1172,48 @@ components:
     
     UnexpectedFileChangeError:
       description: Несоответствующий файл или директория
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+
       content:
         text/plain:
           schema:
             type: string
+
           example:
             value: unexpected file change 
 
     InternalError:
       description: Внутренняя ошибка сервера
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+
       content:
         text/plain:
           schema:
             type: string
-          example:
-            value: internal error
+          example: internal error
     
     ServiceUnavailable:
       description: Сервис отключен или недоступен
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+
       content:
         text/plain:
           schema:
             type: string
-          example:
-            value: service is off or unavailable
+          example: service is off or unavailable
     

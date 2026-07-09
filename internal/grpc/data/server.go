@@ -10,7 +10,6 @@ import (
 	"os"
 	"regexp"
 
-	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
@@ -34,15 +33,14 @@ var (
 
 type DataServer struct {
 	pb.DataServiceServer
-	cfg               dataconfig.DataServiceConfig
+	cfg               DataServiceConfig
 	activeConnections *Connections
 	sem               chan any
 }
 
-func NewDataServer(ctx context.Context, cfg dataconfig.DataServiceConfig) *DataServer {
-	sem_size := cfg.Memory.AvailableRAM / cfg.Memory.MaxChunkSize
-
-	slog.Info("Set semaphore size", "value", sem_size)
+func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
+	sem_size := (cfg.Memory.Allocated * 985 / 1000) / cfg.Memory.MaxChunkSize
+	slog.Info("Set semaphore size", slog.String("subserver", string(cfg.ServiceName)), slog.Int("value", int(sem_size)))
 
 	return &DataServer{
 		cfg:               cfg,
@@ -124,7 +122,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 	if file_size <= s.cfg.Memory.MinChunkSize {
 		chunk_size = file_size
 	} else {
-		file_based := uint64(float64(dataconfig.BASE_CHUNK_SIZE) * math.Log2(float64(file_size)/float64(dataconfig.BASE_CHUNK_SIZE)+1))
+		file_based := uint64(float64(BASE_CHUNK_SIZE) * math.Log2(float64(file_size)/float64(BASE_CHUNK_SIZE)+1))
 		chunk_size = max(s.cfg.Memory.MinChunkSize, min(file_based, s.cfg.Memory.MaxChunkSize))
 	}
 

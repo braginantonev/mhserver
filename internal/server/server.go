@@ -7,7 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/braginantonev/mhserver/internal/domain"
+	"github.com/braginantonev/mhserver/internal/config"
+	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
+	datahttp "github.com/braginantonev/mhserver/internal/http/data"
 	"github.com/gorilla/mux"
 	"golang.org/x/time/rate"
 )
@@ -31,36 +33,54 @@ const (
 )
 
 type Server struct {
-	AuthService *domain.HttpAuthService
-	DataService *domain.HttpDataService
+	sem           chan any
+	AuthTransport *authhttp.AuthTransport
+	DataTransport *datahttp.DataTransport
+}
+
+func NewServer(memory_cfg config.MemoryConfig) *Server {
+	sem_size := (memory_cfg.Allocated * 99 / 100) / (memory_cfg.MaxChunkSize + 1024)
+	slog.Info("Set semaphore size", slog.String("subserver", "main"), slog.Int("value", int(sem_size)))
+
+	return &Server{
+		sem: make(chan any, sem_size),
+	}
+}
+
+func (s *Server) WithMainSemaphore(endpoint http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.sem <- struct{}{}
+		endpoint.ServeHTTP(w, r)
+		<-s.sem
+	}
 }
 
 func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 	r := mux.NewRouter()
 
 	// Auth service
-	r.HandleFunc(LOGIN_ENDPOINT, s.AuthService.WithRateLimit(s.AuthService.Login)).Methods(http.MethodPost)
-	r.HandleFunc(REGISTER_ENDPOINT, s.AuthService.WithRateLimit(s.AuthService.Register)).Methods(http.MethodPost)
+	r.HandleFunc(LOGIN_ENDPOINT, s.WithMainSemaphore(s.AuthTransport.WithRateLimit(s.AuthTransport.Login))).Methods(http.MethodPost)
+	r.HandleFunc(REGISTER_ENDPOINT, s.WithMainSemaphore(s.AuthTransport.WithRateLimit(s.AuthTransport.Register))).Methods(http.MethodPost)
 
 	// Data service
-	r.HandleFunc(CREATE_CONNECTION_ENDPOINT, s.DataService.WithRateLimit(s.AuthService.WithAuth(s.DataService.CreateConnection))).Methods(http.MethodPost)
-	r.HandleFunc(SAVE_DATA_ENDPOINT, s.DataService.WithRateLimit(s.AuthService.WithAuth(s.DataService.SaveData))).Methods(http.MethodPost)
-	r.HandleFunc(GET_DATA_ENDPOINT, s.DataService.WithRateLimit(s.AuthService.WithAuth(s.DataService.GetData))).Methods(http.MethodGet)
-	r.HandleFunc(GET_DATA_SUM_ENDPOINT, s.DataService.WithRateLimit(s.AuthService.WithAuth(s.DataService.GetSum))).Methods(http.MethodGet)
-	r.HandleFunc(GET_FILES_ENDPOINT, s.DataService.WithRateLimit(s.AuthService.WithAuth(s.DataService.GetFiles))).Methods(http.MethodGet)
-	r.HandleFunc(GET_AVAILABLE_SPACE_ENDPOINT, s.DataService.WithRateLimit(s.AuthService.WithAuth(s.DataService.GetAvailableDiskSpace))).Methods(http.MethodGet)
-	r.HandleFunc(CREATE_DIR_ENDPOINT, s.DataService.WithRateLimit(s.AuthService.WithAuth(s.DataService.CreateDir))).Methods(http.MethodPost)
-	r.HandleFunc(REMOVE_DIR_ENDPOINT, s.DataService.WithRateLimit(s.AuthService.WithAuth(s.DataService.RemoveDir))).Methods(http.MethodPost)
+	r.HandleFunc(CREATE_CONNECTION_ENDPOINT, s.WithMainSemaphore(s.DataTransport.WithRateLimit(s.AuthTransport.WithAuth(s.DataTransport.CreateConnection)))).Methods(http.MethodPost)
+	r.HandleFunc(SAVE_DATA_ENDPOINT, s.WithMainSemaphore(s.DataTransport.WithRateLimit(s.AuthTransport.WithAuth(s.DataTransport.SaveData)))).Methods(http.MethodPost)
+	r.HandleFunc(GET_DATA_ENDPOINT, s.WithMainSemaphore(s.DataTransport.WithRateLimit(s.AuthTransport.WithAuth(s.DataTransport.GetData)))).Methods(http.MethodGet)
+	r.HandleFunc(GET_DATA_SUM_ENDPOINT, s.WithMainSemaphore(s.DataTransport.WithRateLimit(s.AuthTransport.WithAuth(s.DataTransport.GetSum)))).Methods(http.MethodGet)
+	r.HandleFunc(GET_FILES_ENDPOINT, s.WithMainSemaphore(s.DataTransport.WithRateLimit(s.AuthTransport.WithAuth(s.DataTransport.GetFiles)))).Methods(http.MethodGet)
+	r.HandleFunc(GET_AVAILABLE_SPACE_ENDPOINT, s.WithMainSemaphore(s.DataTransport.WithRateLimit(s.AuthTransport.WithAuth(s.DataTransport.GetAvailableDiskSpace)))).Methods(http.MethodGet)
+	r.HandleFunc(CREATE_DIR_ENDPOINT, s.WithMainSemaphore(s.DataTransport.WithRateLimit(s.AuthTransport.WithAuth(s.DataTransport.CreateDir)))).Methods(http.MethodPost)
+	r.HandleFunc(REMOVE_DIR_ENDPOINT, s.WithMainSemaphore(s.DataTransport.WithRateLimit(s.AuthTransport.WithAuth(s.DataTransport.RemoveDir)))).Methods(http.MethodPost)
 
-	ns_limiter := rate.NewLimiter(rate.Every(time.Second), 5) // limiter for non-service requests
+	ns_limiter := rate.NewLimiter(rate.Every(time.Minute), 10) // limiter for non-service requests
 
-	r.HandleFunc("/api/v1/tools/ping", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/tools/ping", s.WithMainSemaphore(func(w http.ResponseWriter, r *http.Request) {
 		if !ns_limiter.Allow() {
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
 		}
 		_, _ = w.Write([]byte("Welcome to MHServer API"))
-	}).Methods(http.MethodPost)
+	})).Methods(http.MethodPost)
 
 	http.Handle("/api/", r)
 

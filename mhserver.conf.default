@@ -1,0 +1,52 @@
+[memory]
+available_ram = 1073741824 # bytes
+max_chunk_size = 52428800 # bytes
+min_chunk_size = 4096 # bytes
+
+[subservers.main]
+enabled = true
+address = "localhost"
+port = 30543
+
+[subservers.main.extra]
+priority = 5
+allocated_memory = 0
+
+# Subservers have duplicate 'address' and 'port' fields for backward compatibility,
+# in case I want to revert to microservice architecture in the future.
+
+[subservers.files]
+enabled = false
+address = "localhost" # 'localhost' for monolithic arch
+port = 30544
+
+[subservers.files.extra]
+priority = 5
+allocated_memory = 0
+
+[subservers.music]
+enabled = false
+address = "localhost" # 'localhost' for monolithic arch
+port = 30544
+
+[subservers.music.extra]
+priority = 1
+allocated_memory = 0
+
+[subservers.images]
+enabled = false
+address = "localhost" # 'localhost' for monolithic arch
+port = 30544
+
+[subservers.images.extra]
+priority = 1
+allocated_memory = 0
+
+[subservers.llm]
+enabled = false
+address = "localhost" # 'localhost' for monolithic arch
+port = 30544
+
+[subserver.llm.extra]
+priority = 1
+allocated_memory = 0

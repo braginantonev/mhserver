@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	datahttp "github.com/braginantonev/mhserver/internal/http/data"
 	"github.com/braginantonev/mhserver/internal/server"
@@ -75,10 +75,10 @@ func TestSaveDataHandler(t *testing.T) {
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(TEST_WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 512 * 1024 * 1024,
 		MinChunkSize: 4 * 1024,
-		AvailableRAM: 1024 * 1024 * 1024,
+		Allocated:    1024 * 1024 * 1024,
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8100")
@@ -162,7 +162,7 @@ func TestSaveDataHandler(t *testing.T) {
 				}
 			}
 
-			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?uuid=%s", server.SAVE_DATA_ENDPOINT, conn.UUID), bytes.NewReader(body))
+			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?connID=%s", server.SAVE_DATA_ENDPOINT, conn.UUID), bytes.NewReader(body))
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 
@@ -198,10 +198,10 @@ func TestGetDataHandler(t *testing.T) {
 	}
 
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(TEST_WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(TEST_WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 512 * 1024 * 1024,
 		MinChunkSize: 4 * 1024,
-		AvailableRAM: 1024 * 1024 * 1024,
+		Allocated:    1024 * 1024 * 1024,
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8101")
@@ -277,7 +277,7 @@ func TestGetDataHandler(t *testing.T) {
 				t.Fatalf("failed create connection; err: %v", err)
 			}
 
-			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?uuid=%s&chunkID=%d", server.GET_DATA_ENDPOINT, conn.UUID, 0), nil)
+			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?connID=%s&chunkID=%d", server.GET_DATA_ENDPOINT, conn.UUID, 0), nil)
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 

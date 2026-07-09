@@ -8,9 +8,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/BurntSushi/toml"
-	"github.com/braginantonev/mhserver/internal/application/di"
-	appconfig "github.com/braginantonev/mhserver/internal/config/app"
+	appconfig "github.com/braginantonev/mhserver/internal/config/application"
+	"github.com/braginantonev/mhserver/internal/di"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/server"
 	"github.com/go-sql-driver/mysql"
@@ -25,65 +24,46 @@ const (
 	AppMode_SubServersOnly
 	AppMode_AllServers
 
-	DATABASE_NAME string = "mhserver"
+	DATABASE_NAME    string = "mhserver"
+	CONFIG_DIRECTORY string = "/usr/share/mhserver/"
 )
-
-const (
-	CONFIG_DIR  string = "/usr/share/mhserver/"
-	CONFIG_FILE string = CONFIG_DIR + "mhserver.conf"
-)
-
-func NewApplicationConfig() appconfig.ApplicationConfig {
-	var cfg appconfig.ApplicationConfig
-
-	if _, err := toml.DecodeFile(CONFIG_FILE, &cfg); err != nil {
-		panic(fmt.Errorf("%s\n%s", err.Error(), ErrConfigurationNotFound.Error()))
-	}
-
-	slog.Info("Configuration loaded.")
-	slog.Info(fmt.Sprintf("Available server ram: %d bytes", cfg.Memory.AvailableRAM))
-	slog.Info(fmt.Sprintf("Server will be started at %s:%d", cfg.SubServers["main"].Address, cfg.SubServers["main"].Port))
-	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", DATABASE_NAME))
-	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
-
-	return cfg
-}
 
 type Application struct {
 	cfg appconfig.ApplicationConfig
 	db  *sql.DB
 }
 
-func NewApplication() *Application {
-	return &Application{
-		cfg: NewApplicationConfig(),
-	}
-}
-
-func (app *Application) InitDB() (err error) {
-	if app.db != nil {
-		return nil
+func NewApplication() (*Application, error) {
+	cfg := appconfig.NewApplicationConfig(true)
+	if err := cfg.Init(CONFIG_DIRECTORY, DATABASE_NAME); err != nil {
+		return nil, err
 	}
 
-	app.db, err = database.OpenDB(mysql.Config{
+	db, err := database.OpenDB(mysql.Config{
 		User:                 "mhserver",
-		Passwd:               app.cfg.DB_Pass,
+		Passwd:               cfg.DB_Pass,
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "mhs_main",
 		AllowNativePasswords: true,
 	})
-	return
+	if err != nil {
+		return nil, err
+	}
+
+	return &Application{
+		cfg: cfg,
+		db:  db,
+	}, nil
 }
 
-func (app *Application) runMain() error {
+func (app *Application) runMain(ctx context.Context) error {
 	if !app.cfg.SubServers["main"].Enabled {
 		slog.Warn("main server is disabled. Use -S to use subservers only!")
 		return nil
 	}
 
 	connections := make(map[string]*grpc.ClientConn)
-	user_catalogs := make([]string, 0, len(app.cfg.SubServers)-1)
 
 	//* Sub servers connections
 	for name, subserver := range app.cfg.SubServers {
@@ -102,22 +82,14 @@ func (app *Application) runMain() error {
 		}
 
 		slog.Info("Create subserver client", slog.String("subserver_name", name), slog.String("address", address))
-
 		connections[name] = conn
-		user_catalogs = append(user_catalogs, name)
 	}
 
-	data_client := di.GetDataClient(connections["files"])
+	srv := server.NewServer(app.cfg.Memory.WithAllocated(app.cfg.SubServers["main"].Extra.AllocatedMemory))
+	srv.AuthTransport = di.SetupAuthTransport(ctx, di.SetupAuthService(app.cfg, app.db))
+	srv.DataTransport = di.SetupDataTransport(ctx, di.GetDataServerClient(connections["files"]))
 
-	auth_service := di.SetupAuthService(app.cfg, app.db, user_catalogs)
-	data_service := di.SetupDataService(data_client)
-
-	srv := server.Server{
-		AuthService: auth_service,
-		DataService: data_service,
-	}
-
-	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIR+"ssl/org.crt", CONFIG_DIR+"ssl/rootCA.key")
+	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIRECTORY+"ssl/org.crt", CONFIG_DIRECTORY+"ssl/rootCA.key")
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {
@@ -125,13 +97,13 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 	var grpc_address string
 	var grpc_port int
 
-	wg := sync.WaitGroup{}
-
 	for name, subserver := range app.cfg.SubServers {
-		if !subserver.Enabled || name == "main" {
-			if name != "main" {
-				slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", name))
-			}
+		if !subserver.Enabled {
+			slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", name))
+			continue
+		}
+
+		if name == "main" {
 			continue
 		}
 
@@ -139,16 +111,15 @@ func (app *Application) runSubserver(ctx context.Context, wait bool) error {
 		grpc_address = subserver.Address
 		grpc_port = subserver.Port
 
-		reg, ok := di.RegisterServer[name]
-		if !ok {
+		if !di.RegisterGrpcServer(ctx, name, grpc_server, app.cfg) {
 			slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", name))
 			continue
 		}
 
-		reg(ctx, grpc_server, app.cfg)
 		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
 	}
 
+	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func(address string, port int) {
 		defer wg.Done()
@@ -179,11 +150,6 @@ func (app *Application) Run(mode ApplicationMode) error {
 
 	ctx := context.Background()
 
-	if err := app.InitDB(); err != nil {
-		slog.Error("Failed init database", slog.String("error", err.Error()))
-		return err
-	}
-
 	if mode != AppMode_MainServerOnly {
 		err := app.runSubserver(ctx, mode == AppMode_SubServersOnly)
 		if err != nil {
@@ -192,7 +158,7 @@ func (app *Application) Run(mode ApplicationMode) error {
 	}
 
 	if mode != AppMode_SubServersOnly {
-		err := app.runMain()
+		err := app.runMain(ctx)
 		if err != nil {
 			return err
 		}

@@ -64,6 +64,7 @@
 * 400 (Bad request) &mdash; пустое поле с именем пользователя
 * 403 (Forbidden) &mdash; введённый секретный ключ не существует
 * 404 (Not found) &mdash; сервис аутентификации недоступен
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error); &mdash; внутренняя ошибка сервиса
 
 ***
@@ -97,6 +98,7 @@
 * 400 (Bad request) &mdash; пользователь не зарегистрирован
 * 400 (Bad request) &mdash; введён не верный пароль
 * 404 (Not found) &mdash; сервис аутентификации недоступен
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error); &mdash; внутренняя ошибка сервиса
 
 ***
@@ -165,6 +167,7 @@
 * 400 (Bad request) &mdash; указанный каталог не найден
 * 400 (Bad request) &mdash; не указан размер сохраняемого файла
 * 413 (Request entity too large) &mdash; размер сохраняемого файла, больше свободного места на сервере
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error); &mdash; внутренняя ошибка сервиса
 * 503 (Service unavailable) &mdash; файловый сервис недоступен
 
@@ -207,6 +210,7 @@
 * 400 (Bad request) &mdash; соединения не существует
 * 403 (Bad request) &mdash; попытка сохранить количество чанков, которое больше указанного при создании соединения.
 * 403 (Bad request) &mdash; попытка сохранения при типе соединения `RDONLY`
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error) &mdash; внутренняя ошибка сервиса
 * 503 (Service unavailable) &mdash; файловый сервис не доступен
 
@@ -231,6 +235,7 @@
 * 400 (Bad request) &mdash; пустое тело запроса
 * 400 (Bad request) &mdash; соединения не существует
 * 400 (Bad request) &mdash; ID соединения имеет не UUID форму
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error) &mdash; внутренняя ошибка сервиса
 * 503 (Service unavailable) &mdash; файловый сервис не доступен
 
@@ -257,6 +262,7 @@
 * 400 (Bad request) &mdash; пустое тело запроса
 * 404 (Bad request) &mdash; соединения не существует
 * 400 (Bad request) &mdash; ID соединения имеет не UUID форму
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error) &mdash; внутренняя ошибка сервиса
 * 503 (Service unavailable) &mdash; файловый сервис не доступен
 
@@ -309,6 +315,7 @@
 * 200 (Ok) &mdash; список файлов получен
 * 400 (Bad request) &mdash; указанный каталог имеет не правильный формат или не указан
 * 400 (Bad request) &mdash; указанный каталог не найден
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error) &mdash; внутренняя ошибка сервиса
 * 503 (Service unavailable) &mdash; файловый сервис не доступен
 
@@ -344,6 +351,7 @@
 * 400 (Bad request) &mdash; не указан каталог или путь
 * 400 (Bad request) &mdash; каталог уже существует
 * 400 (Bad request) &mdash; путь или каталог имеют неправильную форму или недопустимые символы 
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error) &mdash; внутренняя ошибка сервиса
 * 503 (Service unavailable) &mdash; файловый сервис не доступен
 
@@ -366,5 +374,6 @@
 * 400 (Bad request) &mdash; не указан каталог или путь
 * 400 (Bad request) &mdash; указанный каталог не существует
 * 400 (Bad request) &mdash; путь или каталог имеют неправильную форму или недопустимые символы 
+* 429 (To many requests) &mdash; превышен лимит запросов в временном окне
 * 500 (Internal error) &mdash; внутренняя ошибка сервиса
 * 503 (Service unavailable) &mdash; файловый сервис не доступен

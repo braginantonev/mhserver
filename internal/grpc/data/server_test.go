@@ -14,7 +14,7 @@ import (
 	"sync"
 	"testing"
 
-	dataconfig "github.com/braginantonev/mhserver/internal/config/data"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/grpc/data"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	pb "github.com/braginantonev/mhserver/proto/data"
@@ -116,10 +116,10 @@ func TestCreateConnection(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 25,
 		MinChunkSize: 5,
-		AvailableRAM: 1024 * 1024 * 1024,
+		Allocated:    1024 * 1024 * 1024,
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8084")
@@ -264,10 +264,10 @@ func TestSaveData(t *testing.T) {
 	max_chunk_size := 10
 
 	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_chunk_size + 256))
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: uint64(max_chunk_size), //byte
 		MinChunkSize: 5,                      //byte
-		AvailableRAM: 1024 * 1024 * 1024,     //byte
+		Allocated:    1024 * 1024 * 1024,     //byte
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8081")
@@ -422,10 +422,10 @@ func TestGetData(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 1024,               //byte
 		MinChunkSize: 5,                  //byte
-		AvailableRAM: 1024 * 1024 * 1024, //byte
+		Allocated:    1024 * 1024 * 1024, //byte
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8082")
@@ -512,10 +512,10 @@ func TestGetSum(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_GRPC_message), grpc.MaxSendMsgSize(max_GRPC_message))
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: uint64(max_GRPC_message) / 2,
 		MinChunkSize: 4 * 1024,
-		AvailableRAM: 1024 * 1024 * 1024,
+		Allocated:    1024 * 1024 * 1024,
 	})))
 
 	lis, err := net.Listen("tcp", "localhost:8083")
@@ -536,17 +536,35 @@ func TestGetSum(t *testing.T) {
 
 	data_client := pb.NewDataServiceClient(grpc_connection)
 
-	genRandomFile := func(ln uint64) string {
-		var letters = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n\t")
-		letters_len := len(letters)
-
-		result := make([]rune, ln)
-
-		for i := range result {
-			result[i] = letters[rand.Intn(letters_len)]
+	// Вместо создания всей строки в памяти
+	genRandomFile := func(size uint64) (*os.File, error) {
+		file, err := os.CreateTemp(WORKSPACE_PATH, fmt.Sprintf("%d-*.txt", size))
+		if err != nil {
+			return nil, err
 		}
 
-		return string(result)
+		const CHUNK_SIZE = 64 * 1024
+		buffer := make([]byte, CHUNK_SIZE)
+		letters := []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n\t")
+
+		for written := uint64(0); written < size; {
+			toWrite := CHUNK_SIZE
+			if size-written < CHUNK_SIZE {
+				toWrite = int(size - written)
+			}
+
+			for i := 0; i < toWrite; i++ {
+				buffer[i] = letters[rand.Intn(len(letters))]
+			}
+
+			n, err := file.Write(buffer[:toWrite])
+			if err != nil {
+				return nil, err
+			}
+			written += uint64(n)
+		}
+
+		return file, nil
 	}
 
 	cases := [...]struct {
@@ -641,29 +659,29 @@ func TestGetSum(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			file_body := genRandomFile(test.gen_file_size)
-
-			// Create test file
-			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename), os.O_CREATE|os.O_WRONLY, 0660)
+			expected, err := genRandomFile(test.gen_file_size)
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() {
+				_ = os.Remove(expected.Name())
+			}()
 
-			_, err = file.Write([]byte(file_body))
+			// Create test file
+			filepath := fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename)
+			file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY, 0660)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				_ = os.Remove(filepath)
+			}()
+
+			_, err = io.Copy(file, expected)
 			if err != nil {
 				t.Fatal(err)
 			}
 			_ = file.Close()
-
-			defer func(test_name string) {
-				if test.data_info.Filename == "" {
-					return
-				}
-
-				if err := os.Remove(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename)); err != nil {
-					t.Logf("failed remove file; test name = %s; err: %v", test_name, err)
-				}
-			}(test.name)
 
 			conn, err := data_client.CreateConnection(t.Context(), test.data_info)
 			if err != nil {
@@ -679,10 +697,13 @@ func TestGetSum(t *testing.T) {
 					t.Fatalf("failed get chunk sum. err: %v", err)
 				}
 
-				offset := uint64(i) * conn.ChunkSize
-				n := min(offset+conn.ChunkSize, test.gen_file_size)
+				expected_data := make([]byte, conn.ChunkSize)
+				read, err := expected.ReadAt(expected_data, int64(uint64(i)*conn.ChunkSize))
+				if err != nil {
+					t.Fatal(err)
+				}
 
-				expected_sum := sha256.Sum256([]byte(file_body[offset:n]))
+				expected_sum := sha256.Sum256(expected_data[:read])
 				if test.bad_sum_wanted {
 					expected_sum[0] = 0
 				}
@@ -709,13 +730,13 @@ func TestGetFiles(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), dataconfig.NewDataServerConfig(WORKSPACE_PATH, dataconfig.DataMemoryConfig{
+	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 1024,               //byte
 		MinChunkSize: 5,                  //byte
-		AvailableRAM: 1024 * 1024 * 1024, //byte
+		Allocated:    1024 * 1024 * 1024, //byte
 	})))
 
-	lis, err := net.Listen("tcp", "localhost:8082")
+	lis, err := net.Listen("tcp", "localhost:8085")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -726,7 +747,7 @@ func TestGetFiles(t *testing.T) {
 		}
 	}()
 
-	grpc_connection, err := grpc.NewClient("localhost:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpc_connection, err := grpc.NewClient("localhost:8085", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}

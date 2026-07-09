@@ -24,15 +24,11 @@ var (
 	ErrRegSecretKeyEmpty = httperror.NewExternalHttpError("register secret key is empty", http.StatusBadRequest)
 
 	// Middleware
-	ErrGetJWTClaims = httperror.NewInternalHttpError("failed get jwt claims", "AuthMiddleware.WithAuth")
-
-	ErrToManyRequests = httperror.NewExternalHttpError("to many requests", http.StatusTooManyRequests)
-
-	ErrUserNotAuthorized   = httperror.NewExternalHttpError("user not authorized", http.StatusUnauthorized)
-	ErrBadJWTToken         = httperror.NewExternalHttpError("bad jwt token", http.StatusBadRequest)
-	ErrJwtSignatureInvalid = httperror.NewExternalHttpError("jwt signature is invalid", http.StatusBadRequest)
-
+	ErrToManyRequests       = httperror.NewExternalHttpError("to many requests", http.StatusTooManyRequests)
+	ErrBadJWTToken          = httperror.NewExternalHttpError("bad jwt token", http.StatusBadRequest)
+	ErrJwtSignatureInvalid  = httperror.NewExternalHttpError("jwt signature is invalid", http.StatusBadRequest)
 	ErrAuthorizationExpired = httperror.NewExternalHttpError("authorization expired", http.StatusUnauthorized)
+	ErrUserNotAuthorized    = httperror.NewExternalHttpError("user not authorized", http.StatusUnauthorized)
 )
 
 func handleServiceError(w http.ResponseWriter, err error, func_name string) {

@@ -9,6 +9,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/braginantonev/mhserver/internal/service/auth"
 	"github.com/go-sql-driver/mysql"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,7 +18,23 @@ const (
 	INSERT_REGISTER_SECRET_KEY string = "INSERT INTO register_secret_keys (secret_key) VALUES (?)"
 )
 
-func InsertRegisterKeyToDB(db *sql.DB, secret_key string) error {
+func checkJWTUserMatch(s *auth.AuthService, username, token string) error {
+	parsed, err := s.ParseToJWT(token)
+	if err != nil {
+		return err
+	}
+
+	if claims, ok := parsed.Claims.(jwt.MapClaims); ok {
+		if claims["name"] != username {
+			return fmt.Errorf("expected user name: `%s`, but got `%s`", username, claims["name"])
+		}
+	} else {
+		return errors.New("failed get jwt claims")
+	}
+	return nil
+}
+
+func insertRegisterKeyToDB(db *sql.DB, secret_key string) error {
 	_, err := db.Exec(INSERT_REGISTER_SECRET_KEY, secret_key)
 	return err
 }
@@ -74,15 +91,21 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	service := auth.NewAuthService(auth.AuthConfig{
+		JWTSignature:  "123",
+		WorkspacePath: "/tmp/mhserver_tests/",
+		UserCatalogs:  []string{},
+	}, db)
+
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			if test.user.Key == TEST_REGISTER_SECRET_KEY {
-				if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+				if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
 					t.Fatalf("failed to insert register key to DB: %v", err)
 				}
 			}
 
-			err := auth.Register(test.user, db)
+			err := service.Register(test.user)
 
 			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
@@ -109,7 +132,12 @@ func TestRegister(t *testing.T) {
 			}
 
 			row = db.QueryRow(auth.SELECT_REGISTER_SECRET_KEY, test.user.Key)
-			if err := row.Scan(); !errors.Is(err, sql.ErrNoRows) {
+			var temp int
+			if err := row.Scan(&temp); err != nil {
+				if !errors.Is(err, sql.ErrNoRows) {
+					t.Error("failed check delete reg key.", err.Error())
+				}
+			} else {
 				t.Error("secret key not deleted after registration")
 			}
 		})
@@ -137,11 +165,17 @@ func TestLogin(t *testing.T) {
 	jwt_signature := "test"
 	registered_user := auth.NewRegisterUser(auth.NewUser("test_login1", "123"), TEST_REGISTER_SECRET_KEY)
 
-	if err := InsertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+	if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
 		t.Fatalf("failed to insert register key to DB: %v", err)
 	}
 
-	if err := auth.Register(registered_user, db); err != nil {
+	service := auth.NewAuthService(auth.AuthConfig{
+		JWTSignature:  jwt_signature,
+		WorkspacePath: "/tmp/mhserver_tests/",
+		UserCatalogs:  []string{},
+	}, db)
+
+	if err := service.Register(registered_user); err != nil {
 		t.Fatal(err)
 	}
 
@@ -171,7 +205,7 @@ func TestLogin(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			token, err := auth.Login(test.user, db, jwt_signature)
+			token, err := service.Login(test.user)
 			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected error: %v, but got: %v", test.expected_err, err)
 			}
@@ -180,7 +214,7 @@ func TestLogin(t *testing.T) {
 				return
 			}
 
-			if err := auth.CheckJWTUserMatch(test.user.Name, token, jwt_signature); err != nil {
+			if err := checkJWTUserMatch(service, test.user.Name, token); err != nil {
 				t.Error(err)
 			}
 		})
