@@ -36,7 +36,7 @@ type Application struct {
 func NewApplication() (*Application, error) {
 	cfg := appconfig.NewApplicationConfig(true)
 	if err := cfg.Init(CONFIG_DIRECTORY, DATABASE_NAME); err != nil {
-		return nil, fmt.Errorf("failed init config: %w", err)
+		return nil, err
 	}
 
 	db, err := database.OpenDB(mysql.Config{
@@ -48,7 +48,7 @@ func NewApplication() (*Application, error) {
 		AllowNativePasswords: true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed open database: %w", err)
+		return nil, err
 	}
 
 	return &Application{
