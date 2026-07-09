@@ -56,7 +56,7 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 			}
 
 			// download from github
-			resp, err := http.Get(fmt.Sprintf("https://github.com/braginantonev/mhserver/blob/%s/%s", version.Version, DEFAULT_CONFIG_FILENAME))
+			resp, err := http.Get(fmt.Sprintf("https://github.com/braginantonev/mhserver/blob/v%s/%s", version.Version, DEFAULT_CONFIG_FILENAME))
 			if err != nil {
 				return err
 			}
@@ -65,7 +65,7 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 			}()
 
 			if resp.StatusCode != 200 {
-				return fmt.Errorf("default file not found (%d)", resp.StatusCode)
+				return fmt.Errorf("default file not found from net (%d)", resp.StatusCode)
 			}
 
 			def, err = io.ReadAll(resp.Body)
