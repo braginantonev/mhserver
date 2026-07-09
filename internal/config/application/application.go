@@ -107,12 +107,16 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 		for n, srv := range cfg.SubServers {
 			if srv.Enabled && srv.Extra.AllocatedMemory == 0 {
 				srv.Extra.AllocatedMemory = mem_chunk * uint64(srv.Extra.Priority)
-				slog.Debug("Allocate memory for", slog.String("subserver", n), slog.Any("value", srv.Extra.AllocatedMemory))
+				slog.Info("Allocate memory for", slog.String("subserver", n), slog.Any("value", srv.Extra.AllocatedMemory))
 			}
 		}
 	}
 
 	// ^ mb that's look like a shit
+
+	if err := cfg.checkMemoryIncompatibility(); err != nil {
+		return err
+	}
 
 	return nil
 }
