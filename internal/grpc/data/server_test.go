@@ -736,7 +736,7 @@ func TestGetFiles(t *testing.T) {
 		Allocated:    1024 * 1024 * 1024, //byte
 	})))
 
-	lis, err := net.Listen("tcp", "localhost:8082")
+	lis, err := net.Listen("tcp", "localhost:8085")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -747,7 +747,7 @@ func TestGetFiles(t *testing.T) {
 		}
 	}()
 
-	grpc_connection, err := grpc.NewClient("localhost:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpc_connection, err := grpc.NewClient("localhost:8085", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}

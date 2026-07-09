@@ -132,7 +132,12 @@ func TestRegister(t *testing.T) {
 			}
 
 			row = db.QueryRow(auth.SELECT_REGISTER_SECRET_KEY, test.user.Key)
-			if err := row.Scan(); !errors.Is(err, sql.ErrNoRows) {
+			var temp int
+			if err := row.Scan(&temp); err != nil {
+				if !errors.Is(err, sql.ErrNoRows) {
+					t.Error("failed check delete reg key.", err.Error())
+				}
+			} else {
 				t.Error("secret key not deleted after registration")
 			}
 		})

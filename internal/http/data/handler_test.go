@@ -162,7 +162,7 @@ func TestSaveDataHandler(t *testing.T) {
 				}
 			}
 
-			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?uuid=%s", server.SAVE_DATA_ENDPOINT, conn.UUID), bytes.NewReader(body))
+			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?connID=%s", server.SAVE_DATA_ENDPOINT, conn.UUID), bytes.NewReader(body))
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 
@@ -277,7 +277,7 @@ func TestGetDataHandler(t *testing.T) {
 				t.Fatalf("failed create connection; err: %v", err)
 			}
 
-			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?uuid=%s&chunkID=%d", server.GET_DATA_ENDPOINT, conn.UUID, 0), nil)
+			req := httptest.NewRequest(test.method, fmt.Sprintf("%s?connID=%s&chunkID=%d", server.GET_DATA_ENDPOINT, conn.UUID, 0), nil)
 			req = req.WithContext(context.WithValue(t.Context(), httpcontextkeys.USERNAME, TEST_USERNAME))
 			w := httptest.NewRecorder()
 
