@@ -2,7 +2,7 @@ openapi: '3.0.3'
 
 info:
   title: MHServer API
-  version: '2.1.0'
+  version: '2.2.1'
   description: API для работы с MHServer (My Home Server)
   license:
     name: MIT
@@ -497,8 +497,7 @@ paths:
                 type: array
                 items:
                   type: integer
-                  minimum: 0
-                  maximum: 255
+                  format: uint8
         
         "400":
           description: Плохой запрос
@@ -607,7 +606,7 @@ paths:
             text/plain:
               schema:
                 type: integer
-              example: 1560
+                format: uint64
         
         "400":
           description: Плохой запрос
@@ -785,7 +784,7 @@ components:
       required: true
       schema:
         type: integer
-        minimum: 0
+        format: uint32
         
     ConnectionID:
       description: UUID соединения, созданного с помощью `/files/connect`
@@ -814,16 +813,19 @@ components:
       description: "Максимальное количество запросов в временном окне"
       schema:
         type: integer
+        format: uint32
 
     X-RateLimit-Remaining:
       description: "Оставшееся количество запросов клиента в временном окне"
       schema:
         type: integer
+        format: uint32
     
     Retry-After:
       description: "Время в секундах, которое необходимо подождать перед следующим запросом"
       schema:
         type: integer
+        format: uint32
   
   schemas:
     UserRegisterRequest:
@@ -898,8 +900,7 @@ components:
         
         size:
           type: integer
-          minimum: 0
-          example: 140
+          format: uint64
       
       example:
         $ref: "./examples/data/connection-request.json"
@@ -921,14 +922,12 @@ components:
         chunkSize:
           description: Размер части файла в байтах для записи или чтения
           type: integer
-          minimum: 0
-          example: 150
+          format: uint64
         
         chunksCount:
           description: Количество частей файлов доступных для записи
           type: integer
-          minimum: 0
-          example: 20
+          format: uint32
       
       example:
         $ref: "./examples/data/connection-response.json"
@@ -948,8 +947,7 @@ components:
         offset:
           description: Отступ от начала файла, после которого будет сохранён чанк
           type: integer
-          minimum: 0
-          example: 255
+          format: uint64
       
       example:
         $ref: "./examples/data/save-chunk-request.json"
@@ -982,14 +980,12 @@ components:
           size:
             description: Размер файла в байтах
             type: integer
-            minimum: 0
-            example: 150
+            format: uint64
           
           modTime:
             description: UNIX время создания файла
             type: integer
-            minimum: 0
-            example: 1765733471
+            format: uint64
 
         example:
           $ref: "./examples/data/files-response.json"
