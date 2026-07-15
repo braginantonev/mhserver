@@ -26,7 +26,7 @@ func SetupDataTransport(ctx context.Context, client data_pb.DataServiceClient) *
 		datahttp.NewHandler(client),
 		datahttp.NewMiddleware(ctx, config.LimiterConfig{
 			Limit:    100,
-			Interval: time.Second,
+			Interval: time.Second * 5,
 		}),
 	)
 }
