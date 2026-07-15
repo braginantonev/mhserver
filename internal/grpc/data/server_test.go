@@ -72,7 +72,7 @@ func saveFile(ctx context.Context, data_client pb.DataServiceClient, req *pb.Con
 				UUID: conn.UUID,
 				Data: &pb.FilePart{
 					Chunk:  data,
-					Offset: int64(ch_id * int(conn.ChunkSize)),
+					Offset: conn.ChunkSize * uint64(ch_id),
 				},
 			})
 
@@ -481,7 +481,7 @@ func TestGetData(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		for i := int32(0); i < conn.ChunksCount; i += 1 {
+		for i := uint32(0); i < conn.ChunksCount; i += 1 {
 			t.Run(fmt.Sprintf("get chunk %d", i), func(t *testing.T) {
 				ch_id := i
 
@@ -865,7 +865,7 @@ func TestGetFiles(t *testing.T) {
 					Name:    expected_files[i].Name(),
 					IsDir:   expected_files[i].IsDir(),
 					Size:    uint64(expected_info.Size()),
-					ModTime: expected_info.ModTime().Unix(),
+					ModTime: uint64(expected_info.ModTime().Unix()),
 				}
 
 				if file.Name != expected_file_info.Name {
