@@ -80,6 +80,9 @@ paths:
             
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -96,6 +99,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -153,6 +159,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
         
         "400":
           $ref: "#/components/responses/AuthRequestError"
@@ -165,6 +174,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -183,6 +195,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -234,6 +249,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             application/json:
@@ -248,6 +266,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -290,6 +311,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -338,6 +362,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           
         "400":
           description: Плохой запрос
@@ -347,6 +374,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -413,6 +443,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             application/octet-stream:
@@ -427,6 +460,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -490,6 +526,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             application/octet-stream:
@@ -507,6 +546,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -562,6 +604,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             application/json:
@@ -601,6 +646,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -616,6 +664,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -662,6 +713,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
         
         "400":
           description: Плохой запрос
@@ -671,6 +725,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -726,6 +783,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
         
         "400":
           description: Плохой запрос
@@ -735,6 +795,9 @@ paths:
 
             X-RateLimit-Remaining:
               $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
 
           content:
             text/plain:
@@ -820,6 +883,12 @@ components:
       schema:
         type: integer
         format: uint32
+    
+    X-RateLimit-Reset:
+      description: "Время сброса текущего ограничения скорости в секундах в формате UTC"
+      schema:
+        type: integer
+        format: uint64
     
     Retry-After:
       description: "Время в секундах, которое необходимо подождать перед следующим запросом"
@@ -1096,6 +1165,9 @@ components:
 
         X-RateLimit-Remaining:
           $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
 
       content:
         text/plain:
@@ -1117,6 +1189,9 @@ components:
 
         X-RateLimit-Remaining:
           $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
     
     AuthRequestError:
       description: Плохой запрос
@@ -1126,6 +1201,9 @@ components:
 
         X-RateLimit-Remaining:
           $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
 
       content:
         text/plain:
@@ -1150,6 +1228,9 @@ components:
 
         X-RateLimit-Remaining:
           $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
 
       content:
         text/plain:
@@ -1174,6 +1255,9 @@ components:
 
         X-RateLimit-Remaining:
           $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
 
       content:
         text/plain:
@@ -1191,6 +1275,9 @@ components:
 
         X-RateLimit-Remaining:
           $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
 
       content:
         text/plain:
@@ -1206,6 +1293,9 @@ components:
 
         X-RateLimit-Remaining:
           $ref: "#/components/headers/X-RateLimit-Remaining"
+            
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
 
       content:
         text/plain:

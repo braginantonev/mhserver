@@ -35,8 +35,9 @@ func (mid Middleware) WithRateLimit(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Add("X-RateLimit-Remaining", fmt.Sprint(mid.limiter.Remaining(req_ip)))
 		w.Header().Add("X-RateLimit-Limit", fmt.Sprint(mid.limiter.Limit()))
+		w.Header().Add("X-RateLimit-Remaining", fmt.Sprint(mid.limiter.Remaining(req_ip)))
+		w.Header().Add("X-RateLimit-Reset", fmt.Sprint(mid.limiter.ResetIn(req_ip)))
 		next.ServeHTTP(w, r)
 	}
 }

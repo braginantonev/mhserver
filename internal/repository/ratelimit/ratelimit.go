@@ -82,6 +82,10 @@ func (u *UserRate) ResetRequestsAfter() int64 {
 	return u.reqs.NextReset() - time.Now().Unix()
 }
 
+func (u *UserRate) ResetIn() int64 {
+	return u.reqs.NextReset()
+}
+
 func (u *UserRate) AcceptedRequests() int {
 	return u.reqs.Count()
 }
@@ -172,4 +176,14 @@ func (l *Limiter) Remaining(ip string) int {
 	}
 
 	return l.limit
+}
+
+func (l *Limiter) ResetIn(ip string) int64 {
+	l.mux.Lock()
+	defer l.mux.Unlock()
+	if rate, ok := l.occupied[ip]; ok {
+		return rate.ResetIn()
+	}
+
+	return 0
 }
