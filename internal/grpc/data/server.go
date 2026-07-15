@@ -131,13 +131,13 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 		chunk_size = (chunk_size / 4096) * 4096
 	}
 
-	chunks_count := int(math.Ceil(float64(file_size) / float64(chunk_size)))
+	chunks_count := uint32(math.Ceil(float64(file_size) / float64(chunk_size)))
 	uuid := s.activeConnections.Push(NewConnection(NewFile(file, file_path, NewChunksInfo(chunk_size, chunks_count)), req.Mode))
 
 	return &pb.Connection{
 		UUID:        uuid.String(),
 		ChunkSize:   chunk_size,
-		ChunksCount: int32(chunks_count),
+		ChunksCount: chunks_count,
 	}, nil
 }
 
@@ -160,10 +160,10 @@ func (s *DataServer) GetData(ctx context.Context, chunk *pb.GetChunk) (*pb.FileP
 
 	file_info := conn.GetFile().GetChunksInfo()
 
-	offset := int64(file_info.ChunkSize) * int64(chunk.ChunkId)
+	offset := file_info.ChunkSize * uint64(chunk.ChunkId)
 
 	read_data := make([]byte, file_info.ChunkSize)
-	n, err := conn.file.ReadAt(read_data, offset)
+	n, err := conn.file.ReadAt(read_data, int64(offset))
 	if err != nil && err != io.EOF {
 		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
 		return nil, ErrInternal
@@ -210,7 +210,7 @@ func (s *DataServer) SaveData(ctx context.Context, chunk *pb.SaveChunk) (*emptyp
 		return nil, ErrIncorrectChunkSize
 	}
 
-	_, err = file.WriteAt(chunk.Data.Chunk, chunk.Data.Offset)
+	_, err = file.WriteAt(chunk.Data.Chunk, int64(chunk.Data.Offset))
 	if err != nil {
 		slog.ErrorContext(ctx, "failed write chunk to file", slog.Any("err", err))
 		return nil, ErrInternal
@@ -308,7 +308,7 @@ func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.Files
 		}
 
 		list.Value[i].Size = uint64(info.Size())
-		list.Value[i].ModTime = info.ModTime().Unix()
+		list.Value[i].ModTime = uint64(info.ModTime().Unix())
 	}
 
 	return list, nil

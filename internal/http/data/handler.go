@@ -107,7 +107,7 @@ func (h Handler) GetData(w http.ResponseWriter, r *http.Request) {
 
 	get_chunk := pb.GetChunk{
 		UUID:    r.URL.Query().Get("connID"),
-		ChunkId: int32(chunk_id),
+		ChunkId: uint32(chunk_id),
 	}
 
 	part, err := h.dataServiceClient.GetData(r.Context(), &get_chunk)
@@ -137,7 +137,7 @@ func (h Handler) GetSum(w http.ResponseWriter, r *http.Request) {
 	}
 
 	get_chunk := pb.GetChunk{
-		ChunkId: int32(chunk_id),
+		ChunkId: uint32(chunk_id),
 		UUID:    r.URL.Query().Get("connID"),
 	}
 

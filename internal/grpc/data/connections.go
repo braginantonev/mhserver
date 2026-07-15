@@ -22,11 +22,11 @@ var (
 
 type ChunksInfo struct {
 	ChunkSize uint64
-	Count     int
-	Loaded    int
+	Count     uint32
+	Loaded    uint32
 }
 
-func NewChunksInfo(c_size uint64, c_count int) ChunksInfo {
+func NewChunksInfo(c_size uint64, c_count uint32) ChunksInfo {
 	return ChunksInfo{
 		ChunkSize: c_size,
 		Count:     c_count,
