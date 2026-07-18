@@ -2,7 +2,7 @@ openapi: '3.0.3'
 
 info:
   title: MHServer API
-  version: '2.2.1'
+  version: '2.2.2'
   description: API для работы с MHServer (My Home Server)
   license:
     name: MIT
@@ -654,7 +654,8 @@ paths:
             text/plain:
               schema:
                 type: integer
-                format: uint64
+                format: int64
+                minimum: 0
         
         "400":
           description: Плохой запрос
@@ -847,7 +848,7 @@ components:
       required: true
       schema:
         type: integer
-        format: uint32
+        minimum: 0
         
     ConnectionID:
       description: UUID соединения, созданного с помощью `/files/connect`
@@ -876,25 +877,27 @@ components:
       description: "Максимальное количество запросов в временном окне"
       schema:
         type: integer
-        format: uint32
+        minimum: 0
 
     X-RateLimit-Remaining:
       description: "Оставшееся количество запросов клиента в временном окне"
       schema:
         type: integer
-        format: uint32
+        minimum: 0
     
     X-RateLimit-Reset:
       description: "Время сброса текущего ограничения скорости в секундах в формате UTC"
       schema:
         type: integer
-        format: uint64
+        format: int64
+        minimum: 0
     
     Retry-After:
       description: "Время в секундах, которое необходимо подождать перед следующим запросом"
       schema:
         type: integer
-        format: uint32
+        format: int32
+        minimum: 0
   
   schemas:
     UserRegisterRequest:
@@ -908,10 +911,12 @@ components:
         username:
           type: string
           maxLength: 30
-          example: "anton"
+          example: "Jeb Kerman"
 
         password:
           type: string
+          format: password
+          minLength: 1
           maxLength: 256
           example: "123"
         
@@ -932,10 +937,11 @@ components:
       properties:
         username:
           type: string
-          example: "anton"
+          example: "Maebara Keiichi"
 
         password:
           type: string
+          format: password
           example: "123"
       
       example:
@@ -969,7 +975,8 @@ components:
         
         size:
           type: integer
-          format: uint64
+          format: int64
+          minimum: 0
       
       example:
         $ref: "./examples/data/connection-request.json"
@@ -991,12 +998,14 @@ components:
         chunkSize:
           description: Размер части файла в байтах для записи или чтения
           type: integer
-          format: uint64
+          format: int64
+          minimum: 1
         
         chunksCount:
           description: Количество частей файлов доступных для записи
           type: integer
-          format: uint32
+          format: int32
+          minimum: 1
       
       example:
         $ref: "./examples/data/connection-response.json"
@@ -1016,7 +1025,8 @@ components:
         offset:
           description: Отступ от начала файла, после которого будет сохранён чанк
           type: integer
-          format: uint64
+          format: int64
+          minimum: 0
       
       example:
         $ref: "./examples/data/save-chunk-request.json"
@@ -1049,12 +1059,14 @@ components:
           size:
             description: Размер файла в байтах
             type: integer
-            format: uint64
+            format: int64
+            minimum: 0
           
           modTime:
             description: UNIX время создания файла
             type: integer
-            format: uint64
+            format: int64
+            minimum: 0
 
         example:
           $ref: "./examples/data/files-response.json"
