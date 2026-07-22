@@ -2,7 +2,7 @@ openapi: '3.0.3'
 
 info:
   title: MHServer API
-  version: '2.2.2'
+  version: '2.2.1-3'
   description: API для работы с MHServer (My Home Server)
   license:
     name: MIT
@@ -1034,8 +1034,8 @@ components:
     FilePart:
       description: base64 байтовая запись чанка файла
       type: string
-      format: byte
-    
+      format: binary
+          
     FilesList:
       type: array
       readOnly: true
