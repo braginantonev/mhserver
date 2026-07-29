@@ -2,28 +2,11 @@ openapi: '3.0.3'
 
 info:
   title: MHServer API
-  version: '2.2.1-3'
+  version: '2.3.0'
   description: API для работы с MHServer (My Home Server)
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-
-servers:
-  - url: https://{domain}/api/v1
-    variables:
-      domain:
-        default: my.best.server
-        description: Домен сервера
-
-  - url: https://{host}:{port}/api/v1
-    variables:
-      host:
-        default: localhost
-        description: Имя сервера или его IP
-
-      port:
-        default: "8080"
-        description: Порт сервера
 
 tags:
   - name: Аутентификация
@@ -39,26 +22,47 @@ tags:
     description: Инструменты сервера
 
 paths:
-  /tools/ping:
-   post:
-    operationId: ping
-    tags: ["Инструменты"]
-    summary: Приветствие
-    description: Используется для пинга сервера
-
-    responses:
-      "200":
-        description: Сервер доступен
-        content:
-          text/plain:
-            schema:
-              type: string
-            example: Welcome to MHServer API
+  /api:
+    post:
+      operationId: version
+      tags: ["Инструменты"]
+      summary: Версия сервера
+      description: Возвращает версию сервера в стандарте semver
       
-      "404":
-        description: Сервер выключен
+      responses:
+        "200":
+          description: Версия получена
+          content:
+            text/plain:
+              schema:
+                type: string
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
 
-  /users/login:
+
+  /api/v1/tools/ping:
+    post:
+      operationId: ping
+      tags: ["Инструменты"]
+      summary: Приветствие
+      description: Используется для пинга сервера
+
+      responses:
+        "200":
+          description: Сервер доступен
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: Welcome to MHServer API
+        
+        "404":
+          description: Сервер выключен
+        
+        "429":
+          $ref: "#/components/responses/ToManyRequests"
+
+  /api/v1/users/login:
     post:
       operationId: usersLogin
       tags: ["Аутентификация", "Сервис"]
@@ -137,7 +141,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError" 
 
-  /users/register:
+  /api/v1/users/register:
     post:
       operationId: usersRegister
       tags: ["Аутентификация", "Сервис"]
@@ -211,7 +215,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
   
-  /files/connect:
+  /api/v1/files/connect:
     post:
       operationId: filesCreateConnection
       tags: ["Файлы", "Сервис"]
@@ -330,7 +334,7 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
   
-  /files/save:
+  /api/v1/files/save:
     post:
       operationId: filesSaveChunk
       tags: ["Файлы", "Сервис"]
@@ -417,7 +421,7 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
   
-  /files/get:
+  /api/v1/files/get:
     get:
       operationId: filesGetChunk
       tags: ["Файлы", "Сервис"]
@@ -497,7 +501,7 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
   
-  /files/sum:
+  /api/v1/files/sum:
     get:
       operationId: filesGetSum
       tags: ["Файлы", "Сервис"]
@@ -583,7 +587,7 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
   
-  /files:
+  /api/v1/files:
     get:
       operationId: getFilesList
       tags: ["Файлы", "Сервис"]
@@ -628,7 +632,7 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
   
-  /files/space:
+  /api/v1/files/space:
     get:      
       operationId: filesGetAvailableSpace
       tags: ["Файлы", "Сервис"]
@@ -693,7 +697,7 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
   
-  /files/mkdir:
+  /api/v1/files/mkdir:
     post:
       operationId: filesMakeDirectory
       tags: ["Файлы", "Сервис"]
@@ -763,7 +767,7 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
-  /files/rmdir:
+  /api/v1/files/rmdir:
     post:
       operationId: filesRemoveDirectory
       tags: ["Файлы", "Сервис"]
