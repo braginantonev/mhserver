@@ -10,6 +10,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/config"
 	authhttp "github.com/braginantonev/mhserver/internal/http/auth"
 	datahttp "github.com/braginantonev/mhserver/internal/http/data"
+	"github.com/braginantonev/mhserver/version"
 	"github.com/gorilla/mux"
 	"golang.org/x/time/rate"
 )
@@ -80,6 +81,14 @@ func (s *Server) Serve(addr, tls_cert, tls_key string) error {
 			return
 		}
 		_, _ = w.Write([]byte("Welcome to MHServer API"))
+	})).Methods(http.MethodPost)
+
+	r.HandleFunc("/api", s.WithMainSemaphore(func(w http.ResponseWriter, r *http.Request) {
+		if !ns_limiter.Allow() {
+			http.Error(w, "to many requests", http.StatusTooManyRequests)
+			return
+		}
+		_, _ = w.Write([]byte(version.Version))
 	})).Methods(http.MethodPost)
 
 	http.Handle("/api/", r)
