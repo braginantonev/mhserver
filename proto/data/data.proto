@@ -40,6 +40,11 @@ message Directory {
     string value = 2;
 }
 
+message File {
+    Directory dir = 1;
+    string name = 2;
+}
+
 // * Responses
 
 message Connection {
@@ -76,4 +81,5 @@ service DataService {
 	rpc GetAvailableDiskSpace (Directory) returns (Size);
 	rpc CreateDir (Directory) returns (google.protobuf.Empty);
 	rpc RemoveDir (Directory) returns (google.protobuf.Empty);
+    rpc RemoveFile (File) returns (google.protobuf.Empty);
 }

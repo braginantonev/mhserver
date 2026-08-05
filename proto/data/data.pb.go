@@ -352,6 +352,58 @@ func (x *Directory) GetValue() string {
 	return ""
 }
 
+type File struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Dir           *Directory             `protobuf:"bytes,1,opt,name=dir,proto3" json:"dir,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *File) Reset() {
+	*x = File{}
+	mi := &file_data_data_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *File) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*File) ProtoMessage() {}
+
+func (x *File) ProtoReflect() protoreflect.Message {
+	mi := &file_data_data_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use File.ProtoReflect.Descriptor instead.
+func (*File) Descriptor() ([]byte, []int) {
+	return file_data_data_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *File) GetDir() *Directory {
+	if x != nil {
+		return x.Dir
+	}
+	return nil
+}
+
+func (x *File) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 type Connection struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UUID          string                 `protobuf:"bytes,1,opt,name=UUID,proto3" json:"UUID,omitempty"`
@@ -363,7 +415,7 @@ type Connection struct {
 
 func (x *Connection) Reset() {
 	*x = Connection{}
-	mi := &file_data_data_proto_msgTypes[5]
+	mi := &file_data_data_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -375,7 +427,7 @@ func (x *Connection) String() string {
 func (*Connection) ProtoMessage() {}
 
 func (x *Connection) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[5]
+	mi := &file_data_data_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -388,7 +440,7 @@ func (x *Connection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Connection.ProtoReflect.Descriptor instead.
 func (*Connection) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{5}
+	return file_data_data_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Connection) GetUUID() string {
@@ -421,7 +473,7 @@ type SHASum struct {
 
 func (x *SHASum) Reset() {
 	*x = SHASum{}
-	mi := &file_data_data_proto_msgTypes[6]
+	mi := &file_data_data_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -433,7 +485,7 @@ func (x *SHASum) String() string {
 func (*SHASum) ProtoMessage() {}
 
 func (x *SHASum) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[6]
+	mi := &file_data_data_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -446,7 +498,7 @@ func (x *SHASum) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SHASum.ProtoReflect.Descriptor instead.
 func (*SHASum) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{6}
+	return file_data_data_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SHASum) GetValue() []byte {
@@ -468,7 +520,7 @@ type FileInfo struct {
 
 func (x *FileInfo) Reset() {
 	*x = FileInfo{}
-	mi := &file_data_data_proto_msgTypes[7]
+	mi := &file_data_data_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -480,7 +532,7 @@ func (x *FileInfo) String() string {
 func (*FileInfo) ProtoMessage() {}
 
 func (x *FileInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[7]
+	mi := &file_data_data_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -493,7 +545,7 @@ func (x *FileInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileInfo.ProtoReflect.Descriptor instead.
 func (*FileInfo) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{7}
+	return file_data_data_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *FileInfo) GetName() string {
@@ -533,7 +585,7 @@ type FilesList struct {
 
 func (x *FilesList) Reset() {
 	*x = FilesList{}
-	mi := &file_data_data_proto_msgTypes[8]
+	mi := &file_data_data_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -545,7 +597,7 @@ func (x *FilesList) String() string {
 func (*FilesList) ProtoMessage() {}
 
 func (x *FilesList) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[8]
+	mi := &file_data_data_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -558,7 +610,7 @@ func (x *FilesList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilesList.ProtoReflect.Descriptor instead.
 func (*FilesList) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{8}
+	return file_data_data_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *FilesList) GetValue() []*FileInfo {
@@ -577,7 +629,7 @@ type Size struct {
 
 func (x *Size) Reset() {
 	*x = Size{}
-	mi := &file_data_data_proto_msgTypes[9]
+	mi := &file_data_data_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -589,7 +641,7 @@ func (x *Size) String() string {
 func (*Size) ProtoMessage() {}
 
 func (x *Size) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[9]
+	mi := &file_data_data_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -602,7 +654,7 @@ func (x *Size) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Size.ProtoReflect.Descriptor instead.
 func (*Size) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{9}
+	return file_data_data_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Size) GetValue() uint64 {
@@ -634,7 +686,10 @@ const file_data_data_proto_rawDesc = "" +
 	"\achunkId\x18\x02 \x01(\rR\achunkId\"5\n" +
 	"\tDirectory\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"`\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"=\n" +
+	"\x04File\x12!\n" +
+	"\x03dir\x18\x01 \x01(\v2\x0f.data.DirectoryR\x03dir\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"`\n" +
 	"\n" +
 	"Connection\x12\x12\n" +
 	"\x04UUID\x18\x01 \x01(\tR\x04UUID\x12\x1c\n" +
@@ -654,7 +709,7 @@ const file_data_data_proto_rawDesc = "" +
 	"\x0eConnectionMode\x12\n" +
 	"\n" +
 	"\x06RDONLY\x10\x00\x12\b\n" +
-	"\x04RDWR\x10\x012\xa4\x03\n" +
+	"\x04RDWR\x10\x012\xd6\x03\n" +
 	"\vDataService\x12=\n" +
 	"\x10CreateConnection\x12\x17.data.ConnectionRequest\x1a\x10.data.Connection\x123\n" +
 	"\bSaveData\x12\x0f.data.SaveChunk\x1a\x16.google.protobuf.Empty\x12)\n" +
@@ -664,7 +719,10 @@ const file_data_data_proto_rawDesc = "" +
 	"\x15GetAvailableDiskSpace\x12\x0f.data.Directory\x1a\n" +
 	".data.Size\x124\n" +
 	"\tCreateDir\x12\x0f.data.Directory\x1a\x16.google.protobuf.Empty\x124\n" +
-	"\tRemoveDir\x12\x0f.data.Directory\x1a\x16.google.protobuf.EmptyB.Z,github.com/braginantonev/mhserver/proto/datab\x06proto3"
+	"\tRemoveDir\x12\x0f.data.Directory\x1a\x16.google.protobuf.Empty\x120\n" +
+	"\n" +
+	"RemoveFile\x12\n" +
+	".data.File\x1a\x16.google.protobuf.EmptyB.Z,github.com/braginantonev/mhserver/proto/datab\x06proto3"
 
 var (
 	file_data_data_proto_rawDescOnce sync.Once
@@ -679,7 +737,7 @@ func file_data_data_proto_rawDescGZIP() []byte {
 }
 
 var file_data_data_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_data_data_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_data_data_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_data_data_proto_goTypes = []any{
 	(ConnectionMode)(0),       // 0: data.ConnectionMode
 	(*FilePart)(nil),          // 1: data.FilePart
@@ -687,38 +745,42 @@ var file_data_data_proto_goTypes = []any{
 	(*SaveChunk)(nil),         // 3: data.SaveChunk
 	(*GetChunk)(nil),          // 4: data.GetChunk
 	(*Directory)(nil),         // 5: data.Directory
-	(*Connection)(nil),        // 6: data.Connection
-	(*SHASum)(nil),            // 7: data.SHASum
-	(*FileInfo)(nil),          // 8: data.FileInfo
-	(*FilesList)(nil),         // 9: data.FilesList
-	(*Size)(nil),              // 10: data.Size
-	(*emptypb.Empty)(nil),     // 11: google.protobuf.Empty
+	(*File)(nil),              // 6: data.File
+	(*Connection)(nil),        // 7: data.Connection
+	(*SHASum)(nil),            // 8: data.SHASum
+	(*FileInfo)(nil),          // 9: data.FileInfo
+	(*FilesList)(nil),         // 10: data.FilesList
+	(*Size)(nil),              // 11: data.Size
+	(*emptypb.Empty)(nil),     // 12: google.protobuf.Empty
 }
 var file_data_data_proto_depIdxs = []int32{
 	0,  // 0: data.ConnectionRequest.mode:type_name -> data.ConnectionMode
 	1,  // 1: data.SaveChunk.data:type_name -> data.FilePart
-	8,  // 2: data.FilesList.value:type_name -> data.FileInfo
-	2,  // 3: data.DataService.CreateConnection:input_type -> data.ConnectionRequest
-	3,  // 4: data.DataService.SaveData:input_type -> data.SaveChunk
-	4,  // 5: data.DataService.GetData:input_type -> data.GetChunk
-	4,  // 6: data.DataService.GetSum:input_type -> data.GetChunk
-	5,  // 7: data.DataService.GetFiles:input_type -> data.Directory
-	5,  // 8: data.DataService.GetAvailableDiskSpace:input_type -> data.Directory
-	5,  // 9: data.DataService.CreateDir:input_type -> data.Directory
-	5,  // 10: data.DataService.RemoveDir:input_type -> data.Directory
-	6,  // 11: data.DataService.CreateConnection:output_type -> data.Connection
-	11, // 12: data.DataService.SaveData:output_type -> google.protobuf.Empty
-	1,  // 13: data.DataService.GetData:output_type -> data.FilePart
-	7,  // 14: data.DataService.GetSum:output_type -> data.SHASum
-	9,  // 15: data.DataService.GetFiles:output_type -> data.FilesList
-	10, // 16: data.DataService.GetAvailableDiskSpace:output_type -> data.Size
-	11, // 17: data.DataService.CreateDir:output_type -> google.protobuf.Empty
-	11, // 18: data.DataService.RemoveDir:output_type -> google.protobuf.Empty
-	11, // [11:19] is the sub-list for method output_type
-	3,  // [3:11] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	5,  // 2: data.File.dir:type_name -> data.Directory
+	9,  // 3: data.FilesList.value:type_name -> data.FileInfo
+	2,  // 4: data.DataService.CreateConnection:input_type -> data.ConnectionRequest
+	3,  // 5: data.DataService.SaveData:input_type -> data.SaveChunk
+	4,  // 6: data.DataService.GetData:input_type -> data.GetChunk
+	4,  // 7: data.DataService.GetSum:input_type -> data.GetChunk
+	5,  // 8: data.DataService.GetFiles:input_type -> data.Directory
+	5,  // 9: data.DataService.GetAvailableDiskSpace:input_type -> data.Directory
+	5,  // 10: data.DataService.CreateDir:input_type -> data.Directory
+	5,  // 11: data.DataService.RemoveDir:input_type -> data.Directory
+	6,  // 12: data.DataService.RemoveFile:input_type -> data.File
+	7,  // 13: data.DataService.CreateConnection:output_type -> data.Connection
+	12, // 14: data.DataService.SaveData:output_type -> google.protobuf.Empty
+	1,  // 15: data.DataService.GetData:output_type -> data.FilePart
+	8,  // 16: data.DataService.GetSum:output_type -> data.SHASum
+	10, // 17: data.DataService.GetFiles:output_type -> data.FilesList
+	11, // 18: data.DataService.GetAvailableDiskSpace:output_type -> data.Size
+	12, // 19: data.DataService.CreateDir:output_type -> google.protobuf.Empty
+	12, // 20: data.DataService.RemoveDir:output_type -> google.protobuf.Empty
+	12, // 21: data.DataService.RemoveFile:output_type -> google.protobuf.Empty
+	13, // [13:22] is the sub-list for method output_type
+	4,  // [4:13] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_data_data_proto_init() }
@@ -732,7 +794,7 @@ func file_data_data_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_data_data_proto_rawDesc), len(file_data_data_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -28,6 +28,7 @@ const (
 	DataService_GetAvailableDiskSpace_FullMethodName = "/data.DataService/GetAvailableDiskSpace"
 	DataService_CreateDir_FullMethodName             = "/data.DataService/CreateDir"
 	DataService_RemoveDir_FullMethodName             = "/data.DataService/RemoveDir"
+	DataService_RemoveFile_FullMethodName            = "/data.DataService/RemoveFile"
 )
 
 // DataServiceClient is the client API for DataService service.
@@ -42,6 +43,7 @@ type DataServiceClient interface {
 	GetAvailableDiskSpace(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*Size, error)
 	CreateDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RemoveDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RemoveFile(ctx context.Context, in *File, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type dataServiceClient struct {
@@ -132,6 +134,16 @@ func (c *dataServiceClient) RemoveDir(ctx context.Context, in *Directory, opts .
 	return out, nil
 }
 
+func (c *dataServiceClient) RemoveFile(ctx context.Context, in *File, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DataService_RemoveFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DataServiceServer is the server API for DataService service.
 // All implementations must embed UnimplementedDataServiceServer
 // for forward compatibility.
@@ -144,6 +156,7 @@ type DataServiceServer interface {
 	GetAvailableDiskSpace(context.Context, *Directory) (*Size, error)
 	CreateDir(context.Context, *Directory) (*emptypb.Empty, error)
 	RemoveDir(context.Context, *Directory) (*emptypb.Empty, error)
+	RemoveFile(context.Context, *File) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDataServiceServer()
 }
 
@@ -177,6 +190,9 @@ func (UnimplementedDataServiceServer) CreateDir(context.Context, *Directory) (*e
 }
 func (UnimplementedDataServiceServer) RemoveDir(context.Context, *Directory) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveDir not implemented")
+}
+func (UnimplementedDataServiceServer) RemoveFile(context.Context, *File) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveFile not implemented")
 }
 func (UnimplementedDataServiceServer) mustEmbedUnimplementedDataServiceServer() {}
 func (UnimplementedDataServiceServer) testEmbeddedByValue()                     {}
@@ -343,6 +359,24 @@ func _DataService_RemoveDir_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DataService_RemoveFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(File)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DataServiceServer).RemoveFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DataService_RemoveFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DataServiceServer).RemoveFile(ctx, req.(*File))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DataService_ServiceDesc is the grpc.ServiceDesc for DataService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -381,6 +415,10 @@ var DataService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveDir",
 			Handler:    _DataService_RemoveDir_Handler,
+		},
+		{
+			MethodName: "RemoveFile",
+			Handler:    _DataService_RemoveFile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

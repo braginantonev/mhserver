@@ -3,7 +3,6 @@ package data
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"io"
 	"log/slog"
 	"math"
@@ -56,7 +55,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 	case pb.ConnectionMode_RDONLY:
 		file, err = os.OpenFile(file_path, os.O_RDONLY, 0660)
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
+			if os.IsNotExist(err) {
 				return nil, ErrFileNotExist
 			}
 
@@ -93,7 +92,7 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 
 		file, err = os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0660)
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
+			if os.IsNotExist(err) {
 				return nil, ErrDirNotFound
 			}
 
@@ -313,7 +312,7 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	}
 
 	if err := os.MkdirAll(dir_path, 0700); err != nil {
-		if errors.Is(err, os.ErrExist) {
+		if os.IsExist(err) {
 			return nil, ErrDirAlreadyExist
 		}
 
@@ -337,6 +336,32 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	}
 
 	if err := os.RemoveAll(dir_path); err != nil {
+		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
+	return nil, nil
+}
+
+func (s *DataServer) RemoveFile(ctx context.Context, file *pb.File) (*emptypb.Empty, error) {
+	defer func() {
+		<-s.sem
+	}()
+
+	s.sem <- struct{}{}
+
+	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, file.Dir.User, file.Dir.Value, s.cfg.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	filepath += file.Name
+
+	if err := os.Remove(filepath); err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrFileNotExist
+		}
+
 		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
 		return nil, ErrInternal
 	}
