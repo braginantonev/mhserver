@@ -8,27 +8,13 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"regexp"
+	"strings"
 
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
-)
-
-var (
-	/* filenameRegexp check:
-	- filename can have dot in start (hidden file)
-	- filename can have letters, numbers and underscores, whitespaces and hyphens
-	- filename can't be empty
-	- filename can't be started and ended with space, underscore and hyphen
-	- file extension start with dot
-	- file extension can only have eng letters or numbers
-	- file can have several extensions separated by dot (.txt.bak)
-	- file can have empty extension (Makefile, Dockerfile etc)
-	*/
-	filenameRegexp = regexp.MustCompile(`^\.?[\p{L}\p{N}]+([ _-]+[\p{L}\p{N}]+)*(\.[a-zA-Z0-9]+)*$`)
 )
 
 type DataServer struct {
@@ -61,10 +47,6 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 		return nil, err
 	}
 
-	if !filenameRegexp.MatchString(req.Filename) {
-		return nil, ErrBadFilenameSyntax
-	}
-
 	file_path += req.Filename
 
 	var file_size uint64
@@ -93,6 +75,10 @@ func (s *DataServer) CreateConnection(ctx context.Context, req *pb.ConnectionReq
 	case pb.ConnectionMode_RDWR:
 		if req.Size == 0 {
 			return nil, ErrNullSizeToSave
+		}
+
+		if strings.ContainsRune(req.Filename, '/') {
+			return nil, ErrBadFilenameSyntax
 		}
 
 		disk_space, err := freemem.GetAvailableDiskSpace(s.cfg.WorkspacePath)
