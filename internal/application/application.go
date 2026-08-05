@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"sync"
 
 	appconfig "github.com/braginantonev/mhserver/internal/config/application"
@@ -89,7 +90,14 @@ func (app *Application) runMain(ctx context.Context) error {
 	srv.AuthTransport = di.SetupAuthTransport(ctx, di.SetupAuthService(app.cfg, app.db))
 	srv.DataTransport = di.SetupDataTransport(ctx, di.GetDataServerClient(connections["files"]))
 
-	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIRECTORY+"ssl/org.crt", CONFIG_DIRECTORY+"ssl/rootCA.key")
+	var addr_format string
+	if strings.ContainsRune(app.cfg.SubServers["main"].Address, ':') {
+		addr_format = "[%s]:%d" // ip v6
+	} else {
+		addr_format = "%s:%d" // ip v4
+	}
+
+	return srv.Serve(fmt.Sprintf(addr_format, app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIRECTORY+"ssl/org.crt", CONFIG_DIRECTORY+"ssl/rootCA.key")
 }
 
 func (app *Application) runSubserver(ctx context.Context, wait bool) error {

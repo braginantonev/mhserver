@@ -41,6 +41,7 @@ type ApplicationConfig struct {
 	with_default bool
 }
 
+// Return an empty config. Use Init() method to setup config
 func NewApplicationConfig(load_default bool) ApplicationConfig {
 	return ApplicationConfig{
 		with_default: load_default,
@@ -60,9 +61,7 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 			if err != nil {
 				return err
 			}
-			defer func() {
-				_ = resp.Body.Close()
-			}()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != 200 {
 				return fmt.Errorf("default file not found from net (%d)", resp.StatusCode)
@@ -90,7 +89,7 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Server allocated memory: %d bytes", cfg.Memory.Allocated))
-	slog.Info(fmt.Sprintf("Server will be started at %s:%d", cfg.SubServers["main"].Address, cfg.SubServers["main"].Port))
+	slog.Info(fmt.Sprintf("Server will be serve at %s on %d port", cfg.SubServers["main"].Address, cfg.SubServers["main"].Port))
 	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", db_name))
 	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
 
