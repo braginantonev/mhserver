@@ -56,7 +56,7 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 			}
 
 			// download from github
-			resp, err := http.Get(fmt.Sprintf("https://raw.githubusercontent.com/braginantonev/mhserver/%s/%s", version.Version, DEFAULT_CONFIG_FILENAME))
+			resp, err := http.Get(fmt.Sprintf("https://raw.githubusercontent.com/braginantonev/mhserver/v%s/%s", version.Version, DEFAULT_CONFIG_FILENAME))
 			if err != nil {
 				return err
 			}
