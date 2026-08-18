@@ -5,7 +5,7 @@ After=mariadb.service
 Requires=mariadb.service
 
 [Service]
-Type=simple
+Type=idle
 PIDFile=/tmp/mhserver.pid
 
 User=root
