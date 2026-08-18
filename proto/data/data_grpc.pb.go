@@ -36,7 +36,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DataServiceClient interface {
-	InitFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*FileID, error)
+	InitFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*InitInfo, error)
 	SaveFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SaveFileChunk, emptypb.Empty], error)
 	ReadFile(ctx context.Context, in *FileID, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Chunk], error)
 	GetFileChunk(ctx context.Context, in *GetChunk, opts ...grpc.CallOption) (*Chunk, error)
@@ -56,9 +56,9 @@ func NewDataServiceClient(cc grpc.ClientConnInterface) DataServiceClient {
 	return &dataServiceClient{cc}
 }
 
-func (c *dataServiceClient) InitFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*FileID, error) {
+func (c *dataServiceClient) InitFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*InitInfo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(FileID)
+	out := new(InitInfo)
 	err := c.cc.Invoke(ctx, DataService_InitFile_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func (c *dataServiceClient) RemoveFile(ctx context.Context, in *RequiredFile, op
 // All implementations must embed UnimplementedDataServiceServer
 // for forward compatibility.
 type DataServiceServer interface {
-	InitFile(context.Context, *RequiredFile) (*FileID, error)
+	InitFile(context.Context, *RequiredFile) (*InitInfo, error)
 	SaveFile(grpc.ClientStreamingServer[SaveFileChunk, emptypb.Empty]) error
 	ReadFile(*FileID, grpc.ServerStreamingServer[Chunk]) error
 	GetFileChunk(context.Context, *GetChunk) (*Chunk, error)
@@ -192,7 +192,7 @@ type DataServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedDataServiceServer struct{}
 
-func (UnimplementedDataServiceServer) InitFile(context.Context, *RequiredFile) (*FileID, error) {
+func (UnimplementedDataServiceServer) InitFile(context.Context, *RequiredFile) (*InitInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InitFile not implemented")
 }
 func (UnimplementedDataServiceServer) SaveFile(grpc.ClientStreamingServer[SaveFileChunk, emptypb.Empty]) error {
