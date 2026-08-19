@@ -86,6 +86,10 @@ func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*
 
 	file, err := os.OpenFile(filepath+req_file.Name, os.O_CREATE|os.O_RDWR, 0660)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrDirNotFound
+		}
+
 		slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
 		return nil, ErrInternal
 	}
