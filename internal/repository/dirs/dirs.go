@@ -13,12 +13,16 @@ var (
 	ErrBadDirSyntax error = errors.New("directory have bad syntax")
 )
 
-func GetDataPath(workspace_path, user, req_dir string, service config.ServiceName) (string, error) {
-	if len(req_dir) == 0 {
-		return "", ErrBadDirSyntax
-	}
+func DirIsCorrect(path string) bool {
+	return len(path) != 0 && path[0] == '/' && !strings.Contains(path, "..")
+}
 
-	if req_dir[0] != '/' || strings.Contains(req_dir, "..") {
+func FileIsCorrect(filename string) bool {
+	return len(filename) != 0 && !strings.ContainsRune(filename, '/')
+}
+
+func GetDataPath(workspace_path, user, req_dir string, service config.ServiceName) (string, error) {
+	if !DirIsCorrect(req_dir) {
 		return "", ErrBadDirSyntax
 	}
 

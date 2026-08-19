@@ -16,18 +16,18 @@ const (
 
 // todo if needed
 type FileMeta struct {
-	size uint64
+	Size uint64
 }
 
 type File struct {
 	*os.File
-	meta FileMeta
+	Meta FileMeta
 }
 
 func NewFile(file *os.File, meta FileMeta) File {
 	return File{
 		File: file,
-		meta: meta,
+		Meta: meta,
 	}
 }
 

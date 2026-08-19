@@ -58,7 +58,7 @@ func (s *DataServer) saveChunk(ctx context.Context, file *File, chunk *pb.Chunk)
 		return ErrIncorrectChunkSize
 	}
 
-	if uint64(len(chunk.Data))+chunk.Offset > file.meta.size {
+	if uint64(len(chunk.Data))+chunk.Offset > file.Meta.Size {
 		return errors.New("todo")
 	}
 
@@ -71,13 +71,17 @@ func (s *DataServer) saveChunk(ctx context.Context, file *File, chunk *pb.Chunk)
 	return nil
 }
 
-func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*pb.FileID, error) {
+func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*pb.InitInfo, error) {
 	defer func() { <-s.sem }()
 	s.sem <- struct{}{}
 
 	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, req_file.Dir.User, req_file.Dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
+	}
+
+	if !dirs.FileIsCorrect(req_file.Name) {
+		return nil, ErrBadFilenameSyntax
 	}
 
 	file, err := os.OpenFile(filepath+req_file.Name, os.O_CREATE|os.O_RDWR, 0660)
@@ -93,8 +97,13 @@ func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*
 		}
 	}
 
-	return &pb.FileID{
-		Value: s.activeFiles.Push(*NewCachedFile(NewFile(file, FileMeta{}))).String(),
+	return &pb.InitInfo{
+		FileID: &pb.FileID{
+			Value: s.activeFiles.Push(*NewCachedFile(NewFile(file, FileMeta{
+				Size: req_file.GetNewSize(),
+			}))).String(),
+		},
+		MaxChunkSize: s.cfg.Memory.MaxChunkSize,
 	}, nil
 }
 
@@ -228,7 +237,7 @@ func (s *DataServer) ReadFile(id *pb.FileID, stream pb.DataService_ReadFileServe
 		}
 	}
 
-	for i := uint64(0); i < uint64(math.Ceil(float64(file.meta.size)/float64(s.cfg.Memory.MaxChunkSize))); i++ {
+	for i := uint64(0); i < uint64(math.Ceil(float64(file.Meta.Size)/float64(s.cfg.Memory.MaxChunkSize))); i++ {
 		select {
 		case err := <-errors:
 			return err
@@ -257,7 +266,7 @@ func (s *DataServer) GetSum(ctx context.Context, id *pb.FileID) (*pb.SHASum, err
 	}
 
 	hash := sha256.New()
-	for i := uint64(0); i < uint64(math.Ceil(float64(file.meta.size)/float64(s.cfg.Memory.MaxChunkSize))); i++ {
+	for i := uint64(0); i < uint64(math.Ceil(float64(file.Meta.Size)/float64(s.cfg.Memory.MaxChunkSize))); i++ {
 		body := make([]byte, s.cfg.Memory.MaxChunkSize)
 		n, err := file.ReadAt(body, int64(s.cfg.Memory.MaxChunkSize)*int64(i))
 		if err != nil && err != io.EOF {
@@ -361,16 +370,20 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	return nil, nil
 }
 
-func (s *DataServer) RemoveFile(ctx context.Context, file *pb.RequiredFile) (*emptypb.Empty, error) {
+func (s *DataServer) RemoveFile(ctx context.Context, req_file *pb.RequiredFile) (*emptypb.Empty, error) {
 	defer func() { <-s.sem }()
 	s.sem <- struct{}{}
 
-	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, file.Dir.User, file.Dir.Value, s.cfg.ServiceName)
+	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, req_file.Dir.User, req_file.Dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
 
-	filepath += file.Name
+	if !dirs.FileIsCorrect(req_file.Name) {
+		return nil, ErrBadFilenameSyntax
+	}
+
+	filepath += req_file.Name
 
 	if err := os.Remove(filepath); err != nil {
 		if os.IsNotExist(err) {
