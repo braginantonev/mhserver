@@ -14,7 +14,6 @@ const (
 	CLEAN_DURATION time.Duration = 10 * time.Second
 )
 
-// todo if needed
 type FileMeta struct {
 	Size uint64
 }
@@ -36,27 +35,23 @@ type CachedFile struct {
 	expiration int64
 }
 
-func NewCachedFile(file File) *CachedFile {
-	return &CachedFile{
+func NewCachedFile(file File) CachedFile {
+	return CachedFile{
 		file:       file,
 		expiration: time.Now().Add(FILE_LIFETIME).Unix(),
 	}
 }
 
-func (p *CachedFile) isExpired() bool {
+func (p CachedFile) isExpired() bool {
 	return time.Now().Unix() > p.expiration
 }
 
-func (p *CachedFile) updateExpiration() {
-	p.expiration = time.Now().Add(FILE_LIFETIME).Unix()
-}
-
-func (p *CachedFile) GetFile() File {
+func (p CachedFile) GetFile() File {
 	return p.file
 }
 
 type CachedFiles struct {
-	files map[uuid.UUID]*CachedFile
+	files map[uuid.UUID]CachedFile
 	mux   sync.RWMutex
 
 	ctx           context.Context
@@ -65,7 +60,7 @@ type CachedFiles struct {
 
 func NewCachedFiles(ctx context.Context) *CachedFiles {
 	m := &CachedFiles{
-		files:         make(map[uuid.UUID]*CachedFile),
+		files:         make(map[uuid.UUID]CachedFile),
 		mux:           sync.RWMutex{},
 		ctx:           ctx,
 		cleanDuration: CLEAN_DURATION,
@@ -101,39 +96,27 @@ func (m *CachedFiles) startCleaner() {
 	}
 }
 
-func (m *CachedFiles) Push(file CachedFile) uuid.UUID {
+func (m *CachedFiles) Push(file File) uuid.UUID {
 	uuid := uuid.New()
 
 	m.mux.Lock()
-	m.files[uuid] = &file
+	m.files[uuid] = NewCachedFile(file)
 	m.mux.Unlock()
 
 	return uuid
 }
 
-func (m *CachedFiles) Get(uuid uuid.UUID) (*File, bool) {
-	m.mux.RLock()
-	defer m.mux.RUnlock()
+func (m *CachedFiles) Get(uuid uuid.UUID) (File, bool) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
 
 	info, ok := m.files[uuid]
 	if !ok {
-		return nil, false
+		return File{}, false
 	}
 
-	info.updateExpiration()
-	return &info.file, true
-}
+	_ = info.file.Close()
+	delete(m.files, uuid)
 
-// Return count active files UUIDs. If count is 0, return 1 by default
-func (m *CachedFiles) Length() int {
-	m.mux.RLock()
-	map_ln := len(m.files)
-	m.mux.RUnlock()
-
-	// Standard value
-	if map_ln == 0 {
-		return 1
-	}
-
-	return map_ln
+	return info.file, true
 }
