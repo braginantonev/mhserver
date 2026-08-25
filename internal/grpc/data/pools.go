@@ -32,12 +32,14 @@ func NewDataPool[T any, R any](sem Semaphore, file File, work_func func(T) (R, e
 		go func() {
 			defer wg.Done()
 			for task := range tasks {
+				sem <- struct{}{}
 				res, err := work_func(task)
 				if err != nil {
 					errs <- err
 					continue
 				}
 				results <- res
+				<-sem
 			}
 		}()
 	}
@@ -77,7 +79,7 @@ type SavePool struct {
 
 func NewSavePool(ctx context.Context, sem Semaphore, file File) SavePool {
 	return SavePool{
-		DataPool: NewDataPool[*pb.Chunk, struct{}](sem, file, func(c *pb.Chunk) (struct{}, error) {
+		DataPool: NewDataPool(sem, file, func(c *pb.Chunk) (struct{}, error) {
 			if uint64(len(c.Data))+c.Offset > file.Meta.Size {
 				return struct{}{}, ErrUnexpectedFileChange
 			}

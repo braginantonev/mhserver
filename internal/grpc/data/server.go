@@ -3,7 +3,6 @@ package data
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"io"
 	"log/slog"
 	"math"
@@ -17,11 +16,13 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+type Semaphore = chan any
+
 type DataServer struct {
 	pb.DataServiceServer
 	cfg         DataServiceConfig
 	activeFiles *CachedFiles
-	sem         chan any
+	sem         Semaphore
 }
 
 func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
@@ -31,7 +32,7 @@ func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
 	return &DataServer{
 		cfg:         cfg,
 		activeFiles: NewCachedFiles(ctx),
-		sem:         make(chan any, sem_size),
+		sem:         make(Semaphore, sem_size),
 	}
 }
 
@@ -51,24 +52,6 @@ func (s *DataServer) getChunk(ctx context.Context, reader io.ReaderAt, offset in
 	}
 
 	return data[:n], nil
-}
-
-func (s *DataServer) saveChunk(ctx context.Context, file *File, chunk *pb.Chunk) error {
-	if len(chunk.Data) > int(s.cfg.Memory.MaxChunkSize) {
-		return ErrIncorrectChunkSize
-	}
-
-	if uint64(len(chunk.Data))+chunk.Offset > file.Meta.Size {
-		return errors.New("todo")
-	}
-
-	_, err := file.WriteAt(chunk.Data, int64(chunk.Offset))
-	if err != nil {
-		slog.ErrorContext(ctx, "failed write chunk to file", slog.Any("err", err))
-		return ErrInternal
-	}
-
-	return nil
 }
 
 func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*pb.InitInfo, error) {
@@ -94,20 +77,43 @@ func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*
 		return nil, ErrInternal
 	}
 
+	var file_size uint64
+
 	if req_file.NewSize != nil {
+		file_size = *req_file.NewSize
 		if err := file.Truncate(int64(*req_file.NewSize)); err != nil {
 			slog.ErrorContext(ctx, "failed truncate file size", slog.Any("err", err))
 			return nil, ErrInternal
 		}
+	} else {
+		file_stat, err := file.Stat()
+		if err != nil {
+			slog.ErrorContext(ctx, "failed get file stat", slog.Any("err", err))
+			return nil, ErrInternal
+		}
+		file_size = uint64(file_stat.Size())
+	}
+
+	var max_chunk_size uint64
+	if file_size <= s.cfg.Memory.MinChunkSize {
+		max_chunk_size = file_size
+	} else {
+		file_based := uint64(float64(BASE_CHUNK_SIZE) * math.Log2(float64(file_size)/float64(BASE_CHUNK_SIZE)+1))
+		max_chunk_size = max(s.cfg.Memory.MinChunkSize, min(file_based, s.cfg.Memory.MaxChunkSize))
+	}
+
+	// Round to RAM page
+	if max_chunk_size > 4096 {
+		max_chunk_size = (max_chunk_size / 4096) * 4096
 	}
 
 	return &pb.InitInfo{
 		FileID: &pb.FileID{
-			Value: s.activeFiles.Push(*NewCachedFile(NewFile(file, FileMeta{
-				Size: req_file.GetNewSize(),
-			}))).String(),
+			Value: s.activeFiles.Push(NewFile(file, FileMeta{
+				Size: file_size,
+			})).String(),
 		},
-		MaxChunkSize: s.cfg.Memory.MaxChunkSize,
+		MaxChunkSize: max_chunk_size,
 	}, nil
 }
 
@@ -133,71 +139,50 @@ func (s *DataServer) GetFileChunk(ctx context.Context, chunk *pb.GetChunk) (*pb.
 }
 
 func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
-	errors := make(chan error, 1)
-
-	var FILE_ID_STR string
-	var FILE_UUID uuid.UUID
-
-	wg := sync.WaitGroup{}
-
-	save := func(task *pb.SaveFileChunk) {
-		defer func() {
-			<-s.sem
-			wg.Done()
-		}()
-		s.sem <- struct{}{}
-
-		if task.Id.Value != FILE_ID_STR {
-			if err := stream.SendMsg(ErrBadUUID); err != nil {
-				errors <- err
-			}
-			return
-		}
-
-		file, ok := s.activeFiles.Get(FILE_UUID)
-		if !ok {
-			if err := stream.SendMsg(ErrConnectionNotFound); err != nil {
-				errors <- err
-			}
-			return
-		}
-
-		if err := s.saveChunk(stream.Context(), file, task.Value); err != nil {
-			errors <- err
-		}
-	}
+	defer func() { <-s.sem }()
+	s.sem <- struct{}{}
 
 	// init file id
-	for {
-		first_chunk, err := stream.Recv()
-		if err != nil {
-			return nil
+	first_chunk, err := stream.Recv()
+	if err != nil {
+		if err == io.EOF {
+			return stream.SendAndClose(&emptypb.Empty{})
 		}
-		if v, err := uuid.Parse(first_chunk.Id.Value); err == nil {
-			FILE_ID_STR = first_chunk.Id.Value
-			FILE_UUID = v
-			go save(first_chunk)
-			break
-		}
+		slog.ErrorContext(stream.Context(), "failed recv stream", slog.Any("error", err))
+		return ErrInternal
 	}
 
-	for {
-		select {
-		case err := <-errors:
-			return err
-		default:
-			save_chunk, err := stream.Recv()
-			if err == io.EOF {
-				wg.Wait()
-				return stream.SendAndClose(&emptypb.Empty{})
-			}
-			if err != nil {
-				return err
-			}
+	id, err := uuid.Parse(first_chunk.Id.Value)
+	if err != nil {
+		return ErrBadUUID
+	}
 
-			wg.Add(1)
-			go save(save_chunk)
+	file, ok := s.activeFiles.Get(id)
+	if !ok {
+		return ErrConnectionNotFound
+	}
+
+	save_pool := NewSavePool(stream.Context(), s.sem, file)
+	save_pool.Push(first_chunk.GetValue()) // save first chunk
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			save_pool.Flush()
+			file.Sync()
+			return nil
 		}
+
+		if err != nil {
+			return err
+		}
+
+		if req.Id.GetValue() != first_chunk.Id.Value {
+			// todo: add error in end info
+			continue
+		}
+
+		save_pool.Push(req.GetValue())
 	}
 }
 
