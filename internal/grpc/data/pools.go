@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
 	pb "github.com/braginantonev/mhserver/proto/data"
@@ -21,7 +22,8 @@ type DataPool[T any, R any] struct {
 	wg *sync.WaitGroup
 }
 
-func NewDataPool[T any, R any](sem Semaphore, file File, work_func func(T) (R, error)) *DataPool[T, R] {
+// results_needed param is temp. I hope I change this
+func NewDataPool[T any, R any](sem Semaphore, file File, results_needed bool, work_func func(T) (R, error)) *DataPool[T, R] {
 	tasks := make(chan T, MAX_TASKS)
 	results := make(chan R, MAX_TASKS)
 	errs := make(chan error, MAX_TASKS)
@@ -38,7 +40,11 @@ func NewDataPool[T any, R any](sem Semaphore, file File, work_func func(T) (R, e
 					errs <- err
 					continue
 				}
-				results <- res
+
+				if results_needed {
+					results <- res
+				}
+
 				<-sem
 			}
 		}()
@@ -79,12 +85,17 @@ type SavePool struct {
 
 func NewSavePool(ctx context.Context, sem Semaphore, file File) SavePool {
 	return SavePool{
-		DataPool: NewDataPool(sem, file, func(c *pb.Chunk) (struct{}, error) {
+		DataPool: NewDataPool(sem, file, false, func(c *pb.Chunk) (struct{}, error) {
 			if uint64(len(c.Data))+c.Offset > file.Meta.Size {
 				return struct{}{}, ErrUnexpectedFileChange
 			}
 
+			slog.Info("save", slog.String("data", string(c.Data)))
+
 			_, err := file.WriteAt(c.Data, int64(c.Offset))
+			if err != nil {
+				slog.Error("failed save chunk", slog.Any("error", err))
+			}
 			return struct{}{}, err
 		}),
 	}

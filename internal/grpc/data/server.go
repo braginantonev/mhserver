@@ -161,6 +161,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	if !ok {
 		return ErrConnectionNotFound
 	}
+	defer file.Close()
 
 	save_pool := NewSavePool(stream.Context(), s.sem, file)
 	save_pool.Push(first_chunk.GetValue()) // save first chunk
@@ -170,7 +171,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 		if err == io.EOF {
 			save_pool.Flush()
 			file.Sync()
-			return nil
+			return stream.SendAndClose(&emptypb.Empty{})
 		}
 
 		if err != nil {

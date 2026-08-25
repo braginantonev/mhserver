@@ -115,8 +115,6 @@ func (m *CachedFiles) Get(uuid uuid.UUID) (File, bool) {
 		return File{}, false
 	}
 
-	_ = info.file.Close()
 	delete(m.files, uuid)
-
 	return info.file, true
 }
