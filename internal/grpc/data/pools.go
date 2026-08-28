@@ -13,92 +13,110 @@ const (
 	MAX_TASKS     int = WORKERS_COUNT * 2
 )
 
-type DataPool[T any, R any] struct {
-	tasks   chan T
-	errs    chan error
-	results chan R
-	file    File
+type DataWorkersPool[T any] struct {
+	tasks chan T
+	file  File
 
-	wg *sync.WaitGroup
+	closeOnce sync.Once
+	cancel    context.CancelCauseFunc
+	ctx       context.Context
+
+	wg sync.WaitGroup
 }
 
-// results_needed param is temp. I hope I change this
-func NewDataPool[T any, R any](sem Semaphore, file File, results_needed bool, work_func func(T) (R, error)) *DataPool[T, R] {
+func NewDataWorkersPool[T any](ctx context.Context, file File, handle_task func(T) error) *DataWorkersPool[T] {
 	tasks := make(chan T, MAX_TASKS)
-	results := make(chan R, MAX_TASKS)
-	errs := make(chan error, MAX_TASKS)
 
-	wg := sync.WaitGroup{}
-	wg.Add(WORKERS_COUNT)
+	pool_ctx, cancel := context.WithCancelCause(ctx)
+	pool := DataWorkersPool[T]{
+		tasks:  tasks,
+		file:   file,
+		cancel: cancel,
+		ctx:    pool_ctx,
+		wg:     sync.WaitGroup{},
+	}
+
 	for range WORKERS_COUNT {
-		go func() {
-			defer wg.Done()
-			for task := range tasks {
-				sem <- struct{}{}
-				res, err := work_func(task)
-				if err != nil {
-					errs <- err
-					continue
+		pool.wg.Go(func() {
+			for {
+				select {
+				case <-pool_ctx.Done():
+					return
+				case task, ok := <-tasks:
+					if !ok {
+						return
+					}
+					if err := handle_task(task); err != nil {
+						pool.emitError(err)
+					}
 				}
-
-				if results_needed {
-					results <- res
-				}
-
-				<-sem
 			}
-		}()
+
+		})
 	}
 
-	return &DataPool[T, R]{
-		tasks:   tasks,
-		errs:    errs,
-		results: results,
-		file:    file,
-		wg:      &wg,
+	return &pool
+}
+
+func (self *DataWorkersPool[T]) emitError(err error) {
+	self.Close()
+}
+
+func (self *DataWorkersPool[T]) TryPush(task T) error {
+	select {
+	case <-self.ctx.Done():
+		return context.Cause(self.ctx)
+	case self.tasks <- task:
+		return nil
 	}
 }
 
-func (self *DataPool[T, R]) Push(task T) {
-	self.tasks <- task
+func (self *DataWorkersPool[T]) CloseCause(err error) {
+	self.closeOnce.Do(func() {
+		self.cancel(err)
+		close(self.tasks)
+	})
 }
 
-func (self *DataPool[T, R]) Results() <-chan R {
-	return self.results
+func (self *DataWorkersPool[T]) Close() {
+	self.closeOnce.Do(func() {
+		self.cancel(nil)
+		close(self.tasks)
+	})
 }
 
-func (self *DataPool[T, R]) Errors() <-chan error {
-	return self.errs
-}
-
-func (self *DataPool[T, R]) Flush() {
-	close(self.tasks)
+func (self *DataWorkersPool[T]) Flush(with_sync bool) error {
 	self.wg.Wait()
-
-	close(self.errs)
-	close(self.results)
+	if with_sync {
+		return self.file.Sync()
+	}
+	return nil
 }
 
-type SavePool struct {
-	*DataPool[*pb.Chunk, struct{}] // empty result
+type SaveWorkersPool struct {
+	*DataWorkersPool[*pb.Chunk]
 }
 
-func NewSavePool(ctx context.Context, sem Semaphore, file File) SavePool {
-	return SavePool{
-		DataPool: NewDataPool(sem, file, false, func(c *pb.Chunk) (struct{}, error) {
+func NewSaveWorkersPool(ctx context.Context, service_sem Semaphore, file File) *SaveWorkersPool {
+	return &SaveWorkersPool{
+		NewDataWorkersPool(ctx, file, func(c *pb.Chunk) error {
+			defer func() { <-service_sem }()
+			service_sem <- struct{}{}
+
 			if uint64(len(c.Data))+c.Offset > file.Meta.Size {
-				return struct{}{}, ErrUnexpectedFileChange
+				return ErrUnexpectedFileChange
 			}
-
-			slog.Info("save", slog.String("data", string(c.Data)))
 
 			_, err := file.WriteAt(c.Data, int64(c.Offset))
 			if err != nil {
-				slog.Error("failed save chunk", slog.Any("error", err))
+				slog.ErrorContext(ctx, "failed save chunk", slog.Any("error", err))
+				return ErrInternal
 			}
-			return struct{}{}, err
+
+			return nil
 		}),
 	}
+
 }
 
-type ReadPool = *DataPool[uint64, *pb.Chunk]
+// type ReadPool = *DataWorkersPool[uint64]
