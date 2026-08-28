@@ -46,49 +46,45 @@ func NewDataWorkersPool[T any](ctx context.Context, file File, handle_task func(
 					if !ok {
 						return
 					}
+
 					if err := handle_task(task); err != nil {
-						pool.emitError(err)
+						pool.handleError(err)
 					}
 				}
 			}
-
 		})
 	}
 
 	return &pool
 }
 
-func (self *DataWorkersPool[T]) emitError(err error) {
-	self.Close()
+func (self *DataWorkersPool[T]) handleError(err error) {
+	self.closeOnce.Do(func() {
+		close(self.tasks)
+	})
+	self.cancel(err)
 }
 
 func (self *DataWorkersPool[T]) TryPush(task T) error {
 	select {
 	case <-self.ctx.Done():
-		return context.Cause(self.ctx)
+		return self.Recover()
 	case self.tasks <- task:
 		return nil
 	}
 }
 
-func (self *DataWorkersPool[T]) CloseCause(err error) {
+func (self *DataWorkersPool[T]) Flush() error {
 	self.closeOnce.Do(func() {
-		self.cancel(err)
 		close(self.tasks)
 	})
-}
-
-func (self *DataWorkersPool[T]) Close() {
-	self.closeOnce.Do(func() {
-		self.cancel(nil)
-		close(self.tasks)
-	})
-}
-
-func (self *DataWorkersPool[T]) Flush(with_sync bool) error {
 	self.wg.Wait()
-	if with_sync {
-		return self.file.Sync()
+	return self.file.Sync()
+}
+
+func (self *DataWorkersPool[T]) Recover() error {
+	if err := context.Cause(self.ctx); err != context.Canceled {
+		return err
 	}
 	return nil
 }

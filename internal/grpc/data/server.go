@@ -163,14 +163,20 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	}
 	defer file.Close()
 
-	save_pool := NewSavePool(stream.Context(), s.sem, file)
-	save_pool.Push(first_chunk.GetValue()) // save first chunk
+	save_pool := NewSaveWorkersPool(stream.Context(), s.sem, file)
+	if err = save_pool.TryPush(first_chunk.GetValue()); err != nil { // save first chunk
+		return err
+	}
 
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			save_pool.Flush()
-			file.Sync()
+			if err = save_pool.Flush(); err != nil {
+				return err
+			}
+			if err = save_pool.Recover(); err != nil { // end error check
+				return err
+			}
 			return stream.SendAndClose(&emptypb.Empty{})
 		}
 
@@ -179,11 +185,12 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 		}
 
 		if req.Id.GetValue() != first_chunk.Id.Value {
-			// todo: add error in end info
-			continue
+			return ErrUnexpectedFileChange
 		}
 
-		save_pool.Push(req.GetValue())
+		if err = save_pool.TryPush(req.GetValue()); err != nil {
+			return err
+		}
 	}
 }
 
