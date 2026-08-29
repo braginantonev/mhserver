@@ -8,7 +8,6 @@ service DataService {
     rpc InitFile (RequiredFile) returns (InitInfo);
     rpc SaveFile (stream SaveFileChunk) returns (google.protobuf.Empty);
     rpc ReadFile (FileID) returns (stream Chunk);
-    rpc GetFileChunk (GetChunk) returns (Chunk);
     rpc GetSum (FileID) returns (SHASum);
     rpc GetFiles (Directory) returns (FilesList);
 	rpc GetAvailableDiskSpace (Directory) returns (Size);
@@ -45,11 +44,6 @@ message Chunk {
 message SaveFileChunk {
     FileID id = 1;
     Chunk value = 2;
-}
-
-message GetChunk {
-    FileID id = 1;
-    uint64 offset = 3;
 }
 
 message SHASum {

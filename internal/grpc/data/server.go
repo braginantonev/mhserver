@@ -97,10 +97,6 @@ func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*
 	}, nil
 }
 
-func (s *DataServer) GetFileChunk(ctx context.Context, chunk *pb.GetChunk) (*pb.Chunk, error) {
-	return nil, nil
-}
-
 func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	defer s.sem.Release()
 	s.sem.Acquire()
