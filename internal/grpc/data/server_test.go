@@ -2,9 +2,11 @@ package data_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"os"
 	"strings"
@@ -554,7 +556,6 @@ func TestReadFile(t *testing.T) {
 	})
 }
 
-/*
 func TestGetSum(t *testing.T) {
 	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
 		t.Fatal(err)
@@ -621,89 +622,86 @@ func TestGetSum(t *testing.T) {
 
 	cases := [...]struct {
 		name           string
-		data_info      *pb.ConnectionRequest
+		req_file       *pb.RequiredFile
 		gen_file_size  uint64
 		bad_sum_wanted bool
 	}{
 		{
 			name: "file 500 bytes",
-			data_info: &pb.ConnectionRequest{
-				Username:  TEST_USER,
-				Mode:      pb.ConnectionMode_RDONLY,
-				Directory: "/",
-				Filename:  "get_sum_500b.txt",
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					User:  TEST_USER,
+					Value: "/",
+				},
+				Name: "get_sum_500b.txt",
 			},
 			gen_file_size: 500,
 		},
 		{
 			name: "file 10 kb",
-			data_info: &pb.ConnectionRequest{
-				Username:  TEST_USER,
-				Mode:      pb.ConnectionMode_RDONLY,
-				Directory: "/",
-				Filename:  "get_sum_10kb.txt",
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					User:  TEST_USER,
+					Value: "/",
+				},
+				Name: "get_sum_10kb.txt",
 			},
 			gen_file_size: 10 * 1024,
 		},
 		{
 			name: "file 500 kb",
-			data_info: &pb.ConnectionRequest{
-				Username:  TEST_USER,
-				Mode:      pb.ConnectionMode_RDONLY,
-				Directory: "/",
-				Filename:  "get_sum_500kb.txt",
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					User:  TEST_USER,
+					Value: "/",
+				},
+				Name: "get_sum_500kb.txt",
 			},
 			gen_file_size: 500 * 1024,
 		},
 		{
 			name: "file 5 mb",
-			data_info: &pb.ConnectionRequest{
-				Username:  TEST_USER,
-				Mode:      pb.ConnectionMode_RDONLY,
-				Directory: "/",
-				Filename:  "get_sum_5mb.txt",
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					User:  TEST_USER,
+					Value: "/",
+				},
+				Name: "get_sum_5mb.txt",
 			},
 			gen_file_size: 5 * 1024 * 1024,
 		},
 		{
 			name: "file 50 mb",
-			data_info: &pb.ConnectionRequest{
-				Username:  TEST_USER,
-				Mode:      pb.ConnectionMode_RDONLY,
-				Directory: "/",
-				Filename:  "get_sum_50mb.txt",
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					User:  TEST_USER,
+					Value: "/",
+				},
+				Name: "get_sum_50mb.txt",
 			},
 			gen_file_size: 50 * 1024 * 1024,
 		},
 		{
 			name: "file 100mb",
-			data_info: &pb.ConnectionRequest{
-				Username:  TEST_USER,
-				Mode:      pb.ConnectionMode_RDONLY,
-				Directory: "/",
-				Filename:  "get_sum_100mb.txt",
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					User:  TEST_USER,
+					Value: "/",
+				},
+				Name: "get_sum_100mb.txt",
 			},
 			gen_file_size: 100 * 1024 * 1024,
 		},
 		{
 			name: "file 500mb",
-			data_info: &pb.ConnectionRequest{
-				Username:  TEST_USER,
-				Mode:      pb.ConnectionMode_RDONLY,
-				Directory: "/",
-				Filename:  "get_sum_500mb.txt",
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					User:  TEST_USER,
+					Value: "/",
+				},
+				Name: "get_sum_500mb.txt",
 			},
 			gen_file_size: 500 * 1024 * 1024,
-		},
-		{
-			name: "file 750mb",
-			data_info: &pb.ConnectionRequest{
-				Username:  TEST_USER,
-				Mode:      pb.ConnectionMode_RDONLY,
-				Directory: "/",
-				Filename:  "get_sum_750mb.txt",
-			},
-			gen_file_size: 750 * 1024 * 1024,
 		},
 	}
 
@@ -711,60 +709,34 @@ func TestGetSum(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			expected, err := genRandomFile(test.gen_file_size)
+			test_file, err := genRandomFile(test.gen_file_size)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer func() {
-				_ = os.Remove(expected.Name())
+				_ = os.Remove(test_file.Name())
 			}()
 
-			// Create test file
-			filepath := fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.data_info.Username, test.data_info.Directory, test.data_info.Filename)
-			file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY, 0660)
+			expected_sum := sha256.New()
+
+			_, err = io.Copy(expected_sum, test_file)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer func() {
-				_ = os.Remove(filepath)
-			}()
+			_ = test_file.Close()
 
-			_, err = io.Copy(file, expected)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_ = file.Close()
-
-			conn, err := data_client.CreateConnection(t.Context(), test.data_info)
+			info, err := data_client.InitFile(t.Context(), test.req_file)
 			if err != nil {
 				t.Fatalf("failed create connection. err: %v", err)
 			}
 
-			for i := range conn.ChunksCount {
-				got_sum, err := data_client.GetSum(t.Context(), &pb.GetChunk{
-					UUID:    conn.UUID,
-					ChunkId: i,
-				})
-				if err != nil {
-					t.Fatalf("failed get chunk sum. err: %v", err)
-				}
+			got, err := data_client.GetSum(t.Context(), info.FileID)
+			if err != nil {
+				t.Fatalf("failed get sum (%v)", err)
+			}
 
-				expected_data := make([]byte, conn.ChunkSize)
-				read, err := expected.ReadAt(expected_data, int64(uint64(i)*conn.ChunkSize))
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				expected_sum := sha256.Sum256(expected_data[:read])
-				if test.bad_sum_wanted {
-					expected_sum[0] = 0
-				}
-
-				for j, n := range got_sum.Value {
-					if n != expected_sum[j] {
-						t.Fatalf("expected sum: %x, but got: %x", string(expected_sum[:]), string(got_sum.Value))
-					}
-				}
+			if string(expected_sum.Sum(nil)) != string(got.Value) {
+				t.Errorf("expected sum: `%s`, but got: %s", string(expected_sum.Sum(nil)), string(got.Value))
 			}
 		})
 	}
@@ -988,4 +960,3 @@ func TestGetFiles(t *testing.T) {
 		t.Errorf("failed cleanup: %v", err)
 	}
 }
-*/
