@@ -9,6 +9,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	pb "github.com/braginantonev/mhserver/proto/data"
@@ -16,13 +17,11 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type Semaphore = chan any
-
 type DataServer struct {
 	pb.DataServiceServer
 	cfg         DataServiceConfig
 	activeFiles *CachedFiles
-	sem         Semaphore
+	sem         repository.Semaphore
 }
 
 func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
@@ -32,13 +31,13 @@ func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
 	return &DataServer{
 		cfg:         cfg,
 		activeFiles: NewCachedFiles(ctx),
-		sem:         make(Semaphore, sem_size),
+		sem:         repository.NewSemaphore(int(sem_size)),
 	}
 }
 
 func (s *DataServer) getChunk(ctx context.Context, reader io.ReaderAt, offset int64) ([]byte, error) {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	data := make([]byte, offset)
 	n, err := reader.ReadAt(data, int64(offset))
@@ -55,8 +54,8 @@ func (s *DataServer) getChunk(ctx context.Context, reader io.ReaderAt, offset in
 }
 
 func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*pb.InitInfo, error) {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, req_file.Dir.User, req_file.Dir.Value, s.cfg.ServiceName)
 	if err != nil {
@@ -139,8 +138,8 @@ func (s *DataServer) GetFileChunk(ctx context.Context, chunk *pb.GetChunk) (*pb.
 }
 
 func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	// init file id
 	first_chunk, err := stream.Recv()
@@ -195,8 +194,8 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 }
 
 func (s *DataServer) ReadFile(id *pb.FileID, stream pb.DataService_ReadFileServer) error {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	uuid, err := uuid.Parse(id.Value)
 	if err != nil {
@@ -213,10 +212,10 @@ func (s *DataServer) ReadFile(id *pb.FileID, stream pb.DataService_ReadFileServe
 
 	read := func(offset uint64) {
 		defer func() {
-			<-s.sem
+			s.sem.Release()
 			wg.Done()
 		}()
-		s.sem <- struct{}{}
+		s.sem.Acquire()
 
 		data, err := s.getChunk(stream.Context(), file, int64(offset))
 		if err != nil {
@@ -249,8 +248,8 @@ func (s *DataServer) ReadFile(id *pb.FileID, stream pb.DataService_ReadFileServe
 }
 
 func (s *DataServer) GetSum(ctx context.Context, id *pb.FileID) (*pb.SHASum, error) {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	uuid, err := uuid.Parse(id.Value)
 	if err != nil {
@@ -277,8 +276,8 @@ func (s *DataServer) GetSum(ctx context.Context, id *pb.FileID) (*pb.SHASum, err
 }
 
 func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Directory) (*pb.Size, error) {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "/", s.cfg.ServiceName)
 	if err != nil {
@@ -294,8 +293,8 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Director
 }
 
 func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
 	if err != nil {
@@ -330,8 +329,8 @@ func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.Files
 }
 
 func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
 	if err != nil {
@@ -351,8 +350,8 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 }
 
 func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
 	if err != nil {
@@ -368,8 +367,8 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 }
 
 func (s *DataServer) RemoveFile(ctx context.Context, req_file *pb.RequiredFile) (*emptypb.Empty, error) {
-	defer func() { <-s.sem }()
-	s.sem <- struct{}{}
+	defer s.sem.Release()
+	s.sem.Acquire()
 
 	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, req_file.Dir.User, req_file.Dir.Value, s.cfg.ServiceName)
 	if err != nil {

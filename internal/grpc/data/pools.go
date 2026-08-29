@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/braginantonev/mhserver/internal/repository"
 	pb "github.com/braginantonev/mhserver/proto/data"
 )
 
@@ -93,11 +94,11 @@ type SaveWorkersPool struct {
 	*DataWorkersPool[*pb.Chunk]
 }
 
-func NewSaveWorkersPool(ctx context.Context, service_sem Semaphore, file File) *SaveWorkersPool {
+func NewSaveWorkersPool(ctx context.Context, service_sem repository.Semaphore, file File) *SaveWorkersPool {
 	return &SaveWorkersPool{
 		NewDataWorkersPool(ctx, file, func(c *pb.Chunk) error {
-			defer func() { <-service_sem }()
-			service_sem <- struct{}{}
+			defer service_sem.Release()
+			service_sem.Acquire()
 
 			if uint64(len(c.Data))+c.Offset > file.Meta.Size {
 				return ErrUnexpectedFileChange
@@ -112,7 +113,6 @@ func NewSaveWorkersPool(ctx context.Context, service_sem Semaphore, file File) *
 			return nil
 		}),
 	}
-
 }
 
 // type ReadPool = *DataWorkersPool[uint64]
