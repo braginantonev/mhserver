@@ -201,14 +201,9 @@ func (s *DataServer) GetSum(ctx context.Context, id *pb.FileID) (*pb.SHASum, err
 	}
 
 	hash := sha256.New()
-	for i := uint64(0); i < uint64(math.Ceil(float64(file.Meta.Size)/float64(s.cfg.Memory.MaxChunkSize))); i++ {
-		body := make([]byte, s.cfg.Memory.MaxChunkSize)
-		n, err := file.ReadAt(body, int64(s.cfg.Memory.MaxChunkSize)*int64(i))
-		if err != nil && err != io.EOF {
-			slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
-			return nil, ErrInternal
-		}
-		_, _ = hash.Write(body[:n])
+	if _, err := io.Copy(hash, file); err != nil {
+		slog.ErrorContext(ctx, "failed copy file for sum calc", slog.Any("error", err))
+		return nil, ErrInternal
 	}
 
 	return &pb.SHASum{Value: hash.Sum(nil)[:]}, nil
