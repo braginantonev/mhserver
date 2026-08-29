@@ -462,8 +462,7 @@ func TestSaveFile(t *testing.T) {
 	}
 }
 
-/*
-func TestGetData(t *testing.T) {
+func TestReadFile(t *testing.T) {
 	test_file_name := "get_data_test_file.txt"
 
 	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
@@ -508,51 +507,54 @@ func TestGetData(t *testing.T) {
 	}
 	_ = file.Close()
 
-	t.Run("get without connection", func(t *testing.T) {
+	t.Run("without init file", func(t *testing.T) {
 		random_uuid := uuid.New()
-		_, err := data_client.GetData(t.Context(), &pb.GetChunk{
-			UUID:    random_uuid.String(),
-			ChunkId: 0,
-		})
+		stream, err := data_client.ReadFile(t.Context(), &pb.FileID{Value: random_uuid.String()})
+		if err != nil {
+			t.Fatalf("failed create stream: %s", err)
+		}
 
-		if !errorIs(err, data.ErrConnectionNotFound) {
+		if _, err = stream.Recv(); !errorIs(err, data.ErrConnectionNotFound) {
 			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
 
 	t.Run("normal get", func(t *testing.T) {
-		conn, err := data_client.CreateConnection(t.Context(), &pb.ConnectionRequest{
-			Username:  TEST_USER,
-			Mode:      pb.ConnectionMode_RDONLY,
-			Directory: "/",
-			Filename:  test_file_name,
+		conn, err := data_client.InitFile(t.Context(), &pb.RequiredFile{
+			Dir: &pb.Directory{
+				User:  TEST_USER,
+				Value: "/",
+			},
+			Name:    test_file_name,
+			NewSize: nil,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		for i := uint32(0); i < conn.ChunksCount; i += 1 {
-			t.Run(fmt.Sprintf("get chunk %d", i), func(t *testing.T) {
-				ch_id := i
+		stream, err := data_client.ReadFile(t.Context(), conn.FileID)
+		if err != nil {
+			t.Fatalf("failed create connection (%v)", err)
+		}
 
-				part, err := data_client.GetData(t.Context(), &pb.GetChunk{
-					UUID:    conn.UUID,
-					ChunkId: ch_id,
-				})
-				if err != nil {
-					t.Fatal(err)
+		for {
+			v, err := stream.Recv()
+			if err != nil {
+				if err == io.EOF {
+					break
 				}
+				t.Fatalf("failed get chunk (%v)", err)
+			}
 
-				offset := uint64(ch_id) * conn.ChunkSize
-				expected_chunk := TEST_FILE_BODY[offset : offset+uint64(len(part.Chunk))]
-				if string(part.Chunk) != expected_chunk {
-					t.Errorf("expected chunk: `%s`, but got `%s`", expected_chunk, string(part.Chunk))
-				}
-			})
+			expected := TEST_FILE_BODY[v.Offset : v.Offset+uint64(len(v.Data))]
+			if string(v.Data) != expected {
+				t.Errorf("expected chunk: `%s`, but got: `%s`", expected, string(v.Data))
+			}
 		}
 	})
 }
 
+/*
 func TestGetSum(t *testing.T) {
 	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER); err != nil {
 		t.Fatal(err)

@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"sync"
 
@@ -75,11 +76,17 @@ func (self *DataWorkersPool[T]) TryPush(task T) error {
 	}
 }
 
-func (self *DataWorkersPool[T]) Flush() error {
+func (self *DataWorkersPool[T]) Flush() {
 	self.closeOnce.Do(func() {
 		close(self.tasks)
 	})
 	self.wg.Wait()
+}
+
+// Use this method if you pool will be used for writing in file
+// For read or another actions, where file sync is not needed - just use `Flush()`
+func (self *DataWorkersPool[T]) FlushAndSync() error {
+	self.Flush()
 	return self.file.Sync()
 }
 
@@ -115,4 +122,44 @@ func NewSaveWorkersPool(ctx context.Context, service_sem repository.Semaphore, f
 	}
 }
 
-// type ReadPool = *DataWorkersPool[uint64]
+type ReadWorkersPool struct {
+	*DataWorkersPool[uint64] // offsets
+	results                  chan *pb.Chunk
+}
+
+func NewReadWorkersPool(
+	ctx context.Context,
+	service_sem repository.Semaphore,
+	chunk_size uint64,
+	file File,
+) *ReadWorkersPool {
+	results := make(chan *pb.Chunk, MAX_TASKS)
+	return &ReadWorkersPool{
+		DataWorkersPool: NewDataWorkersPool(ctx, file, func(offset uint64) error {
+			defer service_sem.Release()
+			service_sem.Acquire()
+
+			data := make([]byte, offset)
+			n, err := file.ReadAt(data, int64(offset))
+			if err != nil && err != io.EOF {
+				slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
+				return ErrInternal
+			}
+
+			if n == 0 && err == io.EOF {
+				return ErrReadOutOfFile
+			}
+
+			results <- &pb.Chunk{
+				Data:   data,
+				Offset: offset,
+			}
+
+			if err == io.EOF {
+				close(results)
+			}
+			return nil
+		}),
+		results: results,
+	}
+}

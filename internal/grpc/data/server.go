@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"sync"
 
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
@@ -33,24 +32,6 @@ func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
 		activeFiles: NewCachedFiles(ctx),
 		sem:         repository.NewSemaphore(int(sem_size)),
 	}
-}
-
-func (s *DataServer) getChunk(ctx context.Context, reader io.ReaderAt, offset int64) ([]byte, error) {
-	defer s.sem.Release()
-	s.sem.Acquire()
-
-	data := make([]byte, offset)
-	n, err := reader.ReadAt(data, int64(offset))
-	if err != nil && err != io.EOF {
-		slog.ErrorContext(ctx, "failed read file chunk", slog.Any("err", err))
-		return nil, ErrInternal
-	}
-
-	if n == 0 && err == io.EOF {
-		return nil, ErrReadOutOfFile
-	}
-
-	return data[:n], nil
 }
 
 func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*pb.InitInfo, error) {
@@ -117,24 +98,7 @@ func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*
 }
 
 func (s *DataServer) GetFileChunk(ctx context.Context, chunk *pb.GetChunk) (*pb.Chunk, error) {
-	// used semaphore from s.getChunk() method later
-
-	uuid, err := uuid.Parse(chunk.Id.Value)
-	if err != nil {
-		return nil, ErrBadUUID
-	}
-
-	file, ok := s.activeFiles.Get(uuid)
-	if !ok {
-		return nil, ErrConnectionNotFound
-	}
-
-	data, err := s.getChunk(ctx, file, int64(chunk.Offset))
-
-	return &pb.Chunk{
-		Data:   data,
-		Offset: chunk.Offset,
-	}, err
+	return nil, nil
 }
 
 func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
@@ -170,7 +134,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			if err = save_pool.Flush(); err != nil {
+			if err = save_pool.FlushAndSync(); err != nil {
 				return err
 			}
 			if err = save_pool.Recover(); err != nil { // end error check
@@ -207,44 +171,23 @@ func (s *DataServer) ReadFile(id *pb.FileID, stream pb.DataService_ReadFileServe
 		return ErrConnectionNotFound
 	}
 
-	errors := make(chan error, 1)
-	wg := sync.WaitGroup{}
+	pool := NewReadWorkersPool(stream.Context(), s.sem, s.cfg.Memory.MaxChunkSize, file)
+	chunks_count := uint64(math.Ceil(float64(file.Meta.Size) / float64(s.cfg.Memory.MaxChunkSize)))
 
-	read := func(offset uint64) {
-		defer func() {
-			s.sem.Release()
-			wg.Done()
-		}()
-		s.sem.Acquire()
-
-		data, err := s.getChunk(stream.Context(), file, int64(offset))
-		if err != nil {
-			if err := stream.SendMsg(err); err != nil {
-				errors <- err
-			}
-			return
-		}
-
-		if err := stream.Send(&pb.Chunk{
-			Data:   data,
-			Offset: offset,
-		}); err != nil {
-			errors <- err
-		}
-	}
-
-	for i := uint64(0); i < uint64(math.Ceil(float64(file.Meta.Size)/float64(s.cfg.Memory.MaxChunkSize))); i++ {
+readLoop:
+	for i := uint64(0); i < chunks_count; i++ {
 		select {
-		case err := <-errors:
-			return err
+		case <-stream.Context().Done():
+			break readLoop
 		default:
-			wg.Add(1)
-			go read(i * s.cfg.Memory.MaxChunkSize)
+			if err = pool.TryPush(i * s.cfg.Memory.MaxChunkSize); err != nil {
+				return err
+			}
 		}
 	}
 
-	wg.Wait()
-	return nil
+	pool.Flush()
+	return pool.Recover()
 }
 
 func (s *DataServer) GetSum(ctx context.Context, id *pb.FileID) (*pb.SHASum, error) {
