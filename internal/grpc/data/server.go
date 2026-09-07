@@ -122,19 +122,18 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	}
 	defer file.Close()
 
-	save_pool := NewSaveWorkersPool(stream.Context(), s.sem, file)
-	if err = save_pool.TryPush(first_chunk.GetValue()); err != nil { // save first chunk
-		return err
+	// write first chunk
+	if _, err = file.Write(first_chunk.Value.Data); err != nil {
+		slog.ErrorContext(stream.Context(), "failed sync file", slog.Any("error", err))
+		return ErrInternal
 	}
 
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			if err = save_pool.FlushAndSync(); err != nil {
-				return err
-			}
-			if err = save_pool.Recover(); err != nil { // end error check
-				return err
+			if err = file.Sync(); err != nil {
+				slog.ErrorContext(stream.Context(), "failed sync file", slog.Any("error", err))
+				return ErrInternal
 			}
 			return stream.SendAndClose(&emptypb.Empty{})
 		}
@@ -147,8 +146,13 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 			return ErrUnexpectedFileChange
 		}
 
-		if err = save_pool.TryPush(req.GetValue()); err != nil {
-			return err
+		if req.Value.Offset+uint64(len(req.Value.Data)) > file.Meta.Size {
+			return ErrUnexpectedFileChange
+		}
+
+		if _, err = file.Write(req.Value.Data); err != nil {
+			slog.ErrorContext(stream.Context(), "failed write chunk to file", slog.Any("error", err))
+			return ErrInternal
 		}
 	}
 }
@@ -167,23 +171,29 @@ func (s *DataServer) ReadFile(id *pb.FileID, stream pb.DataService_ReadFileServe
 		return ErrConnectionNotFound
 	}
 
-	pool := NewReadWorkersPool(stream.Context(), s.sem, s.cfg.Memory.MaxChunkSize, file)
 	chunks_count := uint64(math.Ceil(float64(file.Meta.Size) / float64(s.cfg.Memory.MaxChunkSize)))
+	data := make([]byte, 0, s.cfg.Memory.MaxChunkSize)
 
 readLoop:
-	for i := uint64(0); i < chunks_count; i++ {
+	for i := range chunks_count {
 		select {
 		case <-stream.Context().Done():
 			break readLoop
 		default:
-			if err = pool.TryPush(i * s.cfg.Memory.MaxChunkSize); err != nil {
-				return err
+			n, err := file.Read(data)
+			if err != nil {
+				slog.ErrorContext(stream.Context(), "failed read file", slog.Any("error", err))
+				return ErrInternal
 			}
+
+			stream.Send(&pb.Chunk{
+				Offset: i * s.cfg.Memory.MaxChunkSize,
+				Data:   data[:n],
+			})
 		}
 	}
 
-	pool.Flush()
-	return pool.Recover()
+	return nil
 }
 
 func (s *DataServer) GetSum(ctx context.Context, id *pb.FileID) (*pb.SHASum, error) {
