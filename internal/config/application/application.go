@@ -2,15 +2,11 @@
 package appconfig
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	"github.com/braginantonev/mhserver/version"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -21,8 +17,6 @@ const (
 
 type SubServer struct {
 	Enabled bool
-	Address string
-	Port    int
 	Extra   SubServerExtra
 }
 
@@ -35,47 +29,21 @@ type ApplicationConfig struct {
 	WorkspacePath string `toml:"workspace_path"`
 	JWTSignature  string `toml:"jwt_signature"`
 	DB_Pass       string `toml:"db_pass"`
+	Address       string
+	Port          int
 	Memory        config.MemoryConfig
 	SubServers    map[string]*SubServer
-
-	with_default bool
-}
-
-// Return an empty config. Use Init() method to setup config
-func NewApplicationConfig(load_default bool) ApplicationConfig {
-	return ApplicationConfig{
-		with_default: load_default,
-	}
 }
 
 func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
-	if cfg.with_default {
-		def, err := os.ReadFile(config_dir + DEFAULT_CONFIG_FILENAME)
-		if err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				return err
-			}
+	default_cfg, err := os.ReadFile(config_dir + DEFAULT_CONFIG_FILENAME)
+	if err != nil {
+		return err
+	}
 
-			// download from github
-			resp, err := http.Get(fmt.Sprintf("https://raw.githubusercontent.com/braginantonev/mhserver/v%s/%s", version.Version, DEFAULT_CONFIG_FILENAME))
-			if err != nil {
-				return err
-			}
-			defer func() { _ = resp.Body.Close() }()
-
-			if resp.StatusCode != 200 {
-				return fmt.Errorf("default file not found from net (%d)", resp.StatusCode)
-			}
-
-			def, err = io.ReadAll(resp.Body)
-			if err != nil {
-				return err
-			}
-		}
-
-		if err := toml.Unmarshal(def, &cfg); err != nil {
-			return err
-		}
+	// set default values
+	if err := toml.Unmarshal(default_cfg, &cfg); err != nil {
+		return err
 	}
 
 	from_file, err := os.ReadFile(config_dir + CONFIG_FILENAME)
@@ -83,13 +51,14 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 		return err
 	}
 
+	// override by user config
 	if err := toml.Unmarshal(from_file, &cfg); err != nil {
 		return err
 	}
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Server allocated memory: %d bytes", cfg.Memory.Allocated))
-	slog.Info(fmt.Sprintf("Server will be serve at %s on %d port", cfg.SubServers["main"].Address, cfg.SubServers["main"].Port))
+	slog.Info(fmt.Sprintf("Server will be serve at %s on %d port", cfg.Address, cfg.Port))
 	slog.Info(fmt.Sprintf("Server configured to use \"mhserver/%s\" database", db_name))
 	slog.Info(fmt.Sprintf("Server workspace path = %s", cfg.WorkspacePath))
 
