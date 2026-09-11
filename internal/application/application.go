@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	appconfig "github.com/braginantonev/mhserver/internal/config/application"
-	"github.com/braginantonev/mhserver/internal/di"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
@@ -54,16 +53,16 @@ func (app *Application) Run(ctx context.Context) error {
 
 	for name, subserver := range app.cfg.SubServers {
 		if !subserver.Enabled {
-			slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", name))
+			slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", string(name)))
 			continue
 		}
 
-		if !di.RegisterGrpcServer(ctx, name, grpc_server, app.cfg) {
-			slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", name))
+		if !RegisterGrpcServer(ctx, name, grpc_server, app.cfg) {
+			slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", string(name)))
 			continue
 		}
 
-		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
+		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", string(name)))
 	}
 
 	var addr_format string

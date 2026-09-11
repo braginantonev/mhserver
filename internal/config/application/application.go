@@ -32,7 +32,7 @@ type ApplicationConfig struct {
 	Address       string
 	Port          int
 	Memory        config.MemoryConfig
-	SubServers    map[string]*SubServer
+	SubServers    map[config.ServiceName]*SubServer
 }
 
 func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
@@ -72,10 +72,10 @@ func (cfg *ApplicationConfig) Init(config_dir, db_name string) error {
 
 	if priority_sum != 0 {
 		mem_chunk := cfg.Memory.Allocated / uint64(priority_sum)
-		for n, srv := range cfg.SubServers {
+		for name, srv := range cfg.SubServers {
 			if srv.Enabled && srv.Extra.AllocatedMemory == 0 {
 				srv.Extra.AllocatedMemory = mem_chunk * uint64(srv.Extra.Priority)
-				slog.Debug("Allocate memory for", slog.String("subserver", n), slog.Any("value", srv.Extra.AllocatedMemory))
+				slog.Debug("Allocate memory for", slog.String("subserver", string(name)), slog.Any("value", srv.Extra.AllocatedMemory))
 			}
 		}
 	}
