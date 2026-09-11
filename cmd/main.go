@@ -1,19 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/version"
-)
-
-var (
-	ArgAppMode = map[string]application.ApplicationMode{
-		"-M": application.AppMode_MainServerOnly,
-		"-S": application.AppMode_SubServersOnly,
-	}
 )
 
 func main() {
@@ -25,15 +19,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	app_mode := application.AppMode_AllServers
-	for _, arg := range os.Args {
-		mode, ok := ArgAppMode[arg]
-		if ok {
-			app_mode = mode
-		}
-	}
+	ctx := context.Background()
 
-	if err := app.Run(app_mode); err != nil {
+	if err := app.Run(ctx); err != nil {
 		slog.Error("Failed run application", slog.Any("error", err))
 		os.Exit(1)
 	}
