@@ -5,8 +5,8 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/config"
 	appconfig "github.com/braginantonev/mhserver/internal/config/application"
-	"github.com/braginantonev/mhserver/internal/grpc/data"
-	data_pb "github.com/braginantonev/mhserver/proto/data"
+	"github.com/braginantonev/mhserver/internal/services/data"
+	data_pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"google.golang.org/grpc"
 )
 

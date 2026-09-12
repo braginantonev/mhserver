@@ -11,7 +11,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
-	pb "github.com/braginantonev/mhserver/proto/data"
+	pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 )

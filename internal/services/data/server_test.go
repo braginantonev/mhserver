@@ -13,9 +13,9 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	"github.com/braginantonev/mhserver/internal/grpc/data"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
-	pb "github.com/braginantonev/mhserver/proto/data"
+	"github.com/braginantonev/mhserver/internal/services/data"
+	pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
