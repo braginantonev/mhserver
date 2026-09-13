@@ -21,8 +21,8 @@ const (
 	SELECT_USER_PASS           string = "SELECT password FROM users WHERE user = ?"
 	SELECT_REGISTER_SECRET_KEY string = "SELECT id FROM register_secret_keys WHERE secret_key = ?"
 
-	INSERT_REG_USER string = `INSERT INTO users (user, password) VALUES (?, ?); 
-DELETE FROM register_secret_keys WHERE id = ?;`
+	INSERT_REG_USER string = "INSERT INTO users (user, password) VALUES (?, ?)"
+	DELETE_REG_KEY  string = "DELETE FROM register_secret_keys WHERE id = ?"
 
 	DATABASE_TIMEOUT time.Duration = 2 * time.Second
 )
@@ -131,11 +131,30 @@ func (s *AuthServer) Register(ctx context.Context, reg_info *pb.RegisterRequest)
 		return nil, ErrInternal
 	}
 
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed start register user transaction", slog.Any("error", err))
+		return nil, ErrInternal
+	}
+
 	db_ctx, cancel = context.WithTimeout(ctx, DATABASE_TIMEOUT)
 	defer cancel()
 
-	if _, err = s.db.ExecContext(db_ctx, INSERT_REG_USER, username, string(hash), key_id); err != nil {
+	if _, err = tx.ExecContext(db_ctx, INSERT_REG_USER, username, string(hash)); err != nil {
 		slog.ErrorContext(ctx, "failed insert user to database", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
+	db_ctx, cancel = context.WithTimeout(ctx, DATABASE_TIMEOUT)
+	defer cancel()
+
+	if _, err = tx.ExecContext(db_ctx, DELETE_REG_KEY, key_id); err != nil {
+		slog.ErrorContext(ctx, "failed insert user to database", slog.Any("err", err))
+		return nil, ErrInternal
+	}
+
+	if err = tx.Commit(); err != nil {
+		slog.ErrorContext(ctx, "failed commit register db transaction", slog.Any("err", err))
 		return nil, ErrInternal
 	}
 
