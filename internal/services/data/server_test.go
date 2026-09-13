@@ -3,7 +3,6 @@ package data_test
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -14,12 +13,12 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
+	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/internal/services/data"
 	pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -85,27 +84,6 @@ sendLoop:
 
 	_, err = stream.CloseAndRecv()
 	return err
-}
-
-func errorIs(err error, target error) bool {
-	// Standard check
-	if errors.Is(err, target) {
-		return true
-	}
-
-	// GRPC error check
-
-	target_desc := ""
-	if target != nil {
-		target_desc = target.Error()
-	}
-
-	st, ok := status.FromError(err)
-	if ok {
-		return st.Message() == target_desc
-	}
-
-	return false
 }
 
 func TestInitFile(t *testing.T) {
@@ -234,7 +212,7 @@ func TestInitFile(t *testing.T) {
 			t.Parallel()
 			_, err := data_client.InitFile(t.Context(), test.req_file)
 
-			if !errorIs(err, test.expected_err) {
+			if !services.IsFromGRPC(err, test.expected_err) {
 				t.Errorf("expected %v but got %v", test.expected_err, err)
 			}
 		})
@@ -343,7 +321,7 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("failed send chunk: %s", err)
 		}
 
-		if _, err = stream.CloseAndRecv(); !errorIs(err, data.ErrConnectionNotFound) {
+		if _, err = stream.CloseAndRecv(); !services.IsFromGRPC(err, data.ErrConnectionNotFound) {
 			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
@@ -435,7 +413,7 @@ func TestSaveFile(t *testing.T) {
 			err = saveFile(t.Context(), data_client, test.req_file, strings.NewReader(test.save_data))
 
 			if test.expected_err != nil {
-				if !errorIs(err, test.expected_err) {
+				if !services.IsFromGRPC(err, test.expected_err) {
 					t.Errorf("expected error %v, but got %v", test.expected_err, err)
 				}
 				return
@@ -516,7 +494,7 @@ func TestReadFile(t *testing.T) {
 			t.Fatalf("failed create stream: %s", err)
 		}
 
-		if _, err = stream.Recv(); !errorIs(err, data.ErrConnectionNotFound) {
+		if _, err = stream.Recv(); !services.IsFromGRPC(err, data.ErrConnectionNotFound) {
 			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
@@ -871,7 +849,7 @@ func TestGetFiles(t *testing.T) {
 				Value: test.target_dir,
 			})
 
-			if !errorIs(err, test.expected_err) {
+			if !services.IsFromGRPC(err, test.expected_err) {
 				t.Fatalf("expected error: %v, but got: %v", test.expected_err, err)
 			}
 
@@ -951,7 +929,7 @@ func TestGetFiles(t *testing.T) {
 			Value: "/unexpected_dir/",
 		})
 
-		if !errorIs(err, data.ErrDirNotFound) {
+		if !services.IsFromGRPC(err, data.ErrDirNotFound) {
 			t.Fatalf("expected ErrDirNotFound error, but got: %v", err)
 		}
 	})
