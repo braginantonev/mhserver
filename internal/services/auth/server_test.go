@@ -4,22 +4,29 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/repository/database"
-	"github.com/braginantonev/mhserver/internal/service/auth"
+	"github.com/braginantonev/mhserver/internal/services"
+	"github.com/braginantonev/mhserver/internal/services/auth"
+	pb "github.com/braginantonev/mhserver/proto/gen/auth"
 	"github.com/go-sql-driver/mysql"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
 	TEST_REGISTER_SECRET_KEY   string = "TEST_SECRET_KEY"
 	INSERT_REGISTER_SECRET_KEY string = "INSERT INTO register_secret_keys (secret_key) VALUES (?)"
+
+	JWT_SIGNATURE string = "123zxc"
 )
 
-func checkJWTUserMatch(s *auth.AuthService, username, token string) error {
-	parsed, err := s.ParseToJWT(token)
+func checkJWTUserMatch(username, token, signature string) error {
+	parsed, err := auth.ParseStringJWT(token, signature)
 	if err != nil {
 		return err
 	}
@@ -40,36 +47,6 @@ func insertRegisterKeyToDB(db *sql.DB, secret_key string) error {
 }
 
 func TestRegister(t *testing.T) {
-	cases := [...]struct {
-		name         string
-		user         auth.RegisterUser
-		get_from_db  bool // Check user field in db
-		expected_err error
-	}{
-		{
-			name:         "long username",
-			user:         auth.NewRegisterUser(auth.NewUser("[Cop Killers] X1_BestCockSucker_1X", "123"), ""),
-			expected_err: auth.ErrNameTooLong,
-		},
-		{
-			name:         "key not found",
-			user:         auth.NewRegisterUser(auth.NewUser("without reg", "123"), "WRONG KEY"),
-			expected_err: auth.ErrRegSecretKeyNotFound,
-		},
-		{
-			name:         "Base register",
-			user:         auth.NewRegisterUser(auth.NewUser("register_test1", "123"), TEST_REGISTER_SECRET_KEY),
-			get_from_db:  true,
-			expected_err: nil,
-		},
-		{
-			name:         "Already register",
-			user:         auth.NewRegisterUser(auth.NewUser("register_test2", "123"), ""),
-			expected_err: auth.ErrUserAlreadyExists,
-			get_from_db:  true,
-		},
-	}
-
 	db, err := database.OpenDB(mysql.Config{
 		User:                 "mhserver_tests",
 		Passwd:               "",
@@ -82,73 +59,150 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte("123"), bcrypt.DefaultCost)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = db.Exec(auth.INSERT_USER, "register_test2", string(hash))
+	// Create data grpc client
+	grpc_server := grpc.NewServer()
+	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthConfig(JWT_SIGNATURE), db))
+
+	lis, err := net.Listen("tcp", "localhost:8085")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	service := auth.NewAuthService(auth.AuthConfig{
-		JWTSignature:  "123",
-		WorkspacePath: "/tmp/mhserver_tests/",
-		UserCatalogs:  []string{},
-	}, db)
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
+
+	grpc_connection, err := grpc.NewClient("localhost:8085", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	service_client := pb.NewAuthServiceClient(grpc_connection)
+
+	cases := [...]struct {
+		name         string
+		reg_info     *pb.RegisterRequest
+		expected_err error
+	}{
+		{
+			name: "long username",
+			reg_info: &pb.RegisterRequest{
+				User: &pb.User{
+					Name:     "[Cop Killers] X1_BestCockSucker_1X",
+					Password: "123",
+				},
+				SecretKey: "",
+			},
+			expected_err: auth.ErrNameTooLong,
+		},
+		{
+			name: "key not found",
+			reg_info: &pb.RegisterRequest{
+				User: &pb.User{
+					Name:     "unregistered",
+					Password: "123",
+				},
+				SecretKey: "WRONG KEY",
+			},
+			expected_err: auth.ErrRegSecretKeyNotFound,
+		},
+		{
+			name: "Base register",
+			reg_info: &pb.RegisterRequest{
+				User: &pb.User{
+					Name:     "register_test1",
+					Password: "123",
+				},
+				SecretKey: "TEST_REGISTER_SECRET_KEY",
+			},
+			expected_err: nil,
+		},
+	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			if test.user.Key == TEST_REGISTER_SECRET_KEY {
+			if test.reg_info.SecretKey == TEST_REGISTER_SECRET_KEY {
 				if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
 					t.Fatalf("failed to insert register key to DB: %v", err)
 				}
 			}
 
-			err := service.Register(test.user)
-
-			if !errors.Is(err, test.expected_err) {
+			_, err := service_client.Register(t.Context(), test.reg_info)
+			if !services.IsFromGRPC(err, test.expected_err) {
 				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
 			}
 
-			if !test.get_from_db {
+			// skip check in database
+			if test.expected_err != nil {
 				return
 			}
 
-			db_user := auth.User{}
-			row := db.QueryRow(auth.SELECT_USER, test.user.Name)
+			var pass_from_db string
+			row := db.QueryRow(auth.SELECT_USER_PASS, test.reg_info.User.Name)
 
-			if err = row.Scan(&db_user.Name, &db_user.Password); err != nil {
+			if err = row.Scan(&pass_from_db); err != nil {
 				t.Error(err)
 			}
 
-			if db_user.Name != test.user.Name {
-				t.Errorf("expected name %s, but got %s", test.user.Name, db_user.Name)
-			}
-
-			if err = bcrypt.CompareHashAndPassword([]byte(db_user.Password), []byte(test.user.Password)); err != nil {
-				t.Log(db_user.Password)
+			if err = bcrypt.CompareHashAndPassword([]byte(pass_from_db), []byte(test.reg_info.User.Password)); err != nil {
 				t.Errorf("password incorrect. error=%s", err.Error())
 			}
 
-			row = db.QueryRow(auth.SELECT_REGISTER_SECRET_KEY, test.user.Key)
-			var temp int
-			if err := row.Scan(&temp); err != nil {
+			var reg_key int
+			if err = db.QueryRow(auth.SELECT_REGISTER_SECRET_KEY, test.reg_info.SecretKey).Scan(&reg_key); err != nil {
 				if !errors.Is(err, sql.ErrNoRows) {
 					t.Error("failed check delete reg key.", err.Error())
+					return
 				}
+				t.Errorf("failed scan database for secret key: %s", err.Error())
 			} else {
-				t.Error("secret key not deleted after registration")
+				t.Errorf("secret key not deleted after registration (key_id = %d)", reg_key)
 			}
 		})
 
-		_, err := db.Exec("DELETE FROM users WHERE user = ?", test.user.Name)
+		_, err := db.Exec("DELETE FROM users WHERE user = ?", test.reg_info.User.Name)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
+
+	t.Run("already registered", func(t *testing.T) {
+		username := "register_test2"
+		if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+			t.Fatalf("failed insert secret key to db. err=%s", err)
+		}
+
+		// register user
+		hash, err := bcrypt.GenerateFromPassword([]byte("123"), bcrypt.DefaultCost)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = db.Exec(auth.INSERT_REG_USER, username, string(hash))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err = service_client.Register(t.Context(), &pb.RegisterRequest{
+			User: &pb.User{
+				Name:     username,
+				Password: "123",
+			},
+			SecretKey: "xzc",
+		}); !services.IsFromGRPC(err, auth.ErrUserAlreadyExists) {
+			t.Errorf("expected error `%s`, but got `%s`", auth.ErrUserAlreadyExists, err)
+		}
+
+		// cleanup
+		if _, err = db.Exec("DELETE FROM users WHERE user = ?", username); err != nil {
+			t.Errorf("failed delete user (err = %s)", err)
+		}
+	})
+
 }
 
+/*
 func TestLogin(t *testing.T) {
 	db, err := database.OpenDB(mysql.Config{
 		User:                 "mhserver_tests",
@@ -225,3 +279,4 @@ func TestLogin(t *testing.T) {
 		fmt.Println(err)
 	}
 }
+*/

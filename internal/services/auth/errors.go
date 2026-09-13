@@ -12,7 +12,9 @@ var (
 	ErrWrongJWTName        error = errors.New("wrong username from jwt token")
 
 	// External errors
+	ErrEmptyRequest         error = errors.New("request is empty")
 	ErrNameTooLong          error = errors.New("name is too long")
+	ErrNullUsername         error = errors.New("username is null")
 	ErrRegSecretKeyNotFound error = errors.New("wrong register secret key")
 
 	// - Login errors

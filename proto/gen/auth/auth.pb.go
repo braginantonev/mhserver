@@ -24,7 +24,7 @@ const (
 
 type User struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Login         string                 `protobuf:"bytes,1,opt,name=login,proto3" json:"login,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -60,9 +60,9 @@ func (*User) Descriptor() ([]byte, []int) {
 	return file_auth_auth_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *User) GetLogin() string {
+func (x *User) GetName() string {
 	if x != nil {
-		return x.Login
+		return x.Name
 	}
 	return ""
 }
@@ -174,9 +174,9 @@ var File_auth_auth_proto protoreflect.FileDescriptor
 
 const file_auth_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x0fauth/auth.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"8\n" +
-	"\x04User\x12\x14\n" +
-	"\x05login\x18\x01 \x01(\tR\x05login\x12\x1a\n" +
+	"\x0fauth/auth.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"6\n" +
+	"\x04User\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"%\n" +
 	"\rLoginResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"P\n" +
