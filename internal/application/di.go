@@ -2,49 +2,30 @@ package application
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/braginantonev/mhserver/internal/config"
 	appconfig "github.com/braginantonev/mhserver/internal/config/application"
+	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/internal/services/data"
+	auth_pb "github.com/braginantonev/mhserver/proto/gen/auth"
 	data_pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"google.golang.org/grpc"
 )
 
-func regDataServer(ctx context.Context, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig, server_cfg appconfig.SubServer) {
-	data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, data.NewDataServerConfig(
-		app_cfg.WorkspacePath,
-		app_cfg.Memory.WithAllocated(server_cfg.Extra.AllocatedMemory),
-	)))
-}
-
-func RegisterGrpcServer(ctx context.Context, service config.ServiceName, grpc *grpc.Server, app_cfg appconfig.ApplicationConfig) bool {
+func RegisterGrpcServer(ctx context.Context, grpc *grpc.Server, service config.ServiceName, app_cfg appconfig.ApplicationConfig, db *sql.DB) bool {
 	switch service {
 	case data.SERVICE_NAME:
-		regDataServer(ctx, grpc, app_cfg, *app_cfg.SubServers[data.SERVICE_NAME])
+		data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, data.NewDataServerConfig(
+			app_cfg.WorkspacePath,
+			app_cfg.Memory.WithAllocated(app_cfg.SubServers[service].Extra.AllocatedMemory),
+		)))
+	case auth.SERVICE_NAME:
+		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(auth.NewAuthConfig(
+			app_cfg.JWTSignature,
+		), db))
 	default:
 		return false
 	}
 	return true
 }
-
-/* todo
-import (
-	"database/sql"
-
-	appconfig "github.com/braginantonev/mhserver/internal/config/application"
-	"github.com/braginantonev/mhserver/internal/service/auth"
-)
-
-func SetupAuthService(app_cfg appconfig.ApplicationConfig, db *sql.DB) *auth.AuthService {
-	available_services := make([]string, 0, len(app_cfg.SubServers))
-	for sub := range app_cfg.SubServers {
-		available_services = append(available_services, sub)
-	}
-
-	return auth.NewAuthService(auth.AuthConfig{
-		JWTSignature:  app_cfg.JWTSignature,
-		WorkspacePath: app_cfg.WorkspacePath,
-		UserCatalogs:  available_services[1:],
-	}, db)
-}
-*/

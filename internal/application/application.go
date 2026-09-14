@@ -57,7 +57,7 @@ func (app *Application) Run(ctx context.Context) error {
 			continue
 		}
 
-		if !RegisterGrpcServer(ctx, name, grpc_server, app.cfg) {
+		if !RegisterGrpcServer(ctx, grpc_server, name, app.cfg, app.db) {
 			slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", string(name)))
 			continue
 		}
