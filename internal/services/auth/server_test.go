@@ -209,7 +209,6 @@ func TestRegister(t *testing.T) {
 
 }
 
-/*
 func TestLogin(t *testing.T) {
 	db, err := database.OpenDB(mysql.Config{
 		User:                 "mhserver_tests",
@@ -223,42 +222,76 @@ func TestLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	jwt_signature := "test"
-	registered_user := auth.NewRegisterUser(auth.NewUser("test_login1", "123"), TEST_REGISTER_SECRET_KEY)
+	// Create data grpc client
+	grpc_server := grpc.NewServer()
+	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthConfig(JWT_SIGNATURE), db))
 
-	if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
-		t.Fatalf("failed to insert register key to DB: %v", err)
+	lis, err := net.Listen("tcp", "localhost:8085")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	service := auth.NewAuthService(auth.AuthConfig{
-		JWTSignature:  jwt_signature,
-		WorkspacePath: "/tmp/mhserver_tests/",
-		UserCatalogs:  []string{},
-	}, db)
+	go func() {
+		if err := grpc_server.Serve(lis); err != nil {
+			panic(err)
+		}
+	}()
 
-	if err := service.Register(registered_user); err != nil {
+	grpc_connection, err := grpc.NewClient("localhost:8085", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	service_client := pb.NewAuthServiceClient(grpc_connection)
+
+	// register user
+
+	registered_user := &pb.User{
+		Name:     "login_user_1",
+		Password: "123",
+	}
+
+	err, clean := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
+	if err != nil {
+		t.Fatalf("failed insert register key (err = %s)", err)
+	}
+	defer clean()
+
+	if _, err := service_client.Register(t.Context(), &pb.RegisterRequest{
+		User:      registered_user,
+		SecretKey: TEST_REGISTER_SECRET_KEY,
+	}); err != nil {
 		t.Fatal(err)
 	}
 
 	cases := [...]struct {
 		name         string
-		user         auth.User
+		user         *pb.User
 		expected_err error
 		check_reg    bool
 	}{
 		{
-			name:         "Not registered",
-			user:         auth.NewUser("unregistered user", "123"),
+			name: "not registered",
+			user: &pb.User{
+				Name:     "unregistered user",
+				Password: "123",
+			},
 			expected_err: auth.ErrUserNotExist,
 		},
 		{
-			name:         "Wrong password",
-			user:         auth.NewUser(registered_user.Name, "WRONG"),
+			name: "wrong password",
+			user: &pb.User{
+				Name:     registered_user.Name,
+				Password: "wrong password",
+			},
 			expected_err: auth.ErrWrongPassword,
 		},
 		{
-			name:         "Normal login",
-			user:         auth.NewUser(registered_user.Name, "123"),
+			name: "normal login",
+			user: &pb.User{
+				Name:     registered_user.Name,
+				Password: registered_user.Password,
+			},
 			expected_err: nil,
 			check_reg:    true,
 		},
@@ -266,8 +299,8 @@ func TestLogin(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			token, err := service.Login(test.user)
-			if !errors.Is(err, test.expected_err) {
+			token, err := service_client.Login(t.Context(), test.user)
+			if !services.IsFromGRPC(err, test.expected_err) {
 				t.Errorf("expected error: %v, but got: %v", test.expected_err, err)
 			}
 
@@ -275,7 +308,7 @@ func TestLogin(t *testing.T) {
 				return
 			}
 
-			if err := checkJWTUserMatch(service, test.user.Name, token); err != nil {
+			if err := checkJWTUserMatch(test.user.Name, token.Token, JWT_SIGNATURE); err != nil {
 				t.Error(err)
 			}
 		})
@@ -286,4 +319,3 @@ func TestLogin(t *testing.T) {
 		fmt.Println(err)
 	}
 }
-*/
