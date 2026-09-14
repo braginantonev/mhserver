@@ -115,13 +115,13 @@ func TestRegister(t *testing.T) {
 			expected_err: auth.ErrRegSecretKeyNotFound,
 		},
 		{
-			name: "Base register",
+			name: "base register",
 			reg_info: &pb.RegisterRequest{
 				User: &pb.User{
 					Name:     "register_test1",
 					Password: "123",
 				},
-				SecretKey: "TEST_REGISTER_SECRET_KEY",
+				SecretKey: TEST_REGISTER_SECRET_KEY,
 			},
 			expected_err: nil,
 		},
@@ -142,15 +142,13 @@ func TestRegister(t *testing.T) {
 				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
 			}
 
-			// skip check in databasea
+			// skip check in database
 			if test.expected_err != nil {
 				return
 			}
 
 			var pass_from_db string
-			row := db.QueryRow(auth.SELECT_USER_PASS, test.reg_info.User.Name)
-
-			if err = row.Scan(&pass_from_db); err != nil {
+			if err = db.QueryRow(auth.SELECT_USER_PASS, test.reg_info.User.Name).Scan(&pass_from_db); err != nil {
 				t.Error(err)
 			}
 
@@ -160,11 +158,10 @@ func TestRegister(t *testing.T) {
 
 			var reg_key int
 			if err = db.QueryRow(auth.SELECT_REGISTER_SECRET_KEY, test.reg_info.SecretKey).Scan(&reg_key); err != nil {
-				if !errors.Is(err, sql.ErrNoRows) {
-					t.Error("failed check delete reg key.", err.Error())
+				if errors.Is(err, sql.ErrNoRows) {
 					return
 				}
-				t.Errorf("failed scan database for secret key: %s", err.Error())
+				t.Error("failed check delete reg key.", err.Error())
 			} else {
 				t.Errorf("secret key not deleted after registration (key_id = %d)", reg_key)
 			}

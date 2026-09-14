@@ -99,8 +99,8 @@ func (s *AuthServer) Register(ctx context.Context, reg_info *pb.RegisterRequest)
 	db_ctx, cancel := context.WithTimeout(ctx, DATABASE_TIMEOUT)
 	defer cancel()
 
-	row := s.db.QueryRowContext(db_ctx, SELECT_USERID, username)
-	if err := row.Scan(); err == nil {
+	var user_id int
+	if err := s.db.QueryRowContext(db_ctx, SELECT_USERID, username).Scan(&user_id); err == nil {
 		return nil, ErrUserAlreadyExists
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		slog.ErrorContext(ctx, "failed select user from database", slog.Any("error", err))
@@ -115,8 +115,7 @@ func (s *AuthServer) Register(ctx context.Context, reg_info *pb.RegisterRequest)
 	}
 
 	var key_id int
-	key_row := s.db.QueryRowContext(db_ctx, SELECT_REGISTER_SECRET_KEY, reg_info.SecretKey)
-	if err := key_row.Scan(&key_id); err != nil {
+	if err := s.db.QueryRowContext(db_ctx, SELECT_REGISTER_SECRET_KEY, reg_info.SecretKey).Scan(&key_id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrRegSecretKeyNotFound
 		}
@@ -149,7 +148,7 @@ func (s *AuthServer) Register(ctx context.Context, reg_info *pb.RegisterRequest)
 	defer cancel()
 
 	if _, err = tx.ExecContext(db_ctx, DELETE_REG_KEY, key_id); err != nil {
-		slog.ErrorContext(ctx, "failed insert user to database", slog.Any("err", err))
+		slog.ErrorContext(ctx, "failed delete reg key in database", slog.Any("err", err))
 		return nil, ErrInternal
 	}
 
