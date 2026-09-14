@@ -41,9 +41,15 @@ func checkJWTUserMatch(username, token, signature string) error {
 	return nil
 }
 
-func insertRegisterKeyToDB(db *sql.DB, secret_key string) error {
-	_, err := db.Exec(INSERT_REGISTER_SECRET_KEY, secret_key)
-	return err
+// return cleanup function or error
+func insertTempSecretKey(db *sql.DB, secret_key string) (error, func()) {
+	if _, err := db.Exec(INSERT_REGISTER_SECRET_KEY, secret_key); err != nil {
+		return err, nil
+	}
+
+	return nil, func() {
+		_, _ = db.Exec("DELETE FROM register_secret_keys WHERE secret_key = ?", secret_key)
+	}
 }
 
 func TestRegister(t *testing.T) {
@@ -124,9 +130,11 @@ func TestRegister(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			if test.reg_info.SecretKey == TEST_REGISTER_SECRET_KEY {
-				if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
+				err, clean := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
+				if err != nil {
 					t.Fatalf("failed to insert register key to DB: %v", err)
 				}
+				defer clean()
 			}
 
 			_, err := service_client.Register(t.Context(), test.reg_info)
@@ -134,7 +142,7 @@ func TestRegister(t *testing.T) {
 				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
 			}
 
-			// skip check in database
+			// skip check in databasea
 			if test.expected_err != nil {
 				return
 			}
@@ -170,9 +178,11 @@ func TestRegister(t *testing.T) {
 
 	t.Run("already registered", func(t *testing.T) {
 		username := "register_test2"
-		if err := insertRegisterKeyToDB(db, TEST_REGISTER_SECRET_KEY); err != nil {
-			t.Fatalf("failed insert secret key to db. err=%s", err)
+		err, clean := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
+		if err != nil {
+			t.Fatalf("failed to insert register key to DB: %v", err)
 		}
+		defer clean()
 
 		// register user
 		hash, err := bcrypt.GenerateFromPassword([]byte("123"), bcrypt.DefaultCost)
