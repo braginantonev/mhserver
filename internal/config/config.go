@@ -4,10 +4,13 @@ package config
 import "time"
 
 const (
-	DATABASE_NAME        = "mhserver"
-	WORKSPACE_PATH       = "/opt/mhserver/"
-	CONFIG_DIRECTORY     = WORKSPACE_PATH + "config/"
-	USER_SPACE_DIRECTORY = WORKSPACE_PATH + "uspace/"
+	DATABASE_USER string = "mhserver"
+	DATABASE_NAME string = "mhs_main"
+
+	WORKSPACE_PATH           string = "/opt/mhserver/"
+	CONFIG_DIRECTORY         string = WORKSPACE_PATH + "config/"
+	DEFAULT_CONFIG_DIRECTORY string = CONFIG_DIRECTORY + "default/"
+	USER_SPACE_DIRECTORY     string = WORKSPACE_PATH + "uspace/"
 )
 
 type ServiceName string

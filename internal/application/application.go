@@ -8,34 +8,33 @@ import (
 	"net"
 	"strings"
 
-	appconfig "github.com/braginantonev/mhserver/internal/config/application"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 )
 
-const (
-	DATABASE_NAME    string = "mhserver"
-	CONFIG_DIRECTORY string = "/usr/share/mhserver/"
-)
-
 type Application struct {
-	cfg appconfig.ApplicationConfig
+	cfg ApplicationConfig
 	db  *sql.DB
 }
 
 func NewApplication() (*Application, error) {
-	var cfg appconfig.ApplicationConfig
-	if err := cfg.Init(CONFIG_DIRECTORY, DATABASE_NAME); err != nil {
+	cfg, err := NewApplicationConfig()
+	if err != nil {
 		return nil, err
 	}
 
+	slog.Info("Configuration loaded.")
+	slog.Info(fmt.Sprintf("Server will be serve at %s on %d port", cfg.Server.Address, cfg.Server.Port))
+	slog.Info(fmt.Sprintf("Server configured to use \"%s/%s\" database", config.DATABASE_USER, config.DATABASE_NAME))
+
 	db, err := database.OpenDB(mysql.Config{
-		User:                 "mhserver",
+		User:                 config.DATABASE_USER,
 		Passwd:               cfg.DBPass,
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
-		DBName:               "mhs_main",
+		DBName:               config.DATABASE_NAME,
 		AllowNativePasswords: true,
 	})
 	if err != nil {
