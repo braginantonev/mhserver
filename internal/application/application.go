@@ -32,7 +32,7 @@ func NewApplication() (*Application, error) {
 
 	db, err := database.OpenDB(mysql.Config{
 		User:                 "mhserver",
-		Passwd:               cfg.DB_Pass,
+		Passwd:               cfg.DBPass,
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "mhs_main",
@@ -51,7 +51,7 @@ func NewApplication() (*Application, error) {
 func (app *Application) Run(ctx context.Context) error {
 	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize + 1024))) // additional bytes to avoid panic (out of memory), when max chunk size is very small
 
-	for name, subserver := range app.cfg.SubServers {
+	for name, subserver := range app.cfg.Services {
 		if !subserver.Enabled {
 			slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", string(name)))
 			continue
@@ -66,13 +66,13 @@ func (app *Application) Run(ctx context.Context) error {
 	}
 
 	var addr_format string
-	if strings.ContainsRune(app.cfg.Address, ':') {
+	if strings.ContainsRune(app.cfg.Server.Address, ':') {
 		addr_format = "[%s]:%d" // ip v6
 	} else {
 		addr_format = "%s:%d" // ip v4
 	}
 
-	addr := fmt.Sprintf(addr_format, app.cfg.Address, app.cfg.Port)
+	addr := fmt.Sprintf(addr_format, app.cfg.Server.Address, app.cfg.Server.Port)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err

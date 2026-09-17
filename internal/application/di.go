@@ -17,8 +17,8 @@ func RegisterGrpcServer(ctx context.Context, grpc *grpc.Server, service config.S
 	switch service {
 	case data.SERVICE_NAME:
 		data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, data.NewDataServerConfig(
-			app_cfg.WorkspacePath,
-			app_cfg.Memory.WithAllocated(app_cfg.SubServers[service].Extra.AllocatedMemory),
+			config.USER_SPACE_DIRECTORY,
+			app_cfg.Memory,
 		)))
 	case auth.SERVICE_NAME:
 		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(auth.NewAuthConfig(
