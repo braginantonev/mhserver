@@ -3,7 +3,8 @@ package auth
 import "github.com/braginantonev/mhserver/internal/config"
 
 const (
-	SERVICE_NAME config.ServiceName = "auth"
+	SERVICE_NAME   config.ServiceName = "auth"
+	SEMAPHORE_SIZE int                = 50
 )
 
 type AuthConfig struct {

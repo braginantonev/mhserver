@@ -3,8 +3,8 @@ package data
 import "github.com/braginantonev/mhserver/internal/config"
 
 const (
-	SERVICE_NAME    config.ServiceName = "files"
-	BASE_CHUNK_SIZE uint64             = 32 * 1024 // 32 kb
+	SERVICE_NAME   config.ServiceName = "files"
+	SEMAPHORE_SIZE int                = 100
 )
 
 type DataServiceConfig struct {

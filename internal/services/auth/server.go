@@ -37,7 +37,7 @@ type AuthServer struct {
 func NewAuthServer(cfg AuthConfig, db *sql.DB) *AuthServer {
 	return &AuthServer{
 		cfg: cfg,
-		sem: repository.NewSemaphore(100),
+		sem: repository.NewSemaphore(SEMAPHORE_SIZE),
 		db:  db,
 	}
 }
