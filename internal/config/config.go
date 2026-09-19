@@ -1,17 +1,23 @@
 // Пакет с общими структурами, необходимыми для прочих конфигов.
 package config
 
-import "time"
+import (
+	"os"
+	"time"
+
+	"github.com/pelletier/go-toml/v2"
+)
 
 const (
-	DATABASE_USER string = "mhserver"
-	DATABASE_NAME string = "mhs_main"
-
-	WORKSPACE_PATH           string = "/opt/mhserver/"
-	CONFIG_DIRECTORY         string = WORKSPACE_PATH + "config/"
-	DEFAULT_CONFIG_DIRECTORY string = CONFIG_DIRECTORY + "default/"
-	USER_SPACE_DIRECTORY     string = WORKSPACE_PATH + "uspace/"
+	CONFIG_DIRECTORY         string = "config"
+	DEFAULT_CONFIG_DIRECTORY string = "config/default"
+	USER_SPACE_DIRECTORY     string = "uspace"
+	LOGS_DIRECTORY           string = "logs"
 )
+
+type ServiceConfig interface {
+	Init() error
+}
 
 type ServiceName string
 
@@ -24,4 +30,18 @@ type LimiterConfig struct {
 type MemoryConfig struct {
 	MaxChunkSize uint64 `toml:"max_chunk_size"`
 	MinChunkSize uint64 `toml:"min_chunk_size"`
+}
+
+func InitFromFile[T any](file string, dest *T) error {
+	from_file, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	// override by user config
+	if err := toml.Unmarshal(from_file, dest); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -3,9 +3,9 @@ package application
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	"github.com/pelletier/go-toml/v2"
 )
 
 type Server struct {
@@ -20,32 +20,30 @@ type Service struct {
 type ApplicationConfig struct {
 	JWTSignature string
 	DBPass       string
-	Server       Server
-	RateLimiter  config.LimiterConfig
-	Memory       config.MemoryConfig
-	Services     map[config.ServiceName]Service
+
+	WorkspacePath string `toml:"-"`
+	Server        Server
+	RateLimiter   config.LimiterConfig
+	Memory        config.MemoryConfig
+	Services      map[config.ServiceName]Service
 }
 
 func NewApplicationConfig() (ApplicationConfig, error) {
 	var cfg ApplicationConfig
 
-	default_cfg, err := os.ReadFile(config.DEFAULT_CONFIG_DIRECTORY + "server.conf.default")
-	if err != nil {
-		return cfg, err
+	workspace_path, ok := os.LookupEnv("WORKSPACE_PATH")
+	if !ok {
+		return cfg, errors.New("workspace path env not found")
 	}
+	cfg.WorkspacePath = workspace_path
 
 	// set default values
-	if err := toml.Unmarshal(default_cfg, &cfg); err != nil {
+	if err := config.InitFromFile(filepath.Join(cfg.WorkspacePath, config.DEFAULT_CONFIG_DIRECTORY, "server.conf.default"), &cfg); err != nil {
 		return cfg, err
 	}
 
-	from_file, err := os.ReadFile(config.CONFIG_DIRECTORY + "server.conf")
-	if err != nil {
-		return cfg, err
-	}
-
-	// override by user config
-	if err := toml.Unmarshal(from_file, &cfg); err != nil {
+	// set user override values
+	if err := config.InitFromFile(filepath.Join(cfg.WorkspacePath, config.CONFIG_DIRECTORY, "server.conf"), &cfg); err != nil {
 		return cfg, err
 	}
 

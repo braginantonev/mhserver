@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/services/auth"
@@ -12,19 +13,33 @@ import (
 	"google.golang.org/grpc"
 )
 
-func RegisterGrpcServer(ctx context.Context, grpc *grpc.Server, service config.ServiceName, app_cfg ApplicationConfig, db *sql.DB) bool {
+var ErrServiceNotFound error = errors.New("service not found")
+
+func RegisterGrpcServer(ctx context.Context, grpc *grpc.Server, service config.ServiceName, app_cfg ApplicationConfig, db *sql.DB) error {
 	switch service {
 	case data.SERVICE_NAME:
-		data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, data.NewDataServerConfig(
-			config.USER_SPACE_DIRECTORY,
+		cfg := data.NewDataServerConfig(
+			app_cfg.WorkspacePath,
 			app_cfg.Memory,
-		)))
+		)
+		if err := cfg.Init(); err != nil {
+			return err
+		}
+		data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, cfg))
+
 	case auth.SERVICE_NAME:
-		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(auth.NewAuthConfig(
+		cfg := auth.NewAuthServiceConfig(
+			app_cfg.WorkspacePath,
 			app_cfg.JWTSignature,
-		), db))
+		)
+		if err := cfg.Init(); err != nil {
+			return err
+		}
+		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(cfg, db))
+
 	default:
-		return false
+		return ErrServiceNotFound
 	}
-	return true
+
+	return nil
 }

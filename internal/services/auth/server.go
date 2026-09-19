@@ -29,12 +29,12 @@ const (
 
 type AuthServer struct {
 	pb.AuthServiceServer
-	cfg AuthConfig
+	cfg AuthServiceConfig
 	sem repository.Semaphore
 	db  *sql.DB
 }
 
-func NewAuthServer(cfg AuthConfig, db *sql.DB) *AuthServer {
+func NewAuthServer(cfg AuthServiceConfig, db *sql.DB) *AuthServer {
 	return &AuthServer{
 		cfg: cfg,
 		sem: repository.NewSemaphore(SEMAPHORE_SIZE),

@@ -3,15 +3,20 @@ package application
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"strings"
 
-	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
+)
+
+const (
+	DATABASE_USER string = "mhserver"
+	DATABASE_NAME string = "mhs_main"
 )
 
 type Application struct {
@@ -27,14 +32,14 @@ func NewApplication() (*Application, error) {
 
 	slog.Info("Configuration loaded.")
 	slog.Info(fmt.Sprintf("Server will be serve at %s on %d port", cfg.Server.Address, cfg.Server.Port))
-	slog.Info(fmt.Sprintf("Server configured to use \"%s/%s\" database", config.DATABASE_USER, config.DATABASE_NAME))
+	slog.Info(fmt.Sprintf("Server configured to use \"%s/%s\" database", DATABASE_USER, DATABASE_NAME))
 
 	db, err := database.OpenDB(mysql.Config{
-		User:                 config.DATABASE_USER,
+		User:                 DATABASE_USER,
 		Passwd:               cfg.DBPass,
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
-		DBName:               config.DATABASE_NAME,
+		DBName:               DATABASE_NAME,
 		AllowNativePasswords: true,
 	})
 	if err != nil {
@@ -56,12 +61,16 @@ func (app *Application) Run(ctx context.Context) error {
 			continue
 		}
 
-		if !RegisterGrpcServer(ctx, grpc_server, name, app.cfg, app.db) {
-			slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", string(name)))
+		if err := RegisterGrpcServer(ctx, grpc_server, name, app.cfg, app.db); err != nil {
+			if errors.Is(err, ErrServiceNotFound) {
+				slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", string(name)))
+			} else {
+				slog.Error("failed register service server", slog.Any("error", err))
+			}
 			continue
 		}
 
-		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", string(name)))
+		slog.Info("Register grpc service", slog.String("service_name", string(name)))
 	}
 
 	var addr_format string
