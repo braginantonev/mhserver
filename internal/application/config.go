@@ -1,6 +1,7 @@
 package application
 
 import (
+	"errors"
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/config"
@@ -20,6 +21,7 @@ type ApplicationConfig struct {
 	JWTSignature string
 	DBPass       string
 	Server       Server
+	RateLimiter  config.LimiterConfig
 	Memory       config.MemoryConfig
 	Services     map[config.ServiceName]Service
 }
@@ -45,6 +47,18 @@ func NewApplicationConfig() (ApplicationConfig, error) {
 	// override by user config
 	if err := toml.Unmarshal(from_file, &cfg); err != nil {
 		return cfg, err
+	}
+
+	// get jwt and db pass
+	signature, ok := os.LookupEnv("JWT_SIGNATURE")
+	if !ok {
+		return cfg, errors.New("jwt signature env not found!")
+	}
+	cfg.JWTSignature = signature
+
+	cfg.DBPass, ok = os.LookupEnv("DATABASE_PASSWORD")
+	if !ok {
+		return cfg, errors.New("database pass env not found")
 	}
 
 	return cfg, nil
