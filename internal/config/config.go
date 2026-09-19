@@ -16,6 +16,7 @@ const (
 type ServiceName string
 
 type LimiterConfig struct {
+	Enabled  bool
 	Limit    int
 	Interval time.Duration
 }

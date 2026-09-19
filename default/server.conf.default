@@ -12,8 +12,8 @@ min_chunk_size = "4K"
 
 [ratelimiter]
 enabled = false
-requests = 50
-time_window = 1 # secs
+limit = 50
+interval = 1 # secs
 
 [services.files]
 enabled = false
