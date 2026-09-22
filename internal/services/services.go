@@ -1,14 +1,16 @@
 package services
 
+import "github.com/braginantonev/mhserver/internal/config"
+
 type ServiceName string
 
-type ServiceConfig interface {
-	initDependencies() error
+type Dependencies map[ServiceName]config.ServerSocket
 
-	Init() error
-	GetServiceName() ServiceName
+type ServiceConfig struct {
+	ServiceName  ServiceName `toml:"-"`
+	Dependencies Dependencies
 }
 
 type Service interface {
-	GetConfig() ServiceConfig
+	InitDependencies() error
 }

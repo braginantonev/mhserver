@@ -11,6 +11,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
+	"github.com/braginantonev/mhserver/internal/services"
 	pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -18,6 +19,8 @@ import (
 
 type DataServer struct {
 	pb.DataServiceServer
+	services.Service
+
 	cfg         DataServiceConfig
 	activeFiles *CachedFiles
 	sem         repository.Semaphore

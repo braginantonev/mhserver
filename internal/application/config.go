@@ -3,7 +3,6 @@ package application
 import (
 	"errors"
 	"os"
-	"path/filepath"
 
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/services"
@@ -35,23 +34,19 @@ func NewApplicationConfig() (ApplicationConfig, error) {
 	if !ok {
 		return cfg, errors.New("workspace path env not found")
 	}
+
+	if err := config.LoadConfig(workspace_path, "server.conf", &cfg); err != nil {
+		return cfg, err
+	}
+
 	cfg.WorkspacePath = workspace_path
-
-	// set default values
-	if err := config.InitFromFile(filepath.Join(cfg.WorkspacePath, config.DEFAULT_CONFIG_DIRECTORY, "server.conf.default"), &cfg); err != nil {
-		return cfg, err
-	}
-
-	// set user override values
-	if err := config.InitFromFile(filepath.Join(cfg.WorkspacePath, config.CONFIG_DIRECTORY, "server.conf"), &cfg); err != nil {
-		return cfg, err
-	}
 
 	// get jwt and db pass
 	signature, ok := os.LookupEnv("JWT_SIGNATURE")
 	if !ok {
 		return cfg, errors.New("jwt signature env not found!")
 	}
+
 	cfg.JWTSignature = signature
 
 	cfg.DBPass, ok = os.LookupEnv("DATABASE_PASSWORD")

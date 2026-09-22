@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/braginantonev/mhserver/internal/repository"
+	"github.com/braginantonev/mhserver/internal/services"
 	pb "github.com/braginantonev/mhserver/proto/gen/auth"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -29,6 +30,8 @@ const (
 
 type AuthServer struct {
 	pb.AuthServiceServer
+	services.Service
+
 	cfg AuthServiceConfig
 	sem repository.Semaphore
 	db  *sql.DB
