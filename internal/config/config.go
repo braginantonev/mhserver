@@ -15,6 +15,11 @@ const (
 	LOGS_DIRECTORY           string = "logs"
 )
 
+type ServerSocket struct {
+	Address string
+	Port    int16
+}
+
 type LimiterConfig struct {
 	Enabled  bool
 	Limit    int

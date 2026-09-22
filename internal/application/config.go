@@ -10,8 +10,7 @@ import (
 )
 
 type Server struct {
-	Address string
-	Port    int
+	config.ServerSocket
 }
 
 type Service struct {
