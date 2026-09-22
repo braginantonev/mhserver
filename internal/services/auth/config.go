@@ -5,15 +5,16 @@ import (
 	"path/filepath"
 
 	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/internal/services"
 )
 
 const (
-	SERVICE_NAME   config.ServiceName = "auth"
-	SEMAPHORE_SIZE int                = 50
+	SERVICE_NAME   services.ServiceName = "auth"
+	SEMAPHORE_SIZE int                  = 50
 )
 
 type AuthServiceConfig struct {
-	ServiceName   config.ServiceName
+	ServiceName   services.ServiceName
 	WorkspacePath string
 	JWTSignature  string
 }

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/internal/services/data"
 	auth_pb "github.com/braginantonev/mhserver/proto/gen/auth"
@@ -15,7 +15,7 @@ import (
 
 var ErrServiceNotFound error = errors.New("service not found")
 
-func RegisterGrpcServer(ctx context.Context, grpc *grpc.Server, service config.ServiceName, app_cfg ApplicationConfig, db *sql.DB) error {
+func RegisterGrpcServer(ctx context.Context, grpc *grpc.Server, service services.ServiceName, app_cfg ApplicationConfig, db *sql.DB) error {
 	switch service {
 	case data.SERVICE_NAME:
 		cfg := data.NewDataServerConfig(

@@ -5,16 +5,17 @@ import (
 	"path/filepath"
 
 	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/internal/services"
 )
 
 const (
-	SERVICE_NAME   config.ServiceName = "files"
-	SEMAPHORE_SIZE int                = 100
+	SERVICE_NAME   services.ServiceName = "files"
+	SEMAPHORE_SIZE int                  = 100
 )
 
 type DataServiceConfig struct {
-	ServiceName   config.ServiceName `toml:"-"`
-	WorkspacePath string             // User files path
+	ServiceName   services.ServiceName `toml:"-"`
+	WorkspacePath string               // User files path
 	Memory        config.MemoryConfig
 }
 

@@ -15,12 +15,6 @@ const (
 	LOGS_DIRECTORY           string = "logs"
 )
 
-type ServiceConfig interface {
-	Init() error
-}
-
-type ServiceName string
-
 type LimiterConfig struct {
 	Enabled  bool
 	Limit    int

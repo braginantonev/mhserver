@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/internal/services"
 )
 
 type Server struct {
@@ -25,7 +26,7 @@ type ApplicationConfig struct {
 	Server        Server
 	RateLimiter   config.LimiterConfig
 	Memory        config.MemoryConfig
-	Services      map[config.ServiceName]Service
+	Services      map[services.ServiceName]Service
 }
 
 func NewApplicationConfig() (ApplicationConfig, error) {
