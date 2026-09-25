@@ -1,0 +1,28 @@
+# DO NOT EDIT.
+# This is default configuration for server.
+# To override fields, create `server.conf` file.
+
+[server]
+address = "localhost" # domain or ip
+port = 30543
+
+[memory]
+max_chunk_size = "5M"
+min_chunk_size = "4K"
+
+[ratelimiter]
+enabled = false
+limit = 50
+interval = 1 # secs
+
+[services.files]
+enabled = false
+
+[services.music]
+enabled = false
+
+[services.images]
+enabled = false
+
+[services.llm]
+enabled = false

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/internal/services"
 )
 
 var (
@@ -21,7 +21,7 @@ func FileIsCorrect(filename string) bool {
 	return len(filename) != 0 && !strings.ContainsRune(filename, '/')
 }
 
-func GetDataPath(workspace_path, user, req_dir string, service config.ServiceName) (string, error) {
+func GetDataPath(workspace_path, user, req_dir string, service services.ServiceName) (string, error) {
 	if !DirIsCorrect(req_dir) {
 		return "", ErrBadDirSyntax
 	}

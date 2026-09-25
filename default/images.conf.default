@@ -1,0 +1,6 @@
+# DO NOT EDIT.
+# This is default configuration for server.
+# To override fields, create `images.conf` file.
+
+[dependencies]
+files = { address = "localhost", port = 30543 }

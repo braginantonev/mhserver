@@ -1,20 +1,25 @@
 package auth
 
-import "github.com/braginantonev/mhserver/internal/config"
-
-const (
-	SERVICE_NAME   config.ServiceName = "auth"
-	SEMAPHORE_SIZE int                = 50
+import (
+	"github.com/braginantonev/mhserver/internal/services"
 )
 
-type AuthConfig struct {
-	ServiceName  config.ServiceName
-	JWTSignature string
+const (
+	SERVICE_NAME   services.ServiceName = "auth"
+	SEMAPHORE_SIZE int                  = 50
+)
+
+type AuthServiceConfig struct {
+	services.ServiceConfig
+
+	WorkspacePath string
+	JWTSignature  string
 }
 
-func NewAuthConfig(jwt_signature string) AuthConfig {
-	return AuthConfig{
-		ServiceName:  SERVICE_NAME,
-		JWTSignature: jwt_signature,
+func NewAuthServiceConfig(workspace_path, jwt_signature string) AuthServiceConfig {
+	return AuthServiceConfig{
+		ServiceName:   SERVICE_NAME,
+		WorkspacePath: workspace_path,
+		JWTSignature:  jwt_signature,
 	}
 }

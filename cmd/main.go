@@ -8,10 +8,16 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/application"
 	"github.com/braginantonev/mhserver/version"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	fmt.Printf("Mhserver (ver. %s)\n", version.Version)
+
+	if err := godotenv.Load(); err != nil {
+		slog.Error("failed load environments", slog.Any("error", err))
+		os.Exit(1)
+	}
 
 	app, err := application.NewApplication()
 	if err != nil {

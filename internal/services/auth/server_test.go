@@ -22,7 +22,8 @@ const (
 	TEST_REGISTER_SECRET_KEY   string = "TEST_SECRET_KEY"
 	INSERT_REGISTER_SECRET_KEY string = "INSERT INTO register_secret_keys (secret_key) VALUES (?)"
 
-	JWT_SIGNATURE string = "123zxc"
+	JWT_SIGNATURE  string = "123zxc"
+	WORKSPACE_PATH string = "/tmp/mhserver_tests"
 )
 
 func checkJWTUserMatch(username, token, signature string) error {
@@ -67,7 +68,7 @@ func TestRegister(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthConfig(JWT_SIGNATURE), db))
+	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthServiceConfig(WORKSPACE_PATH, JWT_SIGNATURE), db))
 
 	lis, err := net.Listen("tcp", "localhost:8085")
 	if err != nil {
@@ -224,7 +225,7 @@ func TestLogin(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthConfig(JWT_SIGNATURE), db))
+	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthServiceConfig(WORKSPACE_PATH, JWT_SIGNATURE), db))
 
 	lis, err := net.Listen("tcp", "localhost:8085")
 	if err != nil {
