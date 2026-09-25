@@ -2,7 +2,6 @@ package interceptors
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,13 +9,15 @@ import (
 	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 var (
-	ErrMissingMetadata   error = errors.New("missed metadata in req")
-	ErrAuthTokenIsMissed error = errors.New("auth token is missed")
-	ErrAuthTokenExpired  error = errors.New("auth token is wrong or expired")
+	ErrMissedMetadata    error = status.Error(codes.InvalidArgument, "missed metadata in req")
+	ErrAuthTokenIsMissed error = status.Error(codes.InvalidArgument, "auth token is missed")
+	ErrAuthBadToken      error = status.Error(codes.Unauthenticated, "auth token is wrong or expired")
 )
 
 type AuthInterceptor struct {
@@ -30,10 +31,6 @@ func NewAuthInterceptors(jwt_signature string) AuthInterceptor {
 }
 
 func (inc *AuthInterceptor) parseToken(authorization []string) (*jwt.Token, error) {
-	if len(authorization) < 1 {
-		return nil, ErrAuthTokenIsMissed
-	}
-
 	token := strings.TrimPrefix(authorization[0], "Bearer ")
 
 	return jwt.Parse(token, func(t *jwt.Token) (any, error) {
@@ -44,18 +41,35 @@ func (inc *AuthInterceptor) parseToken(authorization []string) (*jwt.Token, erro
 	})
 }
 
-func (inc *AuthInterceptor) Unary(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
+func (inc *AuthInterceptor) parseTokenToContext(parent context.Context) (context.Context, error) {
+	md, ok := metadata.FromIncomingContext(parent)
 	if !ok {
-		return nil, ErrMissingMetadata
+		return nil, ErrMissedMetadata
 	}
 
-	parsed, err := inc.parseToken(md["authorization"])
+	authorization := md["authorization"]
+	if len(authorization) < 1 {
+		return nil, ErrAuthTokenIsMissed
+	}
+
+	parsed, err := inc.parseToken(authorization)
 	if err != nil {
-		return nil, ErrAuthTokenExpired
+		return nil, ErrAuthBadToken
 	}
 
-	handler_ctx := context.WithValue(ctx, httpcontextkeys.USERNAME, parsed.Claims.(jwt.MapClaims)["name"].(string))
+	username, ok := parsed.Claims.(jwt.MapClaims)["name"].(string)
+	if !ok {
+		return nil, ErrAuthBadToken
+	}
+
+	return context.WithValue(parent, httpcontextkeys.USERNAME, username), nil
+}
+
+func (inc *AuthInterceptor) Unary(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	handler_ctx, err := inc.parseTokenToContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	m, err := handler(handler_ctx, req)
 	if err != nil {
@@ -66,25 +80,17 @@ func (inc *AuthInterceptor) Unary(ctx context.Context, req any, _ *grpc.UnarySer
 }
 
 func (inc *AuthInterceptor) Stream(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	md, ok := metadata.FromIncomingContext(ss.Context())
-	if !ok {
-		return ErrMissingMetadata
-	}
-
-	parsed, err := inc.parseToken(md["authorization"])
+	handler_ctx, err := inc.parseTokenToContext(ss.Context())
 	if err != nil {
-		return ErrAuthTokenExpired
+		return err
 	}
-
-	handler_ctx := context.WithValue(ss.Context(), httpcontextkeys.USERNAME, parsed.Claims.(jwt.MapClaims)["name"].(string))
 
 	wrapped_stream := WrappedStream{
 		ServerStream: ss,
 		ctx:          handler_ctx,
 	}
 
-	err = handler(srv, wrapped_stream)
-	if err != nil {
+	if err = handler(srv, wrapped_stream); err != nil {
 		slog.ErrorContext(handler_ctx, "RPC failed", slog.Any("error", err))
 	}
 
