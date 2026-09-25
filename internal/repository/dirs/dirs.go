@@ -1,16 +1,17 @@
 package dirs
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/braginantonev/mhserver/internal/services"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
-	ErrBadDirSyntax error = errors.New("directory have bad syntax")
+	ErrBadDirSyntax error = status.Error(codes.InvalidArgument, "directory have bad syntax")
 )
 
 func DirIsCorrect(path string) bool {

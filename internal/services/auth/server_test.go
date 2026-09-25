@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/repository/database"
-	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/internal/services/auth"
 	pb "github.com/braginantonev/mhserver/proto/gen/auth"
 	"github.com/go-sql-driver/mysql"
@@ -139,7 +138,7 @@ func TestRegister(t *testing.T) {
 			}
 
 			_, err := service_client.Register(t.Context(), test.reg_info)
-			if !services.IsFromGRPC(err, test.expected_err) {
+			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
 			}
 
@@ -198,7 +197,7 @@ func TestRegister(t *testing.T) {
 				Password: "123",
 			},
 			SecretKey: "xzc",
-		}); !services.IsFromGRPC(err, auth.ErrUserAlreadyExists) {
+		}); !errors.Is(err, auth.ErrUserAlreadyExists) {
 			t.Errorf("expected error `%s`, but got `%s`", auth.ErrUserAlreadyExists, err)
 		}
 
@@ -301,7 +300,7 @@ func TestLogin(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			token, err := service_client.Login(t.Context(), test.user)
-			if !services.IsFromGRPC(err, test.expected_err) {
+			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected error: %v, but got: %v", test.expected_err, err)
 			}
 

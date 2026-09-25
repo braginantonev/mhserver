@@ -3,6 +3,7 @@ package data_test
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
-	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/internal/services/data"
 	pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"github.com/google/uuid"
@@ -211,7 +211,7 @@ func TestInitFile(t *testing.T) {
 			t.Parallel()
 			_, err := data_client.InitFile(t.Context(), test.req_file)
 
-			if !services.IsFromGRPC(err, test.expected_err) {
+			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected %v but got %v", test.expected_err, err)
 			}
 		})
@@ -319,7 +319,7 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("failed send chunk: %s", err)
 		}
 
-		if _, err = stream.CloseAndRecv(); !services.IsFromGRPC(err, data.ErrConnectionNotFound) {
+		if _, err = stream.CloseAndRecv(); !errors.Is(err, data.ErrConnectionNotFound) {
 			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
@@ -411,7 +411,7 @@ func TestSaveFile(t *testing.T) {
 			err = saveFile(t.Context(), data_client, test.req_file, strings.NewReader(test.save_data))
 
 			if test.expected_err != nil {
-				if !services.IsFromGRPC(err, test.expected_err) {
+				if !errors.Is(err, test.expected_err) {
 					t.Errorf("expected error %v, but got %v", test.expected_err, err)
 				}
 				return
@@ -491,7 +491,7 @@ func TestReadFile(t *testing.T) {
 			t.Fatalf("failed create stream: %s", err)
 		}
 
-		if _, err = stream.Recv(); !services.IsFromGRPC(err, data.ErrConnectionNotFound) {
+		if _, err = stream.Recv(); !errors.Is(err, data.ErrConnectionNotFound) {
 			t.Errorf("expected error %v, but got %v", data.ErrConnectionNotFound, err)
 		}
 	})
@@ -844,7 +844,7 @@ func TestGetFiles(t *testing.T) {
 				Value: test.target_dir,
 			})
 
-			if !services.IsFromGRPC(err, test.expected_err) {
+			if !errors.Is(err, test.expected_err) {
 				t.Fatalf("expected error: %v, but got: %v", test.expected_err, err)
 			}
 
@@ -924,7 +924,7 @@ func TestGetFiles(t *testing.T) {
 			Value: "/unexpected_dir/",
 		})
 
-		if !services.IsFromGRPC(err, data.ErrDirNotFound) {
+		if !errors.Is(err, data.ErrDirNotFound) {
 			t.Fatalf("expected ErrDirNotFound error, but got: %v", err)
 		}
 	})
