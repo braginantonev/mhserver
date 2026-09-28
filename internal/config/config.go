@@ -4,7 +4,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -48,13 +47,8 @@ func loadConfigFromFile[T any](file string, dest *T) error {
 }
 
 func LoadConfig[T any](workspace_path, file string, dest *T) error {
-	default_cfg_file := file
-	if !strings.HasSuffix(default_cfg_file, ".default") {
-		default_cfg_file += ".default"
-	}
-
 	// init default values
-	if err := loadConfigFromFile(filepath.Join(workspace_path, DEFAULT_CONFIG_DIRECTORY, default_cfg_file), dest); err != nil {
+	if err := loadConfigFromFile(filepath.Join(workspace_path, DEFAULT_CONFIG_DIRECTORY, file), dest); err != nil {
 		return err
 	}
 
