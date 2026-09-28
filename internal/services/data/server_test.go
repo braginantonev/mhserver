@@ -13,12 +13,15 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/internal/interceptors"
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/services/data"
+	"github.com/braginantonev/mhserver/pkg/contextkeys"
 	pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 const (
@@ -91,30 +94,12 @@ func TestInitFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create data grpc client
-	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
+	data_service := data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 25,
 		MinChunkSize: 5,
-	})))
+	}))
 
-	lis, err := net.Listen("tcp", "localhost:8084")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go func() {
-		if err := grpc_server.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	grpc_connection, err := grpc.NewClient("localhost:8084", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	data_client := pb.NewDataServiceClient(grpc_connection)
+	req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
 
 	cases := [...]struct {
 		name         string
@@ -125,7 +110,6 @@ func TestInitFile(t *testing.T) {
 			name: "empty directory field",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "",
 				},
 				Name:    "123.txt",
@@ -137,7 +121,6 @@ func TestInitFile(t *testing.T) {
 			name: "going beyond directory",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/../test/",
 				},
 				Name:    "123.txt",
@@ -149,7 +132,6 @@ func TestInitFile(t *testing.T) {
 			name: "directory start is not root",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "test/test1/",
 				},
 				Name:    "123.txt",
@@ -161,7 +143,6 @@ func TestInitFile(t *testing.T) {
 			name: "empty filename",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name:    "",
@@ -173,7 +154,6 @@ func TestInitFile(t *testing.T) {
 			name: "filename bad syntax",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name:    "123/.txt",
@@ -185,7 +165,6 @@ func TestInitFile(t *testing.T) {
 			name: "init from uncreated directory request",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/uncreated_dir/",
 				},
 				Name:    "123.txt",
@@ -197,7 +176,6 @@ func TestInitFile(t *testing.T) {
 			name: "normal init",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name:    "test_normal_init.txt",
@@ -209,7 +187,7 @@ func TestInitFile(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := data_client.InitFile(t.Context(), test.req_file)
+			_, err := data_service.InitFile(req_ctx, test.req_file)
 
 			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected %v but got %v", test.expected_err, err)
@@ -224,14 +202,13 @@ func TestInitFile(t *testing.T) {
 
 		req_file := &pb.RequiredFile{
 			Dir: &pb.Directory{
-				User:  TEST_USER,
 				Value: "/",
 			},
 			Name:    "test_truncate.txt",
 			NewSize: nil, // will be set later in test
 		}
 
-		f, err := os.Create(fmt.Sprintf("%s%s/%s", WORKSPACE_PATH, req_file.Dir.User, req_file.Name))
+		f, err := os.Create(fmt.Sprintf("%s%s/%s", WORKSPACE_PATH, TEST_USER, req_file.Name))
 		if err != nil {
 			t.Fatalf("failed create test file: %s", err)
 		}
@@ -241,7 +218,7 @@ func TestInitFile(t *testing.T) {
 		}
 
 		test_size := func(t *testing.T) {
-			_, err = data_client.InitFile(t.Context(), req_file)
+			_, err = data_service.InitFile(req_ctx, req_file)
 			if err != nil {
 				t.Errorf("failed init file: %s", err)
 			}
@@ -278,25 +255,26 @@ func TestSaveFile(t *testing.T) {
 	}
 
 	max_chunk_size := 10
+	auth_intc := interceptors.NewFakeAuthInterceptor(TEST_USER)
 
-	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_chunk_size + 256))
+	grpc_server := grpc.NewServer(
+		grpc.MaxRecvMsgSize(max_chunk_size+256),
+		grpc.UnaryInterceptor(auth_intc.Unary),
+		grpc.StreamInterceptor(auth_intc.Stream),
+	)
+
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: uint64(max_chunk_size), //byte
 		MinChunkSize: 5,                      //byte
 	})))
 
-	lis, err := net.Listen("tcp", "localhost:8081")
-	if err != nil {
-		t.Fatal(err)
-	}
+	lis := bufconn.Listen(max_chunk_size + 256)
+	go grpc_server.Serve(lis)
 
-	go func() {
-		if err := grpc_server.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	grpc_connection, err := grpc.NewClient("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpc_connection, err := grpc.NewClient("passthrough://bufnet",
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) { return lis.Dial() }),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +321,6 @@ func TestSaveFile(t *testing.T) {
 			name: "save in root dir",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name:    "save_data_single.txt",
@@ -356,7 +333,6 @@ func TestSaveFile(t *testing.T) {
 			name: "save in test dir",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: test_dir,
 				},
 				Name:    "test.txt",
@@ -369,7 +345,6 @@ func TestSaveFile(t *testing.T) {
 			name: "save in uncreated dir",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/uncreated_dir/",
 				},
 				Name:    "cool.txt",
@@ -382,7 +357,6 @@ func TestSaveFile(t *testing.T) {
 			name: "save big file",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name:    "save_data_big.txt",
@@ -395,7 +369,6 @@ func TestSaveFile(t *testing.T) {
 			name: "save in out of file",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name:    "save_data_incorrect_chunk.txt",
@@ -422,7 +395,7 @@ func TestSaveFile(t *testing.T) {
 			}
 
 			// Check file type only
-			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, test.req_file.Dir.User, test.req_file.Dir.Value, test.req_file.Name), os.O_RDONLY, 0660)
+			file, err := os.OpenFile(fmt.Sprintf("%s%s/files%s%s", WORKSPACE_PATH, TEST_USER, test.req_file.Dir.Value, test.req_file.Name), os.O_RDONLY, 0660)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -435,7 +408,6 @@ func TestSaveFile(t *testing.T) {
 			if string(got_body_file) != test.save_data {
 				t.Error("got file body not implement than expected")
 			}
-
 		})
 	}
 }
@@ -447,25 +419,25 @@ func TestReadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create data grpc client
-	grpc_server := grpc.NewServer()
+	auth_intc := interceptors.NewFakeAuthInterceptor(TEST_USER)
+
+	grpc_server := grpc.NewServer(
+		grpc.UnaryInterceptor(auth_intc.Unary),
+		grpc.StreamInterceptor(auth_intc.Stream),
+	)
+
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: 1024, //byte
 		MinChunkSize: 5,    //byte
 	})))
 
-	lis, err := net.Listen("tcp", "localhost:8082")
-	if err != nil {
-		t.Fatal(err)
-	}
+	lis := bufconn.Listen(1024 * 1024)
+	go grpc_server.Serve(lis)
 
-	go func() {
-		if err := grpc_server.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	grpc_connection, err := grpc.NewClient("localhost:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpc_connection, err := grpc.NewClient("passthrough://bufnet",
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) { return lis.Dial() }),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -499,7 +471,6 @@ func TestReadFile(t *testing.T) {
 	t.Run("normal get", func(t *testing.T) {
 		conn, err := data_client.InitFile(t.Context(), &pb.RequiredFile{
 			Dir: &pb.Directory{
-				User:  TEST_USER,
 				Value: "/",
 			},
 			Name:    test_file_name,
@@ -538,30 +509,10 @@ func TestGetSum(t *testing.T) {
 
 	max_GRPC_message := 50 * 1024 * 1024
 
-	// Create data grpc client
-	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(max_GRPC_message), grpc.MaxSendMsgSize(max_GRPC_message))
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
+	data_service := data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
 		MaxChunkSize: uint64(max_GRPC_message) / 2,
 		MinChunkSize: 4 * 1024,
-	})))
-
-	lis, err := net.Listen("tcp", "localhost:8083")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go func() {
-		if err := grpc_server.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	grpc_connection, err := grpc.NewClient("localhost:8083", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	data_client := pb.NewDataServiceClient(grpc_connection)
+	}))
 
 	// Вместо создания всей строки в памяти
 	genRandomFile := func(size uint64) (*os.File, error) {
@@ -604,7 +555,6 @@ func TestGetSum(t *testing.T) {
 			name: "file 500 bytes",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name: "get_sum_500b.txt",
@@ -615,7 +565,6 @@ func TestGetSum(t *testing.T) {
 			name: "file 10 kb",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name: "get_sum_10kb.txt",
@@ -626,7 +575,6 @@ func TestGetSum(t *testing.T) {
 			name: "file 500 kb",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name: "get_sum_500kb.txt",
@@ -637,7 +585,6 @@ func TestGetSum(t *testing.T) {
 			name: "file 5 mb",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name: "get_sum_5mb.txt",
@@ -648,7 +595,6 @@ func TestGetSum(t *testing.T) {
 			name: "file 50 mb",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name: "get_sum_50mb.txt",
@@ -659,7 +605,6 @@ func TestGetSum(t *testing.T) {
 			name: "file 100mb",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name: "get_sum_100mb.txt",
@@ -670,7 +615,6 @@ func TestGetSum(t *testing.T) {
 			name: "file 500mb",
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					User:  TEST_USER,
 					Value: "/",
 				},
 				Name: "get_sum_500mb.txt",
@@ -699,12 +643,13 @@ func TestGetSum(t *testing.T) {
 			}
 			_ = test_file.Close()
 
-			info, err := data_client.InitFile(t.Context(), test.req_file)
+			req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
+			info, err := data_service.InitFile(req_ctx, test.req_file)
 			if err != nil {
 				t.Fatalf("failed create connection. err: %v", err)
 			}
 
-			got, err := data_client.GetSum(t.Context(), info.FileID)
+			got, err := data_service.GetSum(req_ctx, info.FileID)
 			if err != nil {
 				t.Fatalf("failed get sum (%v)", err)
 			}
@@ -726,30 +671,10 @@ func TestGetFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create data grpc client
-	grpc_server := grpc.NewServer()
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
-		MaxChunkSize: 1024, //byte
-		MinChunkSize: 5,    //byte
-	})))
-
-	lis, err := net.Listen("tcp", "localhost:8085")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go func() {
-		if err := grpc_server.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	grpc_connection, err := grpc.NewClient("localhost:8085", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	data_client := pb.NewDataServiceClient(grpc_connection)
+	data_service := data.NewDataServer(t.Context(), data.NewDataServerConfig(WORKSPACE_PATH, config.MemoryConfig{
+		MaxChunkSize: 1024,
+		MinChunkSize: 5,
+	}))
 
 	extensions := []string{"jpg", "png", "txt", "doc", "docx", "1c", "svg"}
 	gen_filename := func(with_ext bool) string {
@@ -839,8 +764,8 @@ func TestGetFiles(t *testing.T) {
 		}
 
 		t.Run(test.name, func(t *testing.T) {
-			files_list, err := data_client.GetFiles(t.Context(), &pb.Directory{
-				User:  TEST_USER,
+			req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
+			files_list, err := data_service.GetFiles(req_ctx, &pb.Directory{
 				Value: test.target_dir,
 			})
 
@@ -900,8 +825,8 @@ func TestGetFiles(t *testing.T) {
 	}
 
 	t.Run("with dir contained another dir", func(t *testing.T) {
-		files, err := data_client.GetFiles(t.Context(), &pb.Directory{
-			User:  TEST_USER,
+		req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
+		files, err := data_service.GetFiles(req_ctx, &pb.Directory{
 			Value: test_dir,
 		})
 
@@ -919,8 +844,8 @@ func TestGetFiles(t *testing.T) {
 	})
 
 	t.Run("dir not found", func(t *testing.T) {
-		_, err := data_client.GetFiles(t.Context(), &pb.Directory{
-			User:  TEST_USER,
+		req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
+		_, err := data_service.GetFiles(req_ctx, &pb.Directory{
 			Value: "/unexpected_dir/",
 		})
 
