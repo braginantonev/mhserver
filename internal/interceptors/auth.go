@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
+	pb "github.com/braginantonev/mhserver/proto/gen/auth"
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,6 +19,11 @@ var (
 	ErrMissedMetadata    error = status.Error(codes.InvalidArgument, "missed metadata in req")
 	ErrAuthTokenIsMissed error = status.Error(codes.InvalidArgument, "auth token is missed")
 	ErrAuthBadToken      error = status.Error(codes.Unauthenticated, "auth token is wrong or expired")
+
+	NoAuthAvailableMethods = map[string]struct{}{
+		pb.AuthService_Register_FullMethodName: {},
+		pb.AuthService_Login_FullMethodName:    {},
+	}
 )
 
 type AuthInterceptor struct {
@@ -65,34 +71,59 @@ func (inc *AuthInterceptor) parseTokenToContext(parent context.Context) (context
 	return context.WithValue(parent, contextkeys.USERNAME, username), nil
 }
 
-func (inc *AuthInterceptor) Unary(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	handler_ctx, err := inc.parseTokenToContext(ctx)
-	if err != nil {
-		return nil, err
+func (inc *AuthInterceptor) isNoAuthAvailable(target_method string) (ok bool) {
+	_, ok = NoAuthAvailableMethods[target_method]
+	return
+}
+
+func (inc *AuthInterceptor) Unary(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (m any, err error) {
+	handler_ctx := ctx
+
+	if !inc.isNoAuthAvailable(info.FullMethod) {
+		handler_ctx, err = inc.parseTokenToContext(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	m, err := handler(handler_ctx, req)
-	if err != nil {
+	if m, err = handler(handler_ctx, req); err != nil {
 		slog.ErrorContext(handler_ctx, "RPC failed", slog.Any("error", err))
 	}
 
 	return m, err
 }
 
-func (inc *AuthInterceptor) Stream(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	handler_ctx, err := inc.parseTokenToContext(ss.Context())
-	if err != nil {
-		return err
+func (inc *AuthInterceptor) Stream(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+	handler_ctx := ss.Context()
+
+	if !inc.isNoAuthAvailable(info.FullMethod) {
+		handler_ctx, err = inc.parseTokenToContext(ss.Context())
+		if err != nil {
+			return err
+		}
 	}
 
-	wrapped_stream := WrappedStream{
-		ServerStream: ss,
-		ctx:          handler_ctx,
-	}
-
-	if err = handler(srv, wrapped_stream); err != nil {
+	if err = handler(srv, NewWrappedStream(ss, handler_ctx)); err != nil {
 		slog.ErrorContext(handler_ctx, "RPC failed", slog.Any("error", err))
 	}
 
 	return err
+}
+
+type FakeAuthInterceptor struct {
+	username string
+}
+
+func NewFakeAuthInterceptor(username string) FakeAuthInterceptor {
+	return FakeAuthInterceptor{
+		username,
+	}
+}
+
+func (inc *FakeAuthInterceptor) Unary(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	return handler(context.WithValue(ctx, contextkeys.USERNAME, inc.username), req)
+}
+
+func (inc *FakeAuthInterceptor) Stream(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return handler(srv, NewWrappedStream(ss, context.WithValue(ss.Context(), contextkeys.USERNAME, inc.username)))
 }
