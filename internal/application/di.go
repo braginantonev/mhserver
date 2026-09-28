@@ -2,10 +2,10 @@ package application
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
 	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/internal/interceptors"
 	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/internal/services/data"
@@ -16,14 +16,14 @@ import (
 
 var ErrServiceNotFound error = errors.New("service not found")
 
-func RegisterGrpcServer(ctx context.Context, grpc *grpc.Server, service services.ServiceName, app_cfg ApplicationConfig, db *sql.DB) error {
+func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Server, service services.ServiceName) error {
 	service_config := string(service) + ".conf"
 
 	switch service {
 	case data.SERVICE_NAME:
 		cfg := data.NewDataServerConfig(
-			app_cfg.WorkspacePath,
-			app_cfg.Memory,
+			app.cfg.WorkspacePath,
+			app.cfg.Memory,
 		)
 		if err := config.LoadConfig(cfg.WorkspacePath, service_config, &cfg); err != nil {
 			return err
@@ -32,17 +32,21 @@ func RegisterGrpcServer(ctx context.Context, grpc *grpc.Server, service services
 
 	case auth.SERVICE_NAME:
 		cfg := auth.NewAuthServiceConfig(
-			app_cfg.WorkspacePath,
-			app_cfg.JWTSignature,
+			app.cfg.WorkspacePath,
+			app.cfg.JWTSignature,
 		)
 		if err := config.LoadConfig(cfg.WorkspacePath, service_config, &cfg); err != nil {
 			return err
 		}
-		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(cfg, db))
+		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(cfg, app.db))
 
 	default:
 		return ErrServiceNotFound
 	}
 
 	return nil
+}
+
+func (app *Application) getAuthInterceptor() interceptors.AuthInterceptor {
+	return interceptors.NewAuthInterceptors(app.cfg.JWTSignature)
 }

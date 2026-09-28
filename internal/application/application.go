@@ -53,7 +53,13 @@ func NewApplication() (*Application, error) {
 }
 
 func (app *Application) Run(ctx context.Context) error {
-	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize + 1024))) // additional bytes to avoid panic (out of memory), when max chunk size is very small
+	auth_intc := app.getAuthInterceptor()
+
+	grpc_server := grpc.NewServer(
+		grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize+1024)), // additional bytes to avoid memory leak, when max chunk size is very small
+		grpc.UnaryInterceptor(auth_intc.Unary),
+		grpc.StreamInterceptor(auth_intc.Stream),
+	)
 
 	for name, subserver := range app.cfg.Services {
 		if !subserver.Enabled {
@@ -61,7 +67,7 @@ func (app *Application) Run(ctx context.Context) error {
 			continue
 		}
 
-		if err := RegisterGrpcServer(ctx, grpc_server, name, app.cfg, app.db); err != nil {
+		if err := app.registerGrpcServer(ctx, grpc_server, name); err != nil {
 			if errors.Is(err, ErrServiceNotFound) {
 				slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", string(name)))
 			} else {
