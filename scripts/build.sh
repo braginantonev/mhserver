@@ -11,12 +11,13 @@ fi
 
 go build -C cmd/ -o ../build/mhserver -ldflags="-s -w -X=github.com/braginantonev/mhserver/version.Version=${VERSION}"
 
-cp -r scripts/ build/scripts/
-cp -r sql/ build/
-cp mhserver.service build/
+cp scripts/* build
+
+mkdir build/config
+cp -r default build/config/default
 
 cd build
 
-rm scripts/build.sh
+rm build.sh
 
 tar -czvf mhserver.tar.gz *
