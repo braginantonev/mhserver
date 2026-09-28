@@ -12,6 +12,7 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	"github.com/braginantonev/mhserver/internal/services"
+	"github.com/braginantonev/mhserver/pkg/contextkeys"
 	pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -38,7 +39,13 @@ func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, req_file.Dir.User, req_file.Dir.Value, s.cfg.ServiceName)
+	username, ok := ctx.Value(contextkeys.USERNAME).(string)
+	if !ok {
+		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
+		return nil, ErrInternal
+	}
+
+	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, req_file.Dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +222,13 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Director
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, "/", s.cfg.ServiceName)
+	username, ok := ctx.Value(contextkeys.USERNAME).(string)
+	if !ok {
+		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
+		return nil, ErrInternal
+	}
+
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, "/", s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +245,13 @@ func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.Files
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
+	username, ok := ctx.Value(contextkeys.USERNAME).(string)
+	if !ok {
+		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
+		return nil, ErrInternal
+	}
+
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +287,13 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
+	username, ok := ctx.Value(contextkeys.USERNAME).(string)
+	if !ok {
+		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
+		return nil, ErrInternal
+	}
+
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +314,13 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, dir.User, dir.Value, s.cfg.ServiceName)
+	username, ok := ctx.Value(contextkeys.USERNAME).(string)
+	if !ok {
+		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
+		return nil, ErrInternal
+	}
+
+	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +337,13 @@ func (s *DataServer) RemoveFile(ctx context.Context, req_file *pb.RequiredFile) 
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, req_file.Dir.User, req_file.Dir.Value, s.cfg.ServiceName)
+	username, ok := ctx.Value(contextkeys.USERNAME).(string)
+	if !ok {
+		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
+		return nil, ErrInternal
+	}
+
+	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, req_file.Dir.Value, s.cfg.ServiceName)
 	if err != nil {
 		return nil, err
 	}
