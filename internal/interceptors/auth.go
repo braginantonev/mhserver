@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/braginantonev/mhserver/pkg/httpcontextkeys"
+	"github.com/braginantonev/mhserver/pkg/contextkeys"
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -62,7 +62,7 @@ func (inc *AuthInterceptor) parseTokenToContext(parent context.Context) (context
 		return nil, ErrAuthBadToken
 	}
 
-	return context.WithValue(parent, httpcontextkeys.USERNAME, username), nil
+	return context.WithValue(parent, contextkeys.USERNAME, username), nil
 }
 
 func (inc *AuthInterceptor) Unary(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {

@@ -24,7 +24,6 @@ const (
 
 type Directory struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	User          string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -58,13 +57,6 @@ func (x *Directory) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Directory.ProtoReflect.Descriptor instead.
 func (*Directory) Descriptor() ([]byte, []int) {
 	return file_data_data_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *Directory) GetUser() string {
-	if x != nil {
-		return x.User
-	}
-	return ""
 }
 
 func (x *Directory) GetValue() string {
@@ -538,9 +530,8 @@ var File_data_data_proto protoreflect.FileDescriptor
 
 const file_data_data_proto_rawDesc = "" +
 	"\n" +
-	"\x0fdata/data.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"5\n" +
-	"\tDirectory\x12\x12\n" +
-	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
+	"\x0fdata/data.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"!\n" +
+	"\tDirectory\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"p\n" +
 	"\fRequiredFile\x12!\n" +
 	"\x03dir\x18\x01 \x01(\v2\x0f.data.DirectoryR\x03dir\x12\x12\n" +
