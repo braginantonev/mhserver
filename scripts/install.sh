@@ -4,7 +4,7 @@
 EXECUTABLE_NAME=mhserver
 
 ## PATHS
-INSTALL_PATH=../test_install
+INSTALL_PATH=/opt/mhserver
 LOGS_PATH=$INSTALL_PATH/logs
 USER_SPACE_PATH=$INSTALL_PATH/uspace
 
@@ -90,6 +90,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+./create_ssl.sh
+
 sudo touch /etc/systemd/system/mhserver.service
 sudo tee /etc/systemd/system/mhserver.service >/dev/null <<EOF
 [Unit]
@@ -114,3 +116,5 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
+
+echo -e "\nMHServer installed. Now you can configure and use them"

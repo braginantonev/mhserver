@@ -24,16 +24,16 @@ get_expires_cert(){
     echo $(( ($(date -d "$EXP_DATE" +%s) - $(date -d "now" +%s) ) / 86400 ))
 }
 
-CONFIG_PATH=/usr/share/mhserver/
+SERVER_PATH=/opt/mhserver
 
-if [[ !(-e $CONFIG_PATH) ]]; then
-    echo "error: mhserver not configured. Use setup script first"
+if [[ !(-e $SERVER_PATH) ]]; then
+    echo "MHServer not found. Install server in first."
     exit 1
 fi
 
 echo "SSL Certificate generation..."
 
-cd $CONFIG_PATH
+cd $SERVER_PATH
 
 if [[ !(-e ssl) ]]; then
     sudo mkdir ssl
@@ -90,3 +90,5 @@ if [[ -e org.crt ]]; then
 else
     create_TLS_cert
 fi
+
+sudo chown -R mhserver:mhserver ../ssl
