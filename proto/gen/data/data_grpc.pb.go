@@ -20,7 +20,6 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DataService_InitFile_FullMethodName              = "/data.DataService/InitFile"
 	DataService_SaveFile_FullMethodName              = "/data.DataService/SaveFile"
 	DataService_ReadFile_FullMethodName              = "/data.DataService/ReadFile"
 	DataService_GetSum_FullMethodName                = "/data.DataService/GetSum"
@@ -35,10 +34,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DataServiceClient interface {
-	InitFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*InitInfo, error)
 	SaveFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SaveFileChunk, emptypb.Empty], error)
-	ReadFile(ctx context.Context, in *FileID, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Chunk], error)
-	GetSum(ctx context.Context, in *FileID, opts ...grpc.CallOption) (*SHASum, error)
+	ReadFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Chunk], error)
+	GetSum(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*SHASum, error)
 	GetFiles(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*FilesList, error)
 	GetAvailableDiskSpace(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*Size, error)
 	CreateDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -54,16 +52,6 @@ func NewDataServiceClient(cc grpc.ClientConnInterface) DataServiceClient {
 	return &dataServiceClient{cc}
 }
 
-func (c *dataServiceClient) InitFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*InitInfo, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(InitInfo)
-	err := c.cc.Invoke(ctx, DataService_InitFile_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *dataServiceClient) SaveFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SaveFileChunk, emptypb.Empty], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &DataService_ServiceDesc.Streams[0], DataService_SaveFile_FullMethodName, cOpts...)
@@ -77,13 +65,13 @@ func (c *dataServiceClient) SaveFile(ctx context.Context, opts ...grpc.CallOptio
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type DataService_SaveFileClient = grpc.ClientStreamingClient[SaveFileChunk, emptypb.Empty]
 
-func (c *dataServiceClient) ReadFile(ctx context.Context, in *FileID, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Chunk], error) {
+func (c *dataServiceClient) ReadFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Chunk], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &DataService_ServiceDesc.Streams[1], DataService_ReadFile_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[FileID, Chunk]{ClientStream: stream}
+	x := &grpc.GenericClientStream[RequiredFile, Chunk]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -96,7 +84,7 @@ func (c *dataServiceClient) ReadFile(ctx context.Context, in *FileID, opts ...gr
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type DataService_ReadFileClient = grpc.ServerStreamingClient[Chunk]
 
-func (c *dataServiceClient) GetSum(ctx context.Context, in *FileID, opts ...grpc.CallOption) (*SHASum, error) {
+func (c *dataServiceClient) GetSum(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*SHASum, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SHASum)
 	err := c.cc.Invoke(ctx, DataService_GetSum_FullMethodName, in, out, cOpts...)
@@ -160,10 +148,9 @@ func (c *dataServiceClient) RemoveFile(ctx context.Context, in *RequiredFile, op
 // All implementations must embed UnimplementedDataServiceServer
 // for forward compatibility.
 type DataServiceServer interface {
-	InitFile(context.Context, *RequiredFile) (*InitInfo, error)
 	SaveFile(grpc.ClientStreamingServer[SaveFileChunk, emptypb.Empty]) error
-	ReadFile(*FileID, grpc.ServerStreamingServer[Chunk]) error
-	GetSum(context.Context, *FileID) (*SHASum, error)
+	ReadFile(*RequiredFile, grpc.ServerStreamingServer[Chunk]) error
+	GetSum(context.Context, *RequiredFile) (*SHASum, error)
 	GetFiles(context.Context, *Directory) (*FilesList, error)
 	GetAvailableDiskSpace(context.Context, *Directory) (*Size, error)
 	CreateDir(context.Context, *Directory) (*emptypb.Empty, error)
@@ -179,16 +166,13 @@ type DataServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedDataServiceServer struct{}
 
-func (UnimplementedDataServiceServer) InitFile(context.Context, *RequiredFile) (*InitInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InitFile not implemented")
-}
 func (UnimplementedDataServiceServer) SaveFile(grpc.ClientStreamingServer[SaveFileChunk, emptypb.Empty]) error {
 	return status.Errorf(codes.Unimplemented, "method SaveFile not implemented")
 }
-func (UnimplementedDataServiceServer) ReadFile(*FileID, grpc.ServerStreamingServer[Chunk]) error {
+func (UnimplementedDataServiceServer) ReadFile(*RequiredFile, grpc.ServerStreamingServer[Chunk]) error {
 	return status.Errorf(codes.Unimplemented, "method ReadFile not implemented")
 }
-func (UnimplementedDataServiceServer) GetSum(context.Context, *FileID) (*SHASum, error) {
+func (UnimplementedDataServiceServer) GetSum(context.Context, *RequiredFile) (*SHASum, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSum not implemented")
 }
 func (UnimplementedDataServiceServer) GetFiles(context.Context, *Directory) (*FilesList, error) {
@@ -227,24 +211,6 @@ func RegisterDataServiceServer(s grpc.ServiceRegistrar, srv DataServiceServer) {
 	s.RegisterService(&DataService_ServiceDesc, srv)
 }
 
-func _DataService_InitFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequiredFile)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DataServiceServer).InitFile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DataService_InitFile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).InitFile(ctx, req.(*RequiredFile))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _DataService_SaveFile_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(DataServiceServer).SaveFile(&grpc.GenericServerStream[SaveFileChunk, emptypb.Empty]{ServerStream: stream})
 }
@@ -253,18 +219,18 @@ func _DataService_SaveFile_Handler(srv interface{}, stream grpc.ServerStream) er
 type DataService_SaveFileServer = grpc.ClientStreamingServer[SaveFileChunk, emptypb.Empty]
 
 func _DataService_ReadFile_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(FileID)
+	m := new(RequiredFile)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(DataServiceServer).ReadFile(m, &grpc.GenericServerStream[FileID, Chunk]{ServerStream: stream})
+	return srv.(DataServiceServer).ReadFile(m, &grpc.GenericServerStream[RequiredFile, Chunk]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type DataService_ReadFileServer = grpc.ServerStreamingServer[Chunk]
 
 func _DataService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FileID)
+	in := new(RequiredFile)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -276,7 +242,7 @@ func _DataService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: DataService_GetSum_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataServiceServer).GetSum(ctx, req.(*FileID))
+		return srv.(DataServiceServer).GetSum(ctx, req.(*RequiredFile))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -378,10 +344,6 @@ var DataService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "data.DataService",
 	HandlerType: (*DataServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "InitFile",
-			Handler:    _DataService_InitFile_Handler,
-		},
 		{
 			MethodName: "GetSum",
 			Handler:    _DataService_GetSum_Handler,

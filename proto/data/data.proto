@@ -5,10 +5,9 @@ option go_package = "github.com/braginantonev/mhserver/proto/data";
 import "google/protobuf/empty.proto";
 
 service DataService {
-    rpc InitFile (RequiredFile) returns (InitInfo);
     rpc SaveFile (stream SaveFileChunk) returns (google.protobuf.Empty);
-    rpc ReadFile (FileID) returns (stream Chunk);
-    rpc GetSum (FileID) returns (SHASum);
+    rpc ReadFile (RequiredFile) returns (stream Chunk);
+    rpc GetSum (RequiredFile) returns (SHASum);
     rpc GetFiles (Directory) returns (FilesList);
 	rpc GetAvailableDiskSpace (Directory) returns (Size);
 	rpc CreateDir (Directory) returns (google.protobuf.Empty);
@@ -26,23 +25,16 @@ message RequiredFile {
     optional uint64 newSize = 3;
 }
 
-message FileID {
-    string value = 1;
-}
-
-message InitInfo {
-    FileID fileID = 1;
-    uint64 maxChunkSize = 2;
-}
-
 message Chunk {
     bytes data = 1;
     uint64 offset = 2;
 }
 
 message SaveFileChunk {
-    FileID id = 1;
-    Chunk value = 2;
+    oneof Info {
+        RequiredFile meta = 1;
+        Chunk chunk = 2;
+    }
 }
 
 message SHASum {

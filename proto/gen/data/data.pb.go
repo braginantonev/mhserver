@@ -126,102 +126,6 @@ func (x *RequiredFile) GetNewSize() uint64 {
 	return 0
 }
 
-type FileID struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *FileID) Reset() {
-	*x = FileID{}
-	mi := &file_data_data_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FileID) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FileID) ProtoMessage() {}
-
-func (x *FileID) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use FileID.ProtoReflect.Descriptor instead.
-func (*FileID) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *FileID) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
-type InitInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	FileID        *FileID                `protobuf:"bytes,1,opt,name=fileID,proto3" json:"fileID,omitempty"`
-	MaxChunkSize  uint64                 `protobuf:"varint,2,opt,name=maxChunkSize,proto3" json:"maxChunkSize,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *InitInfo) Reset() {
-	*x = InitInfo{}
-	mi := &file_data_data_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *InitInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*InitInfo) ProtoMessage() {}
-
-func (x *InitInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use InitInfo.ProtoReflect.Descriptor instead.
-func (*InitInfo) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *InitInfo) GetFileID() *FileID {
-	if x != nil {
-		return x.FileID
-	}
-	return nil
-}
-
-func (x *InitInfo) GetMaxChunkSize() uint64 {
-	if x != nil {
-		return x.MaxChunkSize
-	}
-	return 0
-}
-
 type Chunk struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
@@ -232,7 +136,7 @@ type Chunk struct {
 
 func (x *Chunk) Reset() {
 	*x = Chunk{}
-	mi := &file_data_data_proto_msgTypes[4]
+	mi := &file_data_data_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -244,7 +148,7 @@ func (x *Chunk) String() string {
 func (*Chunk) ProtoMessage() {}
 
 func (x *Chunk) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[4]
+	mi := &file_data_data_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -257,7 +161,7 @@ func (x *Chunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Chunk.ProtoReflect.Descriptor instead.
 func (*Chunk) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{4}
+	return file_data_data_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Chunk) GetData() []byte {
@@ -275,16 +179,19 @@ func (x *Chunk) GetOffset() uint64 {
 }
 
 type SaveFileChunk struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            *FileID                `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Value         *Chunk                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Info:
+	//
+	//	*SaveFileChunk_Meta
+	//	*SaveFileChunk_Chunk
+	Info          isSaveFileChunk_Info `protobuf_oneof:"Info"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SaveFileChunk) Reset() {
 	*x = SaveFileChunk{}
-	mi := &file_data_data_proto_msgTypes[5]
+	mi := &file_data_data_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -296,7 +203,7 @@ func (x *SaveFileChunk) String() string {
 func (*SaveFileChunk) ProtoMessage() {}
 
 func (x *SaveFileChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[5]
+	mi := &file_data_data_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -309,22 +216,49 @@ func (x *SaveFileChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveFileChunk.ProtoReflect.Descriptor instead.
 func (*SaveFileChunk) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{5}
+	return file_data_data_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *SaveFileChunk) GetId() *FileID {
+func (x *SaveFileChunk) GetInfo() isSaveFileChunk_Info {
 	if x != nil {
-		return x.Id
+		return x.Info
 	}
 	return nil
 }
 
-func (x *SaveFileChunk) GetValue() *Chunk {
+func (x *SaveFileChunk) GetMeta() *RequiredFile {
 	if x != nil {
-		return x.Value
+		if x, ok := x.Info.(*SaveFileChunk_Meta); ok {
+			return x.Meta
+		}
 	}
 	return nil
 }
+
+func (x *SaveFileChunk) GetChunk() *Chunk {
+	if x != nil {
+		if x, ok := x.Info.(*SaveFileChunk_Chunk); ok {
+			return x.Chunk
+		}
+	}
+	return nil
+}
+
+type isSaveFileChunk_Info interface {
+	isSaveFileChunk_Info()
+}
+
+type SaveFileChunk_Meta struct {
+	Meta *RequiredFile `protobuf:"bytes,1,opt,name=meta,proto3,oneof"`
+}
+
+type SaveFileChunk_Chunk struct {
+	Chunk *Chunk `protobuf:"bytes,2,opt,name=chunk,proto3,oneof"`
+}
+
+func (*SaveFileChunk_Meta) isSaveFileChunk_Info() {}
+
+func (*SaveFileChunk_Chunk) isSaveFileChunk_Info() {}
 
 type SHASum struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -335,7 +269,7 @@ type SHASum struct {
 
 func (x *SHASum) Reset() {
 	*x = SHASum{}
-	mi := &file_data_data_proto_msgTypes[6]
+	mi := &file_data_data_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -347,7 +281,7 @@ func (x *SHASum) String() string {
 func (*SHASum) ProtoMessage() {}
 
 func (x *SHASum) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[6]
+	mi := &file_data_data_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -360,7 +294,7 @@ func (x *SHASum) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SHASum.ProtoReflect.Descriptor instead.
 func (*SHASum) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{6}
+	return file_data_data_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SHASum) GetValue() []byte {
@@ -382,7 +316,7 @@ type FileInfo struct {
 
 func (x *FileInfo) Reset() {
 	*x = FileInfo{}
-	mi := &file_data_data_proto_msgTypes[7]
+	mi := &file_data_data_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -394,7 +328,7 @@ func (x *FileInfo) String() string {
 func (*FileInfo) ProtoMessage() {}
 
 func (x *FileInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[7]
+	mi := &file_data_data_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -407,7 +341,7 @@ func (x *FileInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileInfo.ProtoReflect.Descriptor instead.
 func (*FileInfo) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{7}
+	return file_data_data_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *FileInfo) GetName() string {
@@ -447,7 +381,7 @@ type FilesList struct {
 
 func (x *FilesList) Reset() {
 	*x = FilesList{}
-	mi := &file_data_data_proto_msgTypes[8]
+	mi := &file_data_data_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -459,7 +393,7 @@ func (x *FilesList) String() string {
 func (*FilesList) ProtoMessage() {}
 
 func (x *FilesList) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[8]
+	mi := &file_data_data_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -472,7 +406,7 @@ func (x *FilesList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilesList.ProtoReflect.Descriptor instead.
 func (*FilesList) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{8}
+	return file_data_data_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *FilesList) GetValue() []*FileInfo {
@@ -491,7 +425,7 @@ type Size struct {
 
 func (x *Size) Reset() {
 	*x = Size{}
-	mi := &file_data_data_proto_msgTypes[9]
+	mi := &file_data_data_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -503,7 +437,7 @@ func (x *Size) String() string {
 func (*Size) ProtoMessage() {}
 
 func (x *Size) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[9]
+	mi := &file_data_data_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -516,7 +450,7 @@ func (x *Size) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Size.ProtoReflect.Descriptor instead.
 func (*Size) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{9}
+	return file_data_data_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Size) GetValue() uint64 {
@@ -538,18 +472,14 @@ const file_data_data_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
 	"\anewSize\x18\x03 \x01(\x04H\x00R\anewSize\x88\x01\x01B\n" +
 	"\n" +
-	"\b_newSize\"\x1e\n" +
-	"\x06FileID\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\tR\x05value\"T\n" +
-	"\bInitInfo\x12$\n" +
-	"\x06fileID\x18\x01 \x01(\v2\f.data.FileIDR\x06fileID\x12\"\n" +
-	"\fmaxChunkSize\x18\x02 \x01(\x04R\fmaxChunkSize\"3\n" +
+	"\b_newSize\"3\n" +
 	"\x05Chunk\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x04R\x06offset\"P\n" +
-	"\rSaveFileChunk\x12\x1c\n" +
-	"\x02id\x18\x01 \x01(\v2\f.data.FileIDR\x02id\x12!\n" +
-	"\x05value\x18\x02 \x01(\v2\v.data.ChunkR\x05value\"\x1e\n" +
+	"\x06offset\x18\x02 \x01(\x04R\x06offset\"f\n" +
+	"\rSaveFileChunk\x12(\n" +
+	"\x04meta\x18\x01 \x01(\v2\x12.data.RequiredFileH\x00R\x04meta\x12#\n" +
+	"\x05chunk\x18\x02 \x01(\v2\v.data.ChunkH\x00R\x05chunkB\x06\n" +
+	"\x04Info\"\x1e\n" +
 	"\x06SHASum\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\fR\x05value\"b\n" +
 	"\bFileInfo\x12\x12\n" +
@@ -560,12 +490,11 @@ const file_data_data_proto_rawDesc = "" +
 	"\tFilesList\x12$\n" +
 	"\x05value\x18\x01 \x03(\v2\x0e.data.FileInfoR\x05value\"\x1c\n" +
 	"\x04Size\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\x04R\x05value2\xd1\x03\n" +
-	"\vDataService\x12.\n" +
-	"\bInitFile\x12\x12.data.RequiredFile\x1a\x0e.data.InitInfo\x129\n" +
-	"\bSaveFile\x12\x13.data.SaveFileChunk\x1a\x16.google.protobuf.Empty(\x01\x12'\n" +
-	"\bReadFile\x12\f.data.FileID\x1a\v.data.Chunk0\x01\x12$\n" +
-	"\x06GetSum\x12\f.data.FileID\x1a\f.data.SHASum\x12,\n" +
+	"\x05value\x18\x01 \x01(\x04R\x05value2\xad\x03\n" +
+	"\vDataService\x129\n" +
+	"\bSaveFile\x12\x13.data.SaveFileChunk\x1a\x16.google.protobuf.Empty(\x01\x12-\n" +
+	"\bReadFile\x12\x12.data.RequiredFile\x1a\v.data.Chunk0\x01\x12*\n" +
+	"\x06GetSum\x12\x12.data.RequiredFile\x1a\f.data.SHASum\x12,\n" +
 	"\bGetFiles\x12\x0f.data.Directory\x1a\x0f.data.FilesList\x124\n" +
 	"\x15GetAvailableDiskSpace\x12\x0f.data.Directory\x1a\n" +
 	".data.Size\x124\n" +
@@ -586,49 +515,44 @@ func file_data_data_proto_rawDescGZIP() []byte {
 	return file_data_data_proto_rawDescData
 }
 
-var file_data_data_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_data_data_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_data_data_proto_goTypes = []any{
 	(*Directory)(nil),     // 0: data.Directory
 	(*RequiredFile)(nil),  // 1: data.RequiredFile
-	(*FileID)(nil),        // 2: data.FileID
-	(*InitInfo)(nil),      // 3: data.InitInfo
-	(*Chunk)(nil),         // 4: data.Chunk
-	(*SaveFileChunk)(nil), // 5: data.SaveFileChunk
-	(*SHASum)(nil),        // 6: data.SHASum
-	(*FileInfo)(nil),      // 7: data.FileInfo
-	(*FilesList)(nil),     // 8: data.FilesList
-	(*Size)(nil),          // 9: data.Size
-	(*emptypb.Empty)(nil), // 10: google.protobuf.Empty
+	(*Chunk)(nil),         // 2: data.Chunk
+	(*SaveFileChunk)(nil), // 3: data.SaveFileChunk
+	(*SHASum)(nil),        // 4: data.SHASum
+	(*FileInfo)(nil),      // 5: data.FileInfo
+	(*FilesList)(nil),     // 6: data.FilesList
+	(*Size)(nil),          // 7: data.Size
+	(*emptypb.Empty)(nil), // 8: google.protobuf.Empty
 }
 var file_data_data_proto_depIdxs = []int32{
 	0,  // 0: data.RequiredFile.dir:type_name -> data.Directory
-	2,  // 1: data.InitInfo.fileID:type_name -> data.FileID
-	2,  // 2: data.SaveFileChunk.id:type_name -> data.FileID
-	4,  // 3: data.SaveFileChunk.value:type_name -> data.Chunk
-	7,  // 4: data.FilesList.value:type_name -> data.FileInfo
-	1,  // 5: data.DataService.InitFile:input_type -> data.RequiredFile
-	5,  // 6: data.DataService.SaveFile:input_type -> data.SaveFileChunk
-	2,  // 7: data.DataService.ReadFile:input_type -> data.FileID
-	2,  // 8: data.DataService.GetSum:input_type -> data.FileID
-	0,  // 9: data.DataService.GetFiles:input_type -> data.Directory
-	0,  // 10: data.DataService.GetAvailableDiskSpace:input_type -> data.Directory
-	0,  // 11: data.DataService.CreateDir:input_type -> data.Directory
-	0,  // 12: data.DataService.RemoveDir:input_type -> data.Directory
-	1,  // 13: data.DataService.RemoveFile:input_type -> data.RequiredFile
-	3,  // 14: data.DataService.InitFile:output_type -> data.InitInfo
-	10, // 15: data.DataService.SaveFile:output_type -> google.protobuf.Empty
-	4,  // 16: data.DataService.ReadFile:output_type -> data.Chunk
-	6,  // 17: data.DataService.GetSum:output_type -> data.SHASum
-	8,  // 18: data.DataService.GetFiles:output_type -> data.FilesList
-	9,  // 19: data.DataService.GetAvailableDiskSpace:output_type -> data.Size
-	10, // 20: data.DataService.CreateDir:output_type -> google.protobuf.Empty
-	10, // 21: data.DataService.RemoveDir:output_type -> google.protobuf.Empty
-	10, // 22: data.DataService.RemoveFile:output_type -> google.protobuf.Empty
-	14, // [14:23] is the sub-list for method output_type
-	5,  // [5:14] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	1,  // 1: data.SaveFileChunk.meta:type_name -> data.RequiredFile
+	2,  // 2: data.SaveFileChunk.chunk:type_name -> data.Chunk
+	5,  // 3: data.FilesList.value:type_name -> data.FileInfo
+	3,  // 4: data.DataService.SaveFile:input_type -> data.SaveFileChunk
+	1,  // 5: data.DataService.ReadFile:input_type -> data.RequiredFile
+	1,  // 6: data.DataService.GetSum:input_type -> data.RequiredFile
+	0,  // 7: data.DataService.GetFiles:input_type -> data.Directory
+	0,  // 8: data.DataService.GetAvailableDiskSpace:input_type -> data.Directory
+	0,  // 9: data.DataService.CreateDir:input_type -> data.Directory
+	0,  // 10: data.DataService.RemoveDir:input_type -> data.Directory
+	1,  // 11: data.DataService.RemoveFile:input_type -> data.RequiredFile
+	8,  // 12: data.DataService.SaveFile:output_type -> google.protobuf.Empty
+	2,  // 13: data.DataService.ReadFile:output_type -> data.Chunk
+	4,  // 14: data.DataService.GetSum:output_type -> data.SHASum
+	6,  // 15: data.DataService.GetFiles:output_type -> data.FilesList
+	7,  // 16: data.DataService.GetAvailableDiskSpace:output_type -> data.Size
+	8,  // 17: data.DataService.CreateDir:output_type -> google.protobuf.Empty
+	8,  // 18: data.DataService.RemoveDir:output_type -> google.protobuf.Empty
+	8,  // 19: data.DataService.RemoveFile:output_type -> google.protobuf.Empty
+	12, // [12:20] is the sub-list for method output_type
+	4,  // [4:12] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_data_data_proto_init() }
@@ -637,13 +561,17 @@ func file_data_data_proto_init() {
 		return
 	}
 	file_data_data_proto_msgTypes[1].OneofWrappers = []any{}
+	file_data_data_proto_msgTypes[3].OneofWrappers = []any{
+		(*SaveFileChunk_Meta)(nil),
+		(*SaveFileChunk_Chunk)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_data_data_proto_rawDesc), len(file_data_data_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
