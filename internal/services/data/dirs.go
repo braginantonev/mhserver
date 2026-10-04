@@ -11,18 +11,14 @@ import (
 
 var ErrBadDirSyntax error = status.Error(codes.InvalidArgument, "directory have bad syntax")
 
-func GetDataPath(workspace_path, uspace, uname, target_dir string, target_service services.ServiceName) (string, error) {
-	if !DirIsCorrect(target_dir) {
-		return "", ErrBadDirSyntax
-	}
-
+func CompileServiceDir(workspace_path, uspace, uname, target_dir string, target_service services.ServiceName) string {
 	// files service keep files in uspace
 	if target_service == SERVICE_NAME {
-		return filepath.Join(workspace_path, uspace, uname, target_dir), nil
+		return filepath.Join(workspace_path, uspace, uname, target_dir)
 	}
 
 	// another services keep files in protected dirs
-	return filepath.Join(workspace_path, uspace, uname, string(target_service), target_dir), nil
+	return filepath.Join(workspace_path, uspace, uname, string(target_service), target_dir)
 }
 
 func DirIsCorrect(path string) bool {

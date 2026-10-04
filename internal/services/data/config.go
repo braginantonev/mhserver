@@ -15,12 +15,13 @@ type DataServiceConfig struct {
 
 	WorkspacePath string // User files path
 	Memory        config.MemoryConfig
+	UserSpaces    []string
 }
 
-func NewDataServerConfig(workspace_path string, data_memory_cfg config.MemoryConfig) DataServiceConfig {
+func NewDataServerConfig(workspace_path string, user_spaces []string) DataServiceConfig {
 	return DataServiceConfig{
 		ServiceName:   SERVICE_NAME,
 		WorkspacePath: workspace_path,
-		Memory:        data_memory_cfg,
+		UserSpaces:    user_spaces,
 	}
 }

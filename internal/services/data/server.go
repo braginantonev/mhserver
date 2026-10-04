@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"path/filepath"
 
 	"github.com/braginantonev/mhserver/internal/repository"
-	"github.com/braginantonev/mhserver/internal/repository/dirs"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
@@ -101,7 +101,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	s.sem.Acquire()
 
 	// init file id
-	first_chunk, err := stream.Recv()
+	init_info, err := stream.Recv()
 	if err != nil {
 		if err == io.EOF {
 			return stream.SendAndClose(&emptypb.Empty{})
@@ -110,21 +110,85 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 		return ErrInternal
 	}
 
-	id, err := uuid.Parse(first_chunk.Id.Value)
-	if err != nil {
-		return ErrBadUUID
+	meta := init_info.GetMeta()
+	if meta == nil {
+		return ErrBrokenSequence
 	}
 
-	file, ok := s.activeFiles.Get(id)
+	username, ok := stream.Context().Value(contextkeys.USERNAME).(string)
 	if !ok {
-		return ErrConnectionNotFound
-	}
-	defer file.Close()
-
-	// write first chunk
-	if _, err = file.Write(first_chunk.Value.Data); err != nil {
-		slog.ErrorContext(stream.Context(), "failed sync file", slog.Any("error", err))
+		slog.ErrorContext(stream.Context(), "failed get username from context", slog.Any("got", stream.Context().Value(contextkeys.USERNAME)))
 		return ErrInternal
+	}
+
+	if !DirIsCorrect(meta.Dir.GetValue()) {
+		return ErrBadDirSyntax
+	}
+
+	var file *os.File
+	var file_size uint64
+	if meta.NewSize == nil { // update file, no create. We search file in uspace's
+		for _, usp := range s.cfg.UserSpaces {
+			file, err = os.OpenFile(filepath.Join(CompileServiceDir(s.cfg.WorkspacePath, usp, username, meta.Dir.Value, SERVICE_NAME), meta.Name), os.O_WRONLY, 0660)
+			if err == nil {
+				break
+			}
+
+			if os.IsNotExist(err) {
+				continue
+			}
+
+			slog.ErrorContext(stream.Context(), "failed open file to write only", slog.Any("error", err))
+			return ErrInternal
+		}
+
+		if file == nil {
+			return ErrFileNotExist
+		}
+
+		stat, err := file.Stat()
+		if err != nil {
+			slog.ErrorContext(stream.Context(), "failed get stat of exist file", slog.Any("error", err))
+			return ErrInternal
+		}
+
+		file_size = uint64(stat.Size())
+
+	} else { // create and truncate file. We find uspace, where available space must be enough for file
+		var available_uspace string
+		for _, usp := range s.cfg.UserSpaces {
+			space, err := freemem.GetAvailableDiskSpace(filepath.Join(s.cfg.WorkspacePath, usp))
+			if err != nil {
+				slog.ErrorContext(stream.Context(), "failed ge t available disk space in uspace", slog.Any("error", err))
+				return ErrInternal
+			}
+
+			if space >= *meta.NewSize {
+				available_uspace = usp
+				break
+			}
+		}
+
+		if len(available_uspace) == 0 {
+			return ErrNotEnoughDiskSpace
+		}
+
+		if !FileIsCorrect(meta.Name) {
+			return ErrBadFilenameSyntax
+		}
+
+		file, err = os.OpenFile(filepath.Join(CompileServiceDir(s.cfg.WorkspacePath, available_uspace, username, meta.Dir.Value, SERVICE_NAME), meta.Name), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0660)
+		if err != nil {
+			slog.ErrorContext(stream.Context(), "failed create file", slog.Any("error", err))
+			return ErrInternal
+		}
+
+		if err = file.Truncate(int64(*meta.NewSize)); err != nil {
+			slog.ErrorContext(stream.Context(), "failed truncate file", slog.Any("error", err))
+			return ErrInternal
+		}
+
+		file_size = *meta.NewSize
 	}
 
 	for {
@@ -137,19 +201,20 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 			return stream.SendAndClose(&emptypb.Empty{})
 		}
 
+		chunk := req.GetChunk()
+		if chunk == nil {
+			return ErrBrokenSequence
+		}
+
 		if err != nil {
 			return err
 		}
 
-		if req.Id.GetValue() != first_chunk.Id.Value {
+		if chunk.Offset+uint64(len(chunk.Data)) > file_size {
 			return ErrUnexpectedFileChange
 		}
 
-		if req.Value.Offset+uint64(len(req.Value.Data)) > file.Meta.Size {
-			return ErrUnexpectedFileChange
-		}
-
-		if _, err = file.Write(req.Value.Data); err != nil {
+		if _, err = file.WriteAt(chunk.Data, int64(chunk.Offset)); err != nil {
 			slog.ErrorContext(stream.Context(), "failed write chunk to file", slog.Any("error", err))
 			return ErrInternal
 		}

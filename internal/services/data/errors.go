@@ -1,20 +1,16 @@
 package data
 
 import (
-	"errors"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var (
-	// File find
-	ErrBadUUID              error = errors.New("bad connection uuid")           // deprecated
-	ErrConnectionNotFound   error = errors.New("connection not found or ended") // deprecated
-	ErrUnexpectedFileChange error = status.Error(codes.OutOfRange, "unexpected file change")
+	ErrBrokenSequence error = status.Error(codes.InvalidArgument, "the sequence is broken")
 
 	// Chunks
-	ErrIncorrectChunkSize error = status.Error(codes.InvalidArgument, "incorrect chunk size")
+	ErrUnexpectedFileChange error = status.Error(codes.OutOfRange, "unexpected file change")
+	ErrIncorrectChunkSize   error = status.Error(codes.InvalidArgument, "incorrect chunk size")
 
 	// Directory errors
 	ErrDirNotFound     error = status.Error(codes.NotFound, "directory not found")
