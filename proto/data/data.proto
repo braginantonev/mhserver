@@ -9,7 +9,7 @@ service DataService {
     rpc ReadFile (RequiredFile) returns (stream Chunk);
     rpc GetSum (RequiredFile) returns (SHASum);
     rpc GetFiles (Directory) returns (FilesList);
-	rpc GetAvailableDiskSpace (Directory) returns (Size);
+	rpc GetAvailableDiskSpace (google.protobuf.Empty) returns (Size);
 	rpc CreateDir (Directory) returns (google.protobuf.Empty);
 	rpc RemoveDir (Directory) returns (google.protobuf.Empty);
     rpc RemoveFile (RequiredFile) returns (google.protobuf.Empty);

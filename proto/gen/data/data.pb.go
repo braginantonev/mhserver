@@ -490,13 +490,13 @@ const file_data_data_proto_rawDesc = "" +
 	"\tFilesList\x12$\n" +
 	"\x05value\x18\x01 \x03(\v2\x0e.data.FileInfoR\x05value\"\x1c\n" +
 	"\x04Size\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\x04R\x05value2\xad\x03\n" +
+	"\x05value\x18\x01 \x01(\x04R\x05value2\xb4\x03\n" +
 	"\vDataService\x129\n" +
 	"\bSaveFile\x12\x13.data.SaveFileChunk\x1a\x16.google.protobuf.Empty(\x01\x12-\n" +
 	"\bReadFile\x12\x12.data.RequiredFile\x1a\v.data.Chunk0\x01\x12*\n" +
 	"\x06GetSum\x12\x12.data.RequiredFile\x1a\f.data.SHASum\x12,\n" +
-	"\bGetFiles\x12\x0f.data.Directory\x1a\x0f.data.FilesList\x124\n" +
-	"\x15GetAvailableDiskSpace\x12\x0f.data.Directory\x1a\n" +
+	"\bGetFiles\x12\x0f.data.Directory\x1a\x0f.data.FilesList\x12;\n" +
+	"\x15GetAvailableDiskSpace\x12\x16.google.protobuf.Empty\x1a\n" +
 	".data.Size\x124\n" +
 	"\tCreateDir\x12\x0f.data.Directory\x1a\x16.google.protobuf.Empty\x124\n" +
 	"\tRemoveDir\x12\x0f.data.Directory\x1a\x16.google.protobuf.Empty\x128\n" +
@@ -536,7 +536,7 @@ var file_data_data_proto_depIdxs = []int32{
 	1,  // 5: data.DataService.ReadFile:input_type -> data.RequiredFile
 	1,  // 6: data.DataService.GetSum:input_type -> data.RequiredFile
 	0,  // 7: data.DataService.GetFiles:input_type -> data.Directory
-	0,  // 8: data.DataService.GetAvailableDiskSpace:input_type -> data.Directory
+	8,  // 8: data.DataService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
 	0,  // 9: data.DataService.CreateDir:input_type -> data.Directory
 	0,  // 10: data.DataService.RemoveDir:input_type -> data.Directory
 	1,  // 11: data.DataService.RemoveFile:input_type -> data.RequiredFile
