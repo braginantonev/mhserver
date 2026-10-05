@@ -111,6 +111,10 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 
 		file, err = os.OpenFile(filepath.Join(s.cfg.WorkspacePath, available_uspace, user_file), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0660)
 		if err != nil {
+			if os.IsNotExist(err) {
+				return ErrDirNotFound
+			}
+
 			slog.ErrorContext(stream.Context(), "failed create file", slog.Any("error", err))
 			return ErrInternal
 		}
@@ -122,6 +126,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 
 		file_size = *meta.NewSize
 	}
+	defer func() { _ = file.Close() }()
 
 	for {
 		req, err := stream.Recv()
@@ -166,6 +171,7 @@ func (s *DataServer) ReadFile(req *pb.RequiredFile, stream pb.DataService_ReadFi
 	if err != nil {
 		return err
 	}
+	defer func() { _ = file.Close() }()
 
 	file_stat, err := file.Stat()
 	if err != nil {
@@ -211,6 +217,7 @@ func (s *DataServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHAS
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = file.Close() }()
 
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
