@@ -56,7 +56,7 @@ func (app *Application) Run(ctx context.Context) error {
 	auth_intc := app.getAuthInterceptor()
 
 	grpc_server := grpc.NewServer(
-		grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize+1024)), // additional bytes to avoid memory leak, when max chunk size is very small
+		grpc.MaxRecvMsgSize(int(10*1024*1024)), // additional bytes to avoid memory leak, when max chunk size is very small
 		grpc.UnaryInterceptor(auth_intc.Unary),
 		grpc.StreamInterceptor(auth_intc.Stream),
 	)

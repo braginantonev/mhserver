@@ -173,8 +173,8 @@ func (s *DataServer) ReadFile(req *pb.RequiredFile, stream pb.DataService_ReadFi
 		return ErrInternal
 	}
 
-	chunks_count := uint64(math.Ceil(float64(file_stat.Size()) / float64(s.cfg.Memory.MaxChunkSize)))
-	data := make([]byte, 0, s.cfg.Memory.MaxChunkSize)
+	chunks_count := uint64(math.Ceil(float64(file_stat.Size()) / float64(s.cfg.ChunkSize)))
+	data := make([]byte, 0, s.cfg.ChunkSize)
 
 readLoop:
 	for i := range chunks_count {
@@ -189,7 +189,7 @@ readLoop:
 			}
 
 			stream.Send(&pb.Chunk{
-				Offset: i * s.cfg.Memory.MaxChunkSize,
+				Offset: i * s.cfg.ChunkSize,
 				Data:   data[:n],
 			})
 		}

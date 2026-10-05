@@ -27,11 +27,6 @@ type LimiterConfig struct {
 	Interval time.Duration
 }
 
-type MemoryConfig struct {
-	MaxChunkSize uint64 `toml:"max_chunk_size"`
-	MinChunkSize uint64 `toml:"min_chunk_size"`
-}
-
 func loadConfigFromFile[T any](file string, dest *T) error {
 	from_file, err := os.ReadFile(file)
 	if err != nil {
