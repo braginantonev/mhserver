@@ -1,24 +1,54 @@
 package data
 
 import (
+	"context"
+	"log/slog"
 	"path/filepath"
 	"strings"
 
 	"github.com/braginantonev/mhserver/internal/services"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/braginantonev/mhserver/pkg/contextkeys"
 )
 
-var ErrBadDirSyntax error = status.Error(codes.InvalidArgument, "directory have bad syntax")
+func getUsername(ctx context.Context) (string, error) {
+	username, ok := ctx.Value(contextkeys.USERNAME).(string)
+	if !ok {
+		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
+		return "", ErrInternal
+	}
+	return username, nil
+}
 
-func CompileServiceDir(workspace_path, uspace, uname, target_dir string, target_service services.ServiceName) string {
+func CompileUserDirectory(ctx context.Context, dir string, target_service services.ServiceName) (string, error) {
+	username, err := getUsername(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if !DirIsCorrect(dir) {
+		return "", ErrBadDirSyntax
+	}
+
 	// files service keep files in uspace
 	if target_service == SERVICE_NAME {
-		return filepath.Join(workspace_path, uspace, uname, target_dir)
+		return filepath.Join(username, dir), nil
 	}
 
 	// another services keep files in protected dirs
-	return filepath.Join(workspace_path, uspace, uname, string(target_service), target_dir)
+	return filepath.Join(username, string(target_service), dir), nil
+}
+
+func CompileUserFilepath(ctx context.Context, dir, file string, target_service services.ServiceName) (string, error) {
+	user_dir, err := CompileUserDirectory(ctx, dir, target_service)
+	if err != nil {
+		return "", err
+	}
+
+	if !FileIsCorrect(file) {
+		return "", ErrBadFilenameSyntax
+	}
+
+	return filepath.Join(user_dir, file), nil
 }
 
 func DirIsCorrect(path string) bool {
