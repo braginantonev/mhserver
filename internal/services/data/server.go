@@ -14,7 +14,6 @@ import (
 	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
 	pb "github.com/braginantonev/mhserver/proto/gen/data"
-	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -35,65 +34,20 @@ func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
 	}
 }
 
-func (s *DataServer) InitFile(ctx context.Context, req_file *pb.RequiredFile) (*pb.InitInfo, error) {
-	defer s.sem.Release()
-	s.sem.Acquire()
-
-	username, ok := ctx.Value(contextkeys.USERNAME).(string)
-	if !ok {
-		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
-		return nil, ErrInternal
-	}
-
-	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, req_file.Dir.Value, s.cfg.ServiceName)
-	if err != nil {
-		return nil, err
-	}
-
-	if !dirs.FileIsCorrect(req_file.Name) {
-		return nil, ErrBadFilenameSyntax
-	}
-
-	file, err := os.OpenFile(filepath+req_file.Name, os.O_CREATE|os.O_RDWR, 0660)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, ErrDirNotFound
+func (s *DataServer) findFileInUserSpaces(ctx context.Context, file string, flag int) (*os.File, error) {
+	for _, uspace := range s.cfg.UserSpaces {
+		file, err := os.OpenFile(filepath.Join(s.cfg.WorkspacePath, uspace, file), flag, 0660)
+		if err == nil {
+			return file, nil
 		}
 
-		slog.ErrorContext(ctx, "failed open file to read", slog.Any("err", err))
-		return nil, ErrInternal
-	}
-
-	var file_size uint64
-
-	if req_file.NewSize != nil {
-		file_size = *req_file.NewSize
-		if err := file.Truncate(int64(*req_file.NewSize)); err != nil {
-			slog.ErrorContext(ctx, "failed truncate file size", slog.Any("err", err))
+		if !os.IsNotExist(err) {
+			slog.ErrorContext(ctx, "failed open file", slog.Any("error", err))
 			return nil, ErrInternal
 		}
-	} else {
-		file_stat, err := file.Stat()
-		if err != nil {
-			slog.ErrorContext(ctx, "failed get file stat", slog.Any("err", err))
-			return nil, ErrInternal
-		}
-		file_size = uint64(file_stat.Size())
 	}
 
-	max_chunk_size := s.cfg.Memory.MaxChunkSize // cfg chunk size must be rounded to RAM page
-	if file_size <= s.cfg.Memory.MinChunkSize {
-		max_chunk_size = file_size
-	}
-
-	return &pb.InitInfo{
-		FileID: &pb.FileID{
-			Value: s.activeFiles.Push(NewFile(file, FileMeta{
-				Size: file_size,
-			})).String(),
-		},
-		MaxChunkSize: max_chunk_size,
-	}, nil
+	return nil, ErrFileNotExist
 }
 
 func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
@@ -115,35 +69,17 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 		return ErrBrokenSequence
 	}
 
-	username, ok := stream.Context().Value(contextkeys.USERNAME).(string)
-	if !ok {
-		slog.ErrorContext(stream.Context(), "failed get username from context", slog.Any("got", stream.Context().Value(contextkeys.USERNAME)))
-		return ErrInternal
-	}
-
-	if !DirIsCorrect(meta.Dir.GetValue()) {
-		return ErrBadDirSyntax
+	user_file, err := CompileUserFilepath(stream.Context(), meta.Dir.GetValue(), meta.Name, SERVICE_NAME)
+	if err != nil {
+		return err
 	}
 
 	var file *os.File
 	var file_size uint64
 	if meta.NewSize == nil { // update file, no create. We search file in uspace's
-		for _, usp := range s.cfg.UserSpaces {
-			file, err = os.OpenFile(filepath.Join(CompileServiceDir(s.cfg.WorkspacePath, usp, username, meta.Dir.Value, SERVICE_NAME), meta.Name), os.O_WRONLY, 0660)
-			if err == nil {
-				break
-			}
-
-			if os.IsNotExist(err) {
-				continue
-			}
-
-			slog.ErrorContext(stream.Context(), "failed open file to write only", slog.Any("error", err))
-			return ErrInternal
-		}
-
-		if file == nil {
-			return ErrFileNotExist
+		file, err = s.findFileInUserSpaces(stream.Context(), user_file, os.O_WRONLY)
+		if err != nil {
+			return err
 		}
 
 		stat, err := file.Stat()
@@ -159,7 +95,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 		for _, usp := range s.cfg.UserSpaces {
 			space, err := freemem.GetAvailableDiskSpace(filepath.Join(s.cfg.WorkspacePath, usp))
 			if err != nil {
-				slog.ErrorContext(stream.Context(), "failed ge t available disk space in uspace", slog.Any("error", err))
+				slog.ErrorContext(stream.Context(), "failed get available disk space in uspace", slog.Any("error", err))
 				return ErrInternal
 			}
 
@@ -173,11 +109,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 			return ErrNotEnoughDiskSpace
 		}
 
-		if !FileIsCorrect(meta.Name) {
-			return ErrBadFilenameSyntax
-		}
-
-		file, err = os.OpenFile(filepath.Join(CompileServiceDir(s.cfg.WorkspacePath, available_uspace, username, meta.Dir.Value, SERVICE_NAME), meta.Name), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0660)
+		file, err = os.OpenFile(filepath.Join(s.cfg.WorkspacePath, available_uspace, user_file), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0660)
 		if err != nil {
 			slog.ErrorContext(stream.Context(), "failed create file", slog.Any("error", err))
 			return ErrInternal
@@ -221,21 +153,27 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	}
 }
 
-func (s *DataServer) ReadFile(id *pb.FileID, stream pb.DataService_ReadFileServer) error {
+func (s *DataServer) ReadFile(req *pb.RequiredFile, stream pb.DataService_ReadFileServer) error {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	uuid, err := uuid.Parse(id.Value)
+	user_file, err := CompileUserFilepath(stream.Context(), req.Dir.GetValue(), req.Name, SERVICE_NAME)
 	if err != nil {
-		return ErrBadUUID
+		return err
 	}
 
-	file, ok := s.activeFiles.Get(uuid)
-	if !ok {
-		return ErrConnectionNotFound
+	file, err := s.findFileInUserSpaces(stream.Context(), user_file, os.O_RDONLY)
+	if err != nil {
+		return err
 	}
 
-	chunks_count := uint64(math.Ceil(float64(file.Meta.Size) / float64(s.cfg.Memory.MaxChunkSize)))
+	file_stat, err := file.Stat()
+	if err != nil {
+		slog.ErrorContext(stream.Context(), "failed get stat of exist file", slog.Any("error", err))
+		return ErrInternal
+	}
+
+	chunks_count := uint64(math.Ceil(float64(file_stat.Size()) / float64(s.cfg.Memory.MaxChunkSize)))
 	data := make([]byte, 0, s.cfg.Memory.MaxChunkSize)
 
 readLoop:
@@ -260,18 +198,18 @@ readLoop:
 	return nil
 }
 
-func (s *DataServer) GetSum(ctx context.Context, id *pb.FileID) (*pb.SHASum, error) {
+func (s *DataServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHASum, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	uuid, err := uuid.Parse(id.Value)
+	user_file, err := CompileUserFilepath(ctx, req.Dir.GetValue(), req.Name, SERVICE_NAME)
 	if err != nil {
-		return nil, ErrBadUUID
+		return nil, err
 	}
 
-	file, ok := s.activeFiles.Get(uuid)
-	if !ok {
-		return nil, ErrConnectionNotFound
+	file, err := s.findFileInUserSpaces(ctx, user_file, os.O_RDONLY)
+	if err != nil {
+		return nil, err
 	}
 
 	hash := sha256.New()
@@ -283,7 +221,7 @@ func (s *DataServer) GetSum(ctx context.Context, id *pb.FileID) (*pb.SHASum, err
 	return &pb.SHASum{Value: hash.Sum(nil)[:]}, nil
 }
 
-func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Directory) (*pb.Size, error) {
+func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empty) (*pb.Size, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
@@ -293,56 +231,63 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, dir *pb.Director
 		return nil, ErrInternal
 	}
 
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, "/", s.cfg.ServiceName)
-	if err != nil {
-		return nil, err
+	var total, buff uint64
+	for _, usp := range s.cfg.UserSpaces {
+		buff, _ = freemem.GetAvailableDiskSpace(filepath.Join(s.cfg.WorkspacePath, usp, username))
+		total += buff
 	}
 
-	space, err := freemem.GetAvailableDiskSpace(dir_path)
-	if err != nil {
-		return nil, ErrDirNotFound
-	}
-
-	return &pb.Size{Value: space}, nil
+	return &pb.Size{Value: total}, nil
 }
 
 func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	username, ok := ctx.Value(contextkeys.USERNAME).(string)
-	if !ok {
-		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
-		return nil, ErrInternal
-	}
-
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, dir.Value, s.cfg.ServiceName)
+	user_dir, err := CompileUserDirectory(ctx, dir.GetValue(), SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
 
-	files, err := os.ReadDir(dir_path)
-	if err != nil {
+	var total_files int
+	entries := make([][]os.DirEntry, 0, len(s.cfg.UserSpaces))
+	for _, usp := range s.cfg.UserSpaces {
+		files, err := os.ReadDir(filepath.Join(s.cfg.WorkspacePath, usp, user_dir))
+		if err != nil {
+			if !os.IsNotExist(err) {
+				slog.ErrorContext(ctx, "failed read dir", slog.Any("error", err))
+				return nil, ErrInternal
+			}
+			continue
+		}
+		total_files += len(files)
+		entries = append(entries, files)
+	}
+
+	if len(entries) == 0 {
 		return nil, ErrDirNotFound
 	}
 
 	list := &pb.FilesList{
-		Value: make([]*pb.FileInfo, len(files)),
+		Value: make([]*pb.FileInfo, 0, total_files),
 	}
 
-	for i, file := range files {
-		list.Value[i] = &pb.FileInfo{
-			Name:  file.Name(),
-			IsDir: file.IsDir(),
-		}
+	for _, entry := range entries {
+		for _, file := range entry {
+			ret := &pb.FileInfo{
+				Name:  file.Name(),
+				IsDir: file.IsDir(),
+			}
 
-		info, err := file.Info()
-		if err != nil {
-			continue
-		}
+			info, err := file.Info()
+			if err != nil {
+				continue
+			}
 
-		list.Value[i].Size = uint64(info.Size())
-		list.Value[i].ModTime = uint64(info.ModTime().Unix())
+			ret.Size = uint64(info.Size())
+			ret.ModTime = uint64(info.ModTime().Unix())
+			list.Value = append(list.Value, ret)
+		}
 	}
 
 	return list, nil
@@ -352,24 +297,21 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	username, ok := ctx.Value(contextkeys.USERNAME).(string)
-	if !ok {
-		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
-		return nil, ErrInternal
-	}
-
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, dir.Value, s.cfg.ServiceName)
+	user_dir, err := CompileUserDirectory(ctx, dir.GetValue(), SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := os.MkdirAll(dir_path, 0700); err != nil {
-		if os.IsExist(err) {
-			return nil, ErrDirAlreadyExist
-		}
+	for _, usp := range s.cfg.UserSpaces {
+		if err := os.MkdirAll(filepath.Join(s.cfg.WorkspacePath, usp, user_dir), 0660); err != nil {
+			if os.IsExist(err) {
+				// we return value here, because if dir already exist - he also exist in other uspace's
+				return nil, ErrDirAlreadyExist
+			}
 
-		slog.ErrorContext(ctx, "failed create user direction", slog.Any("err", err))
-		return nil, ErrInternal
+			slog.ErrorContext(ctx, "failed create user direction", slog.Any("err", err))
+			return nil, ErrInternal
+		}
 	}
 
 	return nil, nil
@@ -379,53 +321,48 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	username, ok := ctx.Value(contextkeys.USERNAME).(string)
-	if !ok {
-		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
-		return nil, ErrInternal
-	}
-
-	dir_path, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, dir.Value, s.cfg.ServiceName)
+	user_dir, err := CompileUserDirectory(ctx, dir.GetValue(), SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := os.RemoveAll(dir_path); err != nil {
-		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
-		return nil, ErrInternal
+	for _, usp := range s.cfg.UserSpaces {
+		if err := os.RemoveAll(filepath.Join(s.cfg.WorkspacePath, usp, user_dir)); err != nil {
+			slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
+			return nil, ErrInternal
+		}
 	}
 
 	return nil, nil
 }
 
-func (s *DataServer) RemoveFile(ctx context.Context, req_file *pb.RequiredFile) (*emptypb.Empty, error) {
+func (s *DataServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*emptypb.Empty, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	username, ok := ctx.Value(contextkeys.USERNAME).(string)
-	if !ok {
-		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
-		return nil, ErrInternal
-	}
-
-	filepath, err := dirs.GetDataPath(s.cfg.WorkspacePath, username, req_file.Dir.Value, s.cfg.ServiceName)
+	user_file, err := CompileUserFilepath(ctx, req.GetDir().Value, req.GetName(), SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
 
-	if !dirs.FileIsCorrect(req_file.Name) {
-		return nil, ErrBadFilenameSyntax
-	}
+	var removed bool
+	for _, usp := range s.cfg.UserSpaces {
+		err := os.Remove(filepath.Join(s.cfg.WorkspacePath, usp, user_file))
+		if err == nil {
+			removed = true
+			break
+		}
 
-	filepath += req_file.Name
-
-	if err := os.Remove(filepath); err != nil {
 		if os.IsNotExist(err) {
-			return nil, ErrFileNotExist
+			continue
 		}
 
 		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
 		return nil, ErrInternal
+	}
+
+	if !removed {
+		return nil, ErrFileNotExist
 	}
 
 	return nil, nil
