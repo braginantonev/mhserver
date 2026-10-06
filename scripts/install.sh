@@ -53,6 +53,8 @@ chmod 660 .env
 sudo cp -a . $INSTALL_PATH/
 sudo chown -R mhserver:mhserver $INSTALL_PATH
 
+sudo chmod -R 777 $INSTALL_PATH/$CONFIG_DIR
+
 rm .env # for local dev
 
 echo "Create mhserver db user..."
