@@ -3,6 +3,9 @@ package application
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"os"
+	"path/filepath"
 
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/interceptors"
@@ -21,9 +24,25 @@ func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Serve
 
 	switch service {
 	case data.SERVICE_NAME:
+		workspace_path := filepath.Join(app.cfg.WorkspacePath, "uspace")
+
+		entries, err := os.ReadDir(workspace_path)
+		if err != nil {
+			return err
+		}
+
+		user_spaces := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			if _, err = os.Readlink(entry.Name()); err == nil {
+				user_spaces = append(user_spaces, entry.Name())
+			}
+		}
+
+		slog.InfoContext(ctx, "init", slog.Any("user spaces", user_spaces))
+
 		cfg := data.NewDataServerConfig(
-			app.cfg.WorkspacePath,
-			app.cfg.Memory,
+			workspace_path,
+			user_spaces,
 		)
 		if err := config.LoadConfig(cfg.WorkspacePath, service_config, &cfg); err != nil {
 			return err
