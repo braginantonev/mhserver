@@ -33,18 +33,18 @@ func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Serve
 
 		user_spaces := make([]string, 0, len(entries))
 		for _, entry := range entries {
-			if _, err = os.Readlink(entry.Name()); err == nil {
+			if _, err = os.Readlink(filepath.Join(workspace_path, entry.Name())); err == nil {
 				user_spaces = append(user_spaces, entry.Name())
 			}
 		}
 
-		slog.InfoContext(ctx, "init", slog.Any("user spaces", user_spaces))
+		slog.InfoContext(ctx, "init", slog.Any("user_spaces", user_spaces))
 
 		cfg := data.NewDataServerConfig(
 			workspace_path,
 			user_spaces,
 		)
-		if err := config.LoadConfig(cfg.WorkspacePath, service_config, &cfg); err != nil {
+		if err := config.LoadConfig(app.cfg.WorkspacePath, service_config, &cfg); err != nil {
 			return err
 		}
 		data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, cfg))
