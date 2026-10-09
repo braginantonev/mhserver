@@ -53,19 +53,31 @@ func (inc *AuthInterceptor) parseTokenToContext(parent context.Context) (context
 		return nil, ErrMissedMetadata
 	}
 
-	authorization := md["authorization"]
-	if len(authorization) < 1 {
-		return nil, ErrAuthTokenIsMissed
-	}
+	var username string
+	// check context on internal request - to not reply check authorization between services
+	if isInternal, _ := parent.Value(contextkeys.InternalRequest).(bool); isInternal {
+		// we simple get a username from metadata, because it's internal request.
+		// in service rpc we create new outgoing context, so previous metadata (from user) must not be used.
+		values := md.Get("username")
+		if len(values) < 1 {
+			return nil, ErrAuthTokenIsMissed
+		}
+		username = values[0]
+	} else {
+		authorization := md.Get("authorization")
+		if len(authorization) < 1 {
+			return nil, ErrAuthTokenIsMissed
+		}
 
-	parsed, err := inc.parseToken(authorization)
-	if err != nil {
-		return nil, ErrAuthBadToken
-	}
+		parsed, err := inc.parseToken(authorization)
+		if err != nil {
+			return nil, ErrAuthBadToken
+		}
 
-	username, ok := parsed.Claims.(jwt.MapClaims)["name"].(string)
-	if !ok {
-		return nil, ErrAuthBadToken
+		username, ok = parsed.Claims.(jwt.MapClaims)["name"].(string)
+		if !ok {
+			return nil, ErrAuthBadToken
+		}
 	}
 
 	return context.WithValue(parent, contextkeys.USERNAME, username), nil
