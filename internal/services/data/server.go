@@ -22,16 +22,14 @@ type DataServer struct {
 	pb.DataServiceServer
 	services.Service
 
-	cfg         DataServiceConfig
-	activeFiles *CachedFiles
-	sem         repository.Semaphore
+	cfg DataServiceConfig
+	sem repository.Semaphore
 }
 
 func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
 	return &DataServer{
-		cfg:         cfg,
-		activeFiles: NewCachedFiles(ctx),
-		sem:         repository.NewSemaphore(SEMAPHORE_SIZE),
+		cfg: cfg,
+		sem: repository.NewSemaphore(SEMAPHORE_SIZE),
 	}
 }
 
