@@ -39,7 +39,7 @@ for p in "${PATHS[@]}"; do
     sudo mkdir $p
 done
 
-#local db_pass=$(openssl rand -base64 32)
+#db_pass=$(openssl rand -base64 32)
 db_pass="123"
 
 touch .env
@@ -52,8 +52,7 @@ chmod 660 .env
 
 sudo cp -a . $INSTALL_PATH/
 sudo chown -R mhserver:mhserver $INSTALL_PATH
-
-sudo chmod -R 777 $INSTALL_PATH/$CONFIG_DIR
+sudo chmod 666 -R $INSTALL_PATH/$CONFIG_DIR/*
 
 rm .env # for local dev
 

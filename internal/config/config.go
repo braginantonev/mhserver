@@ -42,11 +42,6 @@ func loadConfigFromFile[T any](file string, dest *T) error {
 }
 
 func LoadConfig[T any](workspace_path, file string, dest *T) error {
-	// init default values
-	if err := loadConfigFromFile(filepath.Join(workspace_path, DEFAULT_CONFIG_DIRECTORY, file), dest); err != nil {
-		return err
-	}
-
 	// init user-override values
 	if err := loadConfigFromFile(filepath.Join(workspace_path, CONFIG_DIRECTORY, file), dest); err != nil && !os.IsNotExist(err) {
 		return err

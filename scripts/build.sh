@@ -13,8 +13,7 @@ go build -C cmd/ -o ../build/mhserver -ldflags="-s -w -X=github.com/braginantone
 
 cp scripts/* build
 
-mkdir build/config
-cp -r default build/config/default
+cp -r config build/config
 
 cd build
 
