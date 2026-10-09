@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"io"
 	"log/slog"
 	"math"
@@ -34,6 +35,32 @@ func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
 	}
 }
 
+// Exist user dir or not. If not exist - create user dir in all user spaces.
+// Of course, using a cache for this method - best idea. But this is not a big server, so I'm to lazy to do it.
+func (s *DataServer) ensureUserDir(ctx context.Context, username string) error {
+	var needPreparingUspace []string
+
+	// we check all of uspace's, because new uspace's don't have an user dir.
+	for _, usp := range s.cfg.UserSpaces {
+		if _, err := os.Stat(filepath.Join(s.cfg.WorkspacePath, usp, username)); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				slog.ErrorContext(ctx, "failed get stat of user dir", slog.Any("error", err))
+				return ErrInternal
+			}
+			needPreparingUspace = append(needPreparingUspace, usp)
+		}
+	}
+
+	for _, usp := range needPreparingUspace {
+		if err := os.Mkdir(filepath.Join(s.cfg.WorkspacePath, usp, username), 0770); err != nil && !errors.Is(err, os.ErrExist) {
+			slog.ErrorContext(ctx, "failed create user dir", slog.Any("error", err))
+			return ErrInternal
+		}
+	}
+
+	return nil
+}
+
 func (s *DataServer) findFileInUserSpaces(ctx context.Context, file string, flag int) (*os.File, error) {
 	for _, uspace := range s.cfg.UserSpaces {
 		file, err := os.OpenFile(filepath.Join(s.cfg.WorkspacePath, uspace, file), flag, 0660)
@@ -54,6 +81,16 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
+	username, err := GetUsernameFromContext(stream.Context())
+	if err != nil {
+		slog.ErrorContext(stream.Context(), "failed get username")
+		return ErrInternal
+	}
+
+	if err := s.ensureUserDir(stream.Context(), username); err != nil {
+		return err
+	}
+
 	// init file id
 	init_info, err := stream.Recv()
 	if err != nil {
@@ -69,7 +106,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 		return ErrBrokenSequence
 	}
 
-	user_file, err := CompileUserFilepath(stream.Context(), meta.Dir.GetValue(), meta.Name, SERVICE_NAME)
+	user_file, err := CompileUserFilepath(username, meta.Dir.GetValue(), meta.Name, SERVICE_NAME)
 	if err != nil {
 		return err
 	}
@@ -162,7 +199,17 @@ func (s *DataServer) ReadFile(req *pb.RequiredFile, stream pb.DataService_ReadFi
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	user_file, err := CompileUserFilepath(stream.Context(), req.Dir.GetValue(), req.Name, SERVICE_NAME)
+	username, err := GetUsernameFromContext(stream.Context())
+	if err != nil {
+		slog.ErrorContext(stream.Context(), "failed get username")
+		return ErrInternal
+	}
+
+	if err := s.ensureUserDir(stream.Context(), username); err != nil {
+		return err
+	}
+
+	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name, SERVICE_NAME)
 	if err != nil {
 		return err
 	}
@@ -208,7 +255,17 @@ func (s *DataServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHAS
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	user_file, err := CompileUserFilepath(ctx, req.Dir.GetValue(), req.Name, SERVICE_NAME)
+	username, err := GetUsernameFromContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed get username")
+		return nil, ErrInternal
+	}
+
+	if err := s.ensureUserDir(ctx, username); err != nil {
+		return nil, err
+	}
+
+	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name, SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +308,17 @@ func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.Files
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	user_dir, err := CompileUserDirectory(ctx, dir.GetValue(), SERVICE_NAME)
+	username, err := GetUsernameFromContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed get username")
+		return nil, ErrInternal
+	}
+
+	if err := s.ensureUserDir(ctx, username); err != nil {
+		return nil, err
+	}
+
+	user_dir, err := CompileUserDirectory(username, dir.GetValue(), SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +371,17 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	user_dir, err := CompileUserDirectory(ctx, dir.GetValue(), SERVICE_NAME)
+	username, err := GetUsernameFromContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed get username")
+		return nil, ErrInternal
+	}
+
+	if err := s.ensureUserDir(ctx, username); err != nil {
+		return nil, err
+	}
+
+	user_dir, err := CompileUserDirectory(username, dir.GetValue(), SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +405,17 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	user_dir, err := CompileUserDirectory(ctx, dir.GetValue(), SERVICE_NAME)
+	username, err := GetUsernameFromContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed get username")
+		return nil, ErrInternal
+	}
+
+	if err := s.ensureUserDir(ctx, username); err != nil {
+		return nil, err
+	}
+
+	user_dir, err := CompileUserDirectory(username, dir.GetValue(), SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +434,17 @@ func (s *DataServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*emp
 	defer s.sem.Release()
 	s.sem.Acquire()
 
-	user_file, err := CompileUserFilepath(ctx, req.GetDir().Value, req.GetName(), SERVICE_NAME)
+	username, err := GetUsernameFromContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed get username")
+		return nil, ErrInternal
+	}
+
+	if err := s.ensureUserDir(ctx, username); err != nil {
+		return nil, err
+	}
+
+	user_file, err := CompileUserFilepath(username, req.GetDir().Value, req.GetName(), SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}

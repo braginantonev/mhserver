@@ -1,14 +1,12 @@
 package data_test
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/internal/services/data"
-	"github.com/braginantonev/mhserver/pkg/contextkeys"
 )
 
 const Username string = "V"
@@ -22,8 +20,6 @@ func compileExpectedFilepath(dir, file string) string {
 }
 
 func TestCompileUserDirectory(t *testing.T) {
-	ctx := context.WithValue(t.Context(), contextkeys.USERNAME, Username)
-
 	cases := [...]struct {
 		name         string
 		dir          string
@@ -74,7 +70,7 @@ func TestCompileUserDirectory(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := data.CompileUserDirectory(ctx, test.dir, test.service)
+			got, err := data.CompileUserDirectory(Username, test.dir, test.service)
 			if err != test.expected_err {
 				t.Errorf("expected error: `%v`, but got: `%v`", test.expected_err, err)
 			}
@@ -87,7 +83,6 @@ func TestCompileUserDirectory(t *testing.T) {
 }
 
 func TestCompileUserFilepath(t *testing.T) {
-	ctx := context.WithValue(t.Context(), contextkeys.USERNAME, Username)
 	dir := "test"
 
 	cases := [...]struct {
@@ -129,7 +124,7 @@ func TestCompileUserFilepath(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := data.CompileUserFilepath(ctx, dir, test.file, data.SERVICE_NAME)
+			got, err := data.CompileUserFilepath(Username, dir, test.file, data.SERVICE_NAME)
 			if err != test.expected_err {
 				t.Errorf("expected error: `%v`, but got: `%v`", test.expected_err, err)
 			}

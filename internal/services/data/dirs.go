@@ -2,7 +2,7 @@ package data
 
 import (
 	"context"
-	"log/slog"
+	"errors"
 	"path/filepath"
 	"strings"
 
@@ -10,21 +10,15 @@ import (
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
 )
 
-func getUsername(ctx context.Context) (string, error) {
+func GetUsernameFromContext(ctx context.Context) (string, error) {
 	username, ok := ctx.Value(contextkeys.USERNAME).(string)
 	if !ok {
-		slog.ErrorContext(ctx, "failed get username from context", slog.Any("got", ctx.Value(contextkeys.USERNAME)))
-		return "", ErrInternal
+		return "", errors.New("failed get username from context")
 	}
 	return username, nil
 }
 
-func CompileUserDirectory(ctx context.Context, dir string, target_service services.ServiceName) (string, error) {
-	username, err := getUsername(ctx)
-	if err != nil {
-		return "", err
-	}
-
+func CompileUserDirectory(username, dir string, target_service services.ServiceName) (string, error) {
 	if !DirIsCorrect(dir) {
 		return "", ErrBadDirSyntax
 	}
@@ -38,8 +32,8 @@ func CompileUserDirectory(ctx context.Context, dir string, target_service servic
 	return filepath.Join(username, string(target_service), dir), nil
 }
 
-func CompileUserFilepath(ctx context.Context, dir, file string, target_service services.ServiceName) (string, error) {
-	user_dir, err := CompileUserDirectory(ctx, dir, target_service)
+func CompileUserFilepath(username, dir, file string, target_service services.ServiceName) (string, error) {
+	user_dir, err := CompileUserDirectory(username, dir, target_service)
 	if err != nil {
 		return "", err
 	}
