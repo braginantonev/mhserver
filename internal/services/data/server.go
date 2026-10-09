@@ -387,7 +387,7 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	}
 
 	for _, usp := range s.cfg.UserSpaces {
-		if err := os.MkdirAll(filepath.Join(s.cfg.WorkspacePath, usp, user_dir), 0660); err != nil {
+		if err := os.MkdirAll(filepath.Join(s.cfg.WorkspacePath, usp, user_dir), 0770); err != nil {
 			if os.IsExist(err) {
 				// we return value here, because if dir already exist - he also exist in other uspace's
 				return nil, ErrDirAlreadyExist

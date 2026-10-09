@@ -47,7 +47,7 @@ func (inc *AuthInterceptor) parseToken(authorization []string) (*jwt.Token, erro
 	})
 }
 
-func (inc *AuthInterceptor) parseTokenToContext(parent context.Context) (context.Context, error) {
+func (inc *AuthInterceptor) addUsernameToContext(parent context.Context) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(parent)
 	if !ok {
 		return nil, ErrMissedMetadata
@@ -92,7 +92,7 @@ func (inc *AuthInterceptor) Unary(ctx context.Context, req any, info *grpc.Unary
 	handler_ctx := ctx
 
 	if !inc.isNoAuthAvailable(info.FullMethod) {
-		handler_ctx, err = inc.parseTokenToContext(ctx)
+		handler_ctx, err = inc.addUsernameToContext(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +109,7 @@ func (inc *AuthInterceptor) Stream(srv any, ss grpc.ServerStream, info *grpc.Str
 	handler_ctx := ss.Context()
 
 	if !inc.isNoAuthAvailable(info.FullMethod) {
-		handler_ctx, err = inc.parseTokenToContext(ss.Context())
+		handler_ctx, err = inc.addUsernameToContext(ss.Context())
 		if err != nil {
 			return err
 		}
