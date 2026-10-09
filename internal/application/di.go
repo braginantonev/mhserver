@@ -69,3 +69,7 @@ func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Serve
 func (app *Application) getAuthInterceptor() interceptors.AuthInterceptor {
 	return interceptors.NewAuthInterceptors(app.cfg.JWTSignature)
 }
+
+func (app *Application) getInternalTokenInterceptor() interceptors.InternalTokenInterceptor {
+	return interceptors.NewServiceInterceptor(app.cfg.ServerToken)
+}

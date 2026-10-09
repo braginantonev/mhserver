@@ -54,11 +54,18 @@ func NewApplication() (*Application, error) {
 
 func (app *Application) Run(ctx context.Context) error {
 	auth_intc := app.getAuthInterceptor()
+	internalTokenIntc := app.getInternalTokenInterceptor()
 
 	grpc_server := grpc.NewServer(
 		grpc.MaxRecvMsgSize(int(10*1024*1024)), // additional bytes to avoid memory leak, when max chunk size is very small
-		grpc.UnaryInterceptor(auth_intc.Unary),
-		grpc.StreamInterceptor(auth_intc.Stream),
+		grpc.ChainUnaryInterceptor(
+			internalTokenIntc.Unary,
+			auth_intc.Unary,
+		),
+		grpc.ChainStreamInterceptor(
+			internalTokenIntc.Stream,
+			auth_intc.Stream,
+		),
 	)
 
 	for name, subserver := range app.cfg.Services {
