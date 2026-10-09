@@ -17,8 +17,10 @@ type Service struct {
 }
 
 type ApplicationConfig struct {
+	// Secrets
 	JWTSignature string
 	DBPass       string
+	ServerToken  string
 
 	WorkspacePath string `toml:"-"`
 	Server        Server
@@ -40,17 +42,20 @@ func NewApplicationConfig() (ApplicationConfig, error) {
 
 	cfg.WorkspacePath = workspace_path
 
-	// get jwt and db pass
 	signature, ok := os.LookupEnv("JWT_SIGNATURE")
 	if !ok {
-		return cfg, errors.New("jwt signature env not found!")
+		return cfg, errors.New("jwt signature env not found")
 	}
-
 	cfg.JWTSignature = signature
 
 	cfg.DBPass, ok = os.LookupEnv("DATABASE_PASSWORD")
 	if !ok {
 		return cfg, errors.New("database pass env not found")
+	}
+
+	cfg.ServerToken, ok = os.LookupEnv("SERVER_TOKEN")
+	if !ok {
+		return cfg, errors.New("server token env not found")
 	}
 
 	return cfg, nil

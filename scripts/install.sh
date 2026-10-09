@@ -46,6 +46,7 @@ touch .env
 tee .env >/dev/null <<EOF
 JWT_SIGNATURE = "$(openssl rand -base64 32)"
 DATABASE_PASSWORD = "$db_pass"
+SERVER_TOKEN = "$(openssl rand -base64 8)"
 WORKSPACE_PATH = "/opt/mhserver"
 EOF
 chmod 660 .env
