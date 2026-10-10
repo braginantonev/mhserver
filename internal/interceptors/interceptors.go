@@ -4,6 +4,12 @@ import (
 	"context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+var (
+	ErrInternal error = status.Error(codes.Internal, "internal error")
 )
 
 type WrappedStream struct {

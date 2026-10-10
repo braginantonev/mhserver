@@ -9,6 +9,7 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/interceptors"
+	"github.com/braginantonev/mhserver/internal/repository/ratelimit"
 	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/internal/services/data"
@@ -72,4 +73,21 @@ func (app *Application) getAuthInterceptor() interceptors.AuthInterceptor {
 
 func (app *Application) getInternalTokenInterceptor() interceptors.InternalTokenInterceptor {
 	return interceptors.NewServiceInterceptor(app.cfg.ServerToken)
+}
+
+func (app *Application) getRateLimitInterceptor(ctx context.Context) interceptors.RateLimitInterceptor {
+	unaryCfg, ok := app.cfg.RateLimiter["unary"]
+	if !ok {
+		unaryCfg = config.LimiterConfig{Limit: 5, Interval: 1}
+	}
+
+	streamCfg, ok := app.cfg.RateLimiter["stream"]
+	if !ok {
+		streamCfg = config.LimiterConfig{Limit: 100, Interval: 5}
+	}
+
+	return interceptors.NewRateLimitInterceptor(
+		ratelimit.NewLimiter(ctx, unaryCfg.Limit, unaryCfg.Interval),   // unary limiter
+		ratelimit.NewLimiter(ctx, streamCfg.Limit, streamCfg.Interval), // stream limiter
+	)
 }

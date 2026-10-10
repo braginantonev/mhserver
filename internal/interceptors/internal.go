@@ -56,7 +56,7 @@ func (intc *InternalTokenInterceptor) Stream(srv any, ss grpc.ServerStream, info
 		handlerCtx = context.WithValue(ss.Context(), contextkeys.InternalRequest, true) // like in unary
 	}
 
-	if err = handler(handlerCtx, ss); err != nil {
+	if err = handler(srv, ss); err != nil {
 		slog.ErrorContext(handlerCtx, "RPC failed", slog.Any("error", err))
 	}
 	return err

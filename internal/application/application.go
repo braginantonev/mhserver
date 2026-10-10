@@ -53,18 +53,21 @@ func NewApplication() (*Application, error) {
 }
 
 func (app *Application) Run(ctx context.Context) error {
-	auth_intc := app.getAuthInterceptor()
-	internalTokenIntc := app.getInternalTokenInterceptor()
+	authInterceptor := app.getAuthInterceptor()
+	internalTokenInterceptor := app.getInternalTokenInterceptor()
+	ratelimitInterceptor := app.getRateLimitInterceptor(ctx)
 
 	grpc_server := grpc.NewServer(
 		grpc.MaxRecvMsgSize(int(10*1024*1024)), // additional bytes to avoid memory leak, when max chunk size is very small
 		grpc.ChainUnaryInterceptor(
-			internalTokenIntc.Unary,
-			auth_intc.Unary,
+			ratelimitInterceptor.Unary,
+			internalTokenInterceptor.Unary,
+			authInterceptor.Unary,
 		),
 		grpc.ChainStreamInterceptor(
-			internalTokenIntc.Stream,
-			auth_intc.Stream,
+			ratelimitInterceptor.Stream,
+			internalTokenInterceptor.Stream,
+			authInterceptor.Stream,
 		),
 	)
 
