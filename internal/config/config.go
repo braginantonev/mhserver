@@ -22,7 +22,6 @@ type ServerSocket struct {
 }
 
 type LimiterConfig struct {
-	Enabled  bool
 	Limit    int
 	Interval time.Duration
 }

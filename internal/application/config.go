@@ -24,7 +24,7 @@ type ApplicationConfig struct {
 
 	WorkspacePath string `toml:"-"`
 	Server        Server
-	RateLimiter   config.LimiterConfig
+	RateLimiter   map[string]config.LimiterConfig
 	Services      map[services.ServiceName]Service
 }
 
