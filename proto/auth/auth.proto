@@ -1,5 +1,5 @@
 syntax = "proto3";
-package data;
+package auth;
 option go_package = "github.com/braginantonev/mhserver/proto/gen/auth";
 
 import "google/protobuf/empty.proto";

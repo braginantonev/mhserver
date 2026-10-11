@@ -174,7 +174,7 @@ var File_auth_auth_proto protoreflect.FileDescriptor
 
 const file_auth_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x0fauth/auth.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"6\n" +
+	"\x0fauth/auth.proto\x12\x04auth\x1a\x1bgoogle/protobuf/empty.proto\"6\n" +
 	"\x04User\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"%\n" +
@@ -182,13 +182,13 @@ const file_auth_auth_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"P\n" +
 	"\x0fRegisterRequest\x12\x1e\n" +
 	"\x04user\x18\x01 \x01(\v2\n" +
-	".data.UserR\x04user\x12\x1d\n" +
+	".auth.UserR\x04user\x12\x1d\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tR\tsecretKey2r\n" +
 	"\vAuthService\x12(\n" +
 	"\x05Login\x12\n" +
-	".data.User\x1a\x13.data.LoginResponse\x129\n" +
-	"\bRegister\x12\x15.data.RegisterRequest\x1a\x16.google.protobuf.EmptyB2Z0github.com/braginantonev/mhserver/proto/gen/authb\x06proto3"
+	".auth.User\x1a\x13.auth.LoginResponse\x129\n" +
+	"\bRegister\x12\x15.auth.RegisterRequest\x1a\x16.google.protobuf.EmptyB2Z0github.com/braginantonev/mhserver/proto/gen/authb\x06proto3"
 
 var (
 	file_auth_auth_proto_rawDescOnce sync.Once
@@ -204,17 +204,17 @@ func file_auth_auth_proto_rawDescGZIP() []byte {
 
 var file_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_auth_auth_proto_goTypes = []any{
-	(*User)(nil),            // 0: data.User
-	(*LoginResponse)(nil),   // 1: data.LoginResponse
-	(*RegisterRequest)(nil), // 2: data.RegisterRequest
+	(*User)(nil),            // 0: auth.User
+	(*LoginResponse)(nil),   // 1: auth.LoginResponse
+	(*RegisterRequest)(nil), // 2: auth.RegisterRequest
 	(*emptypb.Empty)(nil),   // 3: google.protobuf.Empty
 }
 var file_auth_auth_proto_depIdxs = []int32{
-	0, // 0: data.RegisterRequest.user:type_name -> data.User
-	0, // 1: data.AuthService.Login:input_type -> data.User
-	2, // 2: data.AuthService.Register:input_type -> data.RegisterRequest
-	1, // 3: data.AuthService.Login:output_type -> data.LoginResponse
-	3, // 4: data.AuthService.Register:output_type -> google.protobuf.Empty
+	0, // 0: auth.RegisterRequest.user:type_name -> auth.User
+	0, // 1: auth.AuthService.Login:input_type -> auth.User
+	2, // 2: auth.AuthService.Register:input_type -> auth.RegisterRequest
+	1, // 3: auth.AuthService.Login:output_type -> auth.LoginResponse
+	3, // 4: auth.AuthService.Register:output_type -> google.protobuf.Empty
 	3, // [3:5] is the sub-list for method output_type
 	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
