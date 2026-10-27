@@ -71,6 +71,10 @@ func (app *Application) Run(ctx context.Context) error {
 		),
 	)
 
+	if err := app.registerGrpcServer(ctx, grpc_server, authServiceName()); err != nil {
+		return err
+	}
+
 	for name, subserver := range app.cfg.Services {
 		if !subserver.Enabled {
 			slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", string(name)))

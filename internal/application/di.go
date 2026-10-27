@@ -20,6 +20,10 @@ import (
 
 var ErrServiceNotFound error = errors.New("service not found")
 
+func authServiceName() services.ServiceName {
+	return auth.SERVICE_NAME
+}
+
 func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Server, service services.ServiceName) error {
 	service_config := string(service) + ".conf"
 
@@ -83,7 +87,9 @@ func (app *Application) getRateLimitInterceptor(ctx context.Context) interceptor
 
 	streamCfg, ok := app.cfg.RateLimiter["stream"]
 	if !ok {
-		streamCfg = config.LimiterConfig{Limit: 100, Interval: 5}
+		// With chunk = 5 mb we have 200mb in second.
+		// Thats good, because server for personal use, so for one person usually
+		streamCfg = config.LimiterConfig{Limit: 40, Interval: 1}
 	}
 
 	return interceptors.NewRateLimitInterceptor(
