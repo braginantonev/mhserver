@@ -12,7 +12,6 @@ import (
 
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
-	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
 	pb "github.com/braginantonev/mhserver/proto/gen/data"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -20,7 +19,6 @@ import (
 
 type DataServer struct {
 	pb.DataServiceServer
-	services.Service
 
 	cfg DataServiceConfig
 	sem repository.Semaphore

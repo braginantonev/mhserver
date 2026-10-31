@@ -16,7 +16,7 @@ const (
 	LOGS_DIRECTORY           string = "logs"
 )
 
-type ServerSocket struct {
+type Socket struct {
 	Address string
 	Port    int16
 }
@@ -24,6 +24,14 @@ type ServerSocket struct {
 type LimiterConfig struct {
 	Limit    int
 	Interval time.Duration
+}
+
+type ServiceName string
+type Dependencies map[string]Socket
+
+// Base config of every service
+type ServiceConfig struct {
+	ServiceName ServiceName
 }
 
 func loadConfigFromFile[T any](file string, dest *T) error {
