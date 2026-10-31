@@ -225,7 +225,7 @@ func (s *DataServer) ReadFile(req *pb.RequiredFile, stream pb.DataService_ReadFi
 	}
 
 	chunks_count := uint64(math.Ceil(float64(file_stat.Size()) / float64(s.cfg.ChunkSize)))
-	data := make([]byte, 0, s.cfg.ChunkSize)
+	data := make([]byte, s.cfg.ChunkSize)
 
 readLoop:
 	for i := range chunks_count {
