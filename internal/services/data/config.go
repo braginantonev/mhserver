@@ -1,19 +1,20 @@
 package data
 
 import (
-	"github.com/braginantonev/mhserver/internal/services"
+	"github.com/braginantonev/mhserver/internal/config"
 )
 
 const (
-	SERVICE_NAME       services.ServiceName = "files"
-	SEMAPHORE_SIZE     int                  = 100
-	DEFAULT_CHUNK_SIZE uint64               = 1 * 1024 * 1024
+	SERVICE_NAME       config.ServiceName = "files"
+	SEMAPHORE_SIZE     int                = 100
+	DEFAULT_CHUNK_SIZE uint64             = 1 * 1024 * 1024
 )
 
 type DataServiceConfig struct {
-	services.ServiceConfig
+	config.ServiceConfig
 
-	WorkspacePath string // User files path
+	// Simply the uspace dir
+	WorkspacePath string
 	ChunkSize     uint64
 	UserSpaces    []string
 }

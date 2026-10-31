@@ -67,7 +67,7 @@ func TestRegister(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthServiceConfig(WORKSPACE_PATH, JWT_SIGNATURE), db))
+	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthServiceConfig(JWT_SIGNATURE), db))
 
 	lis, err := net.Listen("tcp", "localhost:8085")
 	if err != nil {
@@ -224,7 +224,7 @@ func TestLogin(t *testing.T) {
 
 	// Create data grpc client
 	grpc_server := grpc.NewServer()
-	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthServiceConfig(WORKSPACE_PATH, JWT_SIGNATURE), db))
+	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthServiceConfig(JWT_SIGNATURE), db))
 
 	lis, err := net.Listen("tcp", "localhost:8085")
 	if err != nil {

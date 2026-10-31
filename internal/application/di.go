@@ -10,7 +10,6 @@ import (
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/interceptors"
 	"github.com/braginantonev/mhserver/internal/repository/ratelimit"
-	"github.com/braginantonev/mhserver/internal/services"
 	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/internal/services/data"
 	auth_pb "github.com/braginantonev/mhserver/proto/gen/auth"
@@ -20,11 +19,11 @@ import (
 
 var ErrServiceNotFound error = errors.New("service not found")
 
-func authServiceName() services.ServiceName {
+func authServiceName() config.ServiceName {
 	return auth.SERVICE_NAME
 }
 
-func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Server, service services.ServiceName) error {
+func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Server, service config.ServiceName) error {
 	service_config := string(service) + ".conf"
 
 	switch service {
@@ -56,10 +55,9 @@ func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Serve
 
 	case auth.SERVICE_NAME:
 		cfg := auth.NewAuthServiceConfig(
-			app.cfg.WorkspacePath,
 			app.cfg.JWTSignature,
 		)
-		if err := config.LoadConfig(cfg.WorkspacePath, service_config, &cfg); err != nil {
+		if err := config.LoadConfig(app.cfg.WorkspacePath, service_config, &cfg); err != nil {
 			return err
 		}
 		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(cfg, app.db))

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/braginantonev/mhserver/internal/services"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
 )
 
@@ -18,7 +18,7 @@ func GetUsernameFromContext(ctx context.Context) (string, error) {
 	return username, nil
 }
 
-func CompileUserDirectory(username, dir string, target_service services.ServiceName) (string, error) {
+func CompileUserDirectory(username, dir string, target_service config.ServiceName) (string, error) {
 	if !DirIsCorrect(dir) {
 		return "", ErrBadDirSyntax
 	}
@@ -32,7 +32,7 @@ func CompileUserDirectory(username, dir string, target_service services.ServiceN
 	return filepath.Join(username, string(target_service), dir), nil
 }
 
-func CompileUserFilepath(username, dir, file string, target_service services.ServiceName) (string, error) {
+func CompileUserFilepath(username, dir, file string, target_service config.ServiceName) (string, error) {
 	user_dir, err := CompileUserDirectory(username, dir, target_service)
 	if err != nil {
 		return "", err

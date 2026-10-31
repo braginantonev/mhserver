@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/braginantonev/mhserver/internal/services"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/services/data"
 )
 
@@ -23,7 +23,7 @@ func TestCompileUserDirectory(t *testing.T) {
 	cases := [...]struct {
 		name         string
 		dir          string
-		service      services.ServiceName
+		service      config.ServiceName
 		expected     string
 		expected_err error
 	}{
