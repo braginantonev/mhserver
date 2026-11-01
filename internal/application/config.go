@@ -5,15 +5,52 @@ import (
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	"github.com/braginantonev/mhserver/internal/services"
+	"github.com/braginantonev/mhserver/internal/services/data"
 )
 
 type Server struct {
-	config.ServerSocket
+	config.Socket
 }
 
-type Service struct {
-	Enabled bool
+type ServiceConfig struct {
+	Enabled      bool
+	Dependencies map[config.ServiceName]config.Socket
+}
+
+type DataConfig struct {
+	ServiceConfig
+	data.DataServiceConfig
+}
+
+type MusicConfig struct {
+	ServiceConfig
+	// add music config
+}
+
+type ImagesConfig struct {
+	ServiceConfig
+	// add images config
+}
+
+type LLMConfig struct {
+	ServiceConfig
+	// add llm config
+}
+
+type ServiceConfigs struct {
+	Data         DataConfig
+	Music        MusicConfig
+	ImagesConfig ImagesConfig
+	LLM          LLMConfig
+}
+
+func (c *ServiceConfigs) IntoServiceMap() map[config.ServiceName]ServiceConfig {
+	return map[config.ServiceName]ServiceConfig{
+		data.SERVICE_NAME: c.Data.ServiceConfig,
+		"music":           c.Music.ServiceConfig,        // temp name for uncreated service
+		"images":          c.ImagesConfig.ServiceConfig, // temp name for uncreated service
+		"llm":             c.LLM.ServiceConfig,          // temp name for uncreated service
+	}
 }
 
 type ApplicationConfig struct {
@@ -22,10 +59,10 @@ type ApplicationConfig struct {
 	DBPass       string
 	ServerToken  string
 
-	WorkspacePath string `toml:"-"`
+	WorkspacePath string
 	Server        Server
 	RateLimiter   map[string]config.LimiterConfig
-	Services      map[services.ServiceName]Service
+	Services      ServiceConfigs
 }
 
 func NewApplicationConfig() (ApplicationConfig, error) {
