@@ -12,8 +12,7 @@ fi
 go build -C cmd/ -o ../build/mhserver -ldflags="-s -w -X=github.com/braginantonev/mhserver/version.Version=${VERSION}"
 
 cp scripts/* build
-
-cp -r config build/config
+cp server.conf build/
 
 cd build
 

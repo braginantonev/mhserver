@@ -11,7 +11,6 @@ USER_SPACE_PATH=$INSTALL_PATH/uspace
 PATHS=("$INSTALL_PATH" "$LOGS_PATH" "$USER_SPACE_PATH")
 
 ## DIRS
-CONFIG_DIR=config
 SCRIPTS_DIR=scripts
 
 # $1 - prompt; Use $(yn_input) to get value
@@ -53,7 +52,7 @@ chmod 660 .env
 
 sudo cp -a . $INSTALL_PATH/
 sudo chown -R mhserver:mhserver $INSTALL_PATH
-sudo chmod 666 -R $INSTALL_PATH/$CONFIG_DIR/*
+sudo chmod 666 $INSTALL_PATH/server.conf
 
 rm .env # for local dev
 
