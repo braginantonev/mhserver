@@ -23,6 +23,7 @@ func NewDataServerConfig(workspace_path string, user_spaces []string) DataServic
 	return DataServiceConfig{
 		ServiceName:   SERVICE_NAME,
 		WorkspacePath: workspace_path,
+		ChunkSize:     DEFAULT_CHUNK_SIZE,
 		UserSpaces:    user_spaces,
 	}
 }
