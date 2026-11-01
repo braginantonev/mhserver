@@ -17,13 +17,18 @@ import (
 	"google.golang.org/grpc"
 )
 
-var ErrServiceNotFound error = errors.New("service not found")
+var ErrServiceNotRealized error = errors.New("service not realized")
 
 func authServiceName() config.ServiceName {
 	return auth.SERVICE_NAME
 }
 
-func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Server, service config.ServiceName) error {
+func (app *Application) registerGrpcServer(
+	ctx context.Context,
+	grpc *grpc.Server,
+	service config.ServiceName,
+	deps map[config.ServiceName]*grpc.ClientConn,
+) error {
 	service_config := string(service) + ".conf"
 
 	switch service {
@@ -63,7 +68,7 @@ func (app *Application) registerGrpcServer(ctx context.Context, grpc *grpc.Serve
 		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(cfg, app.db))
 
 	default:
-		return ErrServiceNotFound
+		return ErrServiceNotRealized
 	}
 
 	return nil

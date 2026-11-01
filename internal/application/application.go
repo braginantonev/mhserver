@@ -3,15 +3,16 @@ package application
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
-	"strings"
+	"sync"
 
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -70,42 +71,60 @@ func (app *Application) Run(ctx context.Context) error {
 			authInterceptor.Stream,
 		),
 	)
+	defer grpc_server.GracefulStop()
 
-	if err := app.registerGrpcServer(ctx, grpc_server, authServiceName()); err != nil {
-		return err
-	}
+	services := app.cfg.Services.IntoServiceMap()
+	enabled := make([]config.ServiceName, 0, len(services))
+	dependencies := make(map[config.ServiceName]*grpc.ClientConn)
 
-	for name, subserver := range app.cfg.Services {
-		if !subserver.Enabled {
-			slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", string(name)))
+	deps_warn := sync.OnceFunc(func() {
+		slog.WarnContext(ctx, "Dependencies init found!\nPlease ensure your all dependency servers placed in one local net.\nIt's dangerous to place dependencies servers in global net, because clients for him does not provide TLS")
+	})
+
+	for name, s := range services {
+		if !s.Enabled {
+			slog.WarnContext(ctx, "Service not enabled. Skip initialization", slog.String("service", string(name)))
 			continue
 		}
 
-		if err := app.registerGrpcServer(ctx, grpc_server, name); err != nil {
-			if errors.Is(err, ErrServiceNotFound) {
-				slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", string(name)))
-			} else {
-				slog.Error("failed register service server", slog.Any("error", err))
+		enabled = append(enabled, name)
+
+		for dep, socket := range s.Dependencies {
+			deps_warn()
+
+			if _, ok := dependencies[dep]; ok {
+				continue // dependency connection already initialized
 			}
-			continue
+
+			client, err := grpc.NewClient(socket.Compile(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed create client for dependency", slog.String("dependency", string(dep)), slog.Any("error", err))
+				return fmt.Errorf("failed init dependencies")
+			}
+
+			dependencies[dep] = client
 		}
-
-		slog.Info("Register grpc service", slog.String("service_name", string(name)))
 	}
 
-	var addr_format string
-	if strings.ContainsRune(app.cfg.Server.Address, ':') {
-		addr_format = "[%s]:%d" // ip v6
-	} else {
-		addr_format = "%s:%d" // ip v4
+	// register auth service, because auth config not provided in service configs
+	if err := app.registerGrpcServer(ctx, grpc_server, authServiceName(), nil); err != nil {
+		slog.ErrorContext(ctx, "Failed register service in server", slog.String("service", "auth"), slog.Any("error", err))
+		return fmt.Errorf("failed init services")
 	}
 
-	addr := fmt.Sprintf(addr_format, app.cfg.Server.Address, app.cfg.Server.Port)
+	for _, s := range enabled {
+		if err := app.registerGrpcServer(ctx, grpc_server, s, dependencies); err != nil {
+			slog.ErrorContext(ctx, "Failed register service in server", slog.String("service", string(s)), slog.Any("error", err))
+			return fmt.Errorf("failed init services")
+		}
+	}
+
+	addr := app.cfg.Server.Compile()
+
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
-
 	slog.Info("Serve grpc server", slog.String("address", addr))
 
 	return grpc_server.Serve(lis)
