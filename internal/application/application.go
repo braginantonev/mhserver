@@ -75,6 +75,7 @@ func (app *Application) Run(ctx context.Context) error {
 
 	services := app.cfg.Services.IntoServiceMap()
 	enabled := make([]config.ServiceName, 0, len(services))
+	conns := make(map[config.Socket]*grpc.ClientConn)
 	dependencies := make(map[config.ServiceName]*grpc.ClientConn)
 
 	deps_warn := sync.OnceFunc(func() {
@@ -96,13 +97,18 @@ func (app *Application) Run(ctx context.Context) error {
 				continue // dependency connection already initialized
 			}
 
-			client, err := grpc.NewClient(socket.Compile(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-			if err != nil {
-				slog.ErrorContext(ctx, "Failed create client for dependency", slog.String("dependency", string(dep)), slog.Any("error", err))
-				return fmt.Errorf("failed init dependencies")
-			}
+			if c, ok := conns[socket]; ok {
+				dependencies[dep] = c
+			} else {
+				client, err := grpc.NewClient(socket.Compile(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+				if err != nil {
+					slog.ErrorContext(ctx, "Failed create client for dependency", slog.String("dependency", string(dep)), slog.Any("error", err))
+					return fmt.Errorf("failed init dependencies")
+				}
 
-			dependencies[dep] = client
+				conns[socket] = client
+				dependencies[dep] = client
+			}
 		}
 	}
 
