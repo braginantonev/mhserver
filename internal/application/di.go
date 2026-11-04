@@ -27,7 +27,7 @@ func (app *Application) registerGrpcServer(
 	ctx context.Context,
 	grpc *grpc.Server,
 	service config.ServiceName,
-	deps map[config.ServiceName]*grpc.ClientConn,
+	_ map[config.ServiceName]*grpc.ClientConn, // dependencies
 ) error {
 	service_config := string(service) + ".conf"
 

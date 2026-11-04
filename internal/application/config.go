@@ -2,6 +2,7 @@ package application
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/config"
@@ -12,44 +13,44 @@ type Server struct {
 	config.Socket
 }
 
-type ServiceConfig struct {
+type LocalServiceConfig struct {
 	Enabled      bool
 	Dependencies map[config.ServiceName]config.Socket
 }
 
 type DataConfig struct {
-	ServiceConfig
+	LocalServiceConfig
 	data.DataServiceConfig
 }
 
 type MusicConfig struct {
-	ServiceConfig
+	LocalServiceConfig
 	// add music config
 }
 
 type ImagesConfig struct {
-	ServiceConfig
+	LocalServiceConfig
 	// add images config
 }
 
 type LLMConfig struct {
-	ServiceConfig
+	LocalServiceConfig
 	// add llm config
 }
 
 type ServiceConfigs struct {
-	Data         DataConfig
-	Music        MusicConfig
-	ImagesConfig ImagesConfig
-	LLM          LLMConfig
+	Files  DataConfig
+	Music  MusicConfig
+	Images ImagesConfig
+	LLM    LLMConfig
 }
 
-func (c *ServiceConfigs) IntoServiceMap() map[config.ServiceName]ServiceConfig {
-	return map[config.ServiceName]ServiceConfig{
-		data.SERVICE_NAME: c.Data.ServiceConfig,
-		"music":           c.Music.ServiceConfig,        // temp name for uncreated service
-		"images":          c.ImagesConfig.ServiceConfig, // temp name for uncreated service
-		"llm":             c.LLM.ServiceConfig,          // temp name for uncreated service
+func (c *ServiceConfigs) IntoServiceMap() map[config.ServiceName]LocalServiceConfig {
+	return map[config.ServiceName]LocalServiceConfig{
+		data.SERVICE_NAME: c.Files.LocalServiceConfig,
+		"music":           c.Music.LocalServiceConfig,  // temp name for uncreated service
+		"images":          c.Images.LocalServiceConfig, // temp name for uncreated service
+		"llm":             c.LLM.LocalServiceConfig,    // temp name for uncreated service
 	}
 }
 
@@ -93,6 +94,10 @@ func NewApplicationConfig() (ApplicationConfig, error) {
 	cfg.ServerToken, ok = os.LookupEnv("SERVER_TOKEN")
 	if !ok {
 		return cfg, errors.New("server token env not found")
+	}
+
+	for k, v := range cfg.Services.IntoServiceMap() {
+		fmt.Println(k, v)
 	}
 
 	return cfg, nil
