@@ -2,7 +2,6 @@ package interceptors
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
 	"google.golang.org/grpc"
@@ -44,10 +43,7 @@ func (intc *InternalTokenInterceptor) Unary(ctx context.Context, req any, info *
 		handlerCtx = context.WithValue(ctx, contextkeys.InternalRequest, true)
 	}
 
-	if m, err = handler(handlerCtx, req); err != nil {
-		slog.ErrorContext(handlerCtx, "RPC failed", slog.Any("error", err))
-	}
-	return m, err
+	return handler(handlerCtx, req)
 }
 
 func (intc *InternalTokenInterceptor) Stream(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
@@ -56,8 +52,5 @@ func (intc *InternalTokenInterceptor) Stream(srv any, ss grpc.ServerStream, info
 		handlerCtx = context.WithValue(ss.Context(), contextkeys.InternalRequest, true) // like in unary
 	}
 
-	if err = handler(srv, ss); err != nil {
-		slog.ErrorContext(handlerCtx, "RPC failed", slog.Any("error", err))
-	}
-	return err
+	return handler(NewWrappedStream(ss, handlerCtx), ss)
 }

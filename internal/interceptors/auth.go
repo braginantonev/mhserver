@@ -3,7 +3,6 @@ package interceptors
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
@@ -98,11 +97,7 @@ func (inc *AuthInterceptor) Unary(ctx context.Context, req any, info *grpc.Unary
 		}
 	}
 
-	if m, err = handler(handler_ctx, req); err != nil {
-		slog.ErrorContext(handler_ctx, "RPC failed", slog.Any("error", err))
-	}
-
-	return m, err
+	return handler(handler_ctx, req)
 }
 
 func (inc *AuthInterceptor) Stream(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
@@ -115,11 +110,7 @@ func (inc *AuthInterceptor) Stream(srv any, ss grpc.ServerStream, info *grpc.Str
 		}
 	}
 
-	if err = handler(srv, NewWrappedStream(ss, handler_ctx)); err != nil {
-		slog.ErrorContext(handler_ctx, "RPC failed", slog.Any("error", err))
-	}
-
-	return err
+	return handler(srv, NewWrappedStream(ss, handler_ctx))
 }
 
 type FakeAuthInterceptor struct {

@@ -90,10 +90,7 @@ func (intc *RateLimitInterceptor) Unary(ctx context.Context, req any, info *grpc
 		return nil, err
 	}
 
-	if m, err = handler(ctx, req); err != nil {
-		slog.ErrorContext(ctx, "RPC failed", slog.Any("error", err))
-	}
-	return m, err
+	return handler(ctx, req)
 }
 
 func (intc *RateLimitInterceptor) Stream(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
@@ -104,8 +101,5 @@ func (intc *RateLimitInterceptor) Stream(srv any, ss grpc.ServerStream, info *gr
 
 	defer addRateLimitInfo(ss.Context(), peer.Addr.String(), intc.streamLimiter)
 
-	if err = handler(srv, NewRateLimitStream(ss, intc.streamLimiter, peer.Addr.String())); err != nil {
-		slog.ErrorContext(ss.Context(), "RPC failed", slog.Any("error", err))
-	}
-	return err
+	return handler(srv, NewRateLimitStream(ss, intc.streamLimiter, peer.Addr.String()))
 }
