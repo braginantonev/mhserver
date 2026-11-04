@@ -2,7 +2,6 @@ package application
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/config"
@@ -94,10 +93,6 @@ func NewApplicationConfig() (ApplicationConfig, error) {
 	cfg.ServerToken, ok = os.LookupEnv("SERVER_TOKEN")
 	if !ok {
 		return cfg, errors.New("server token env not found")
-	}
-
-	for k, v := range cfg.Services.IntoServiceMap() {
-		fmt.Println(k, v)
 	}
 
 	return cfg, nil

@@ -77,7 +77,7 @@ func (s *DataServer) findFileInUserSpaces(ctx context.Context, file string, flag
 
 func (s *DataServer) acceptModifyDir(ctx context.Context, target_dir string) bool {
 	// split to grab dir in root
-	target_dir = strings.SplitN(target_dir, "/", 2)[0]
+	target_dir = strings.SplitN(strings.TrimPrefix(target_dir, "/"), "/", 2)[0]
 
 	if slices.Contains(s.cfg.ServiceDirs, target_dir) {
 		is_internal, ok := ctx.Value(contextkeys.InternalRequest).(bool)
