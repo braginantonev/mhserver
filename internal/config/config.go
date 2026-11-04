@@ -38,11 +38,6 @@ type LimiterConfig struct {
 
 type ServiceName string
 
-// Base config of every service
-type ServiceConfig struct {
-	ServiceName ServiceName
-}
-
 func loadConfigFromFile[T any](file string, dest *T) error {
 	from_file, err := os.ReadFile(file)
 	if err != nil {

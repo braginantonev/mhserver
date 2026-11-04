@@ -8,14 +8,11 @@ const (
 )
 
 type AuthServiceConfig struct {
-	config.ServiceConfig
-
 	JWTSignature string
 }
 
 func NewAuthServiceConfig(jwt_signature string) AuthServiceConfig {
 	return AuthServiceConfig{
-		ServiceName:  SERVICE_NAME,
 		JWTSignature: jwt_signature,
 	}
 }
