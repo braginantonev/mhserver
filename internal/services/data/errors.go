@@ -29,4 +29,6 @@ var (
 	// GetData errors
 	ErrFileNotExist  error = status.Error(codes.NotFound, "file not exist")
 	ErrReadOutOfFile error = status.Error(codes.OutOfRange, "reading outside of file")
+
+	ErrModifyProtectedDir error = status.Error(codes.PermissionDenied, "attempt to modify protected dir")
 )

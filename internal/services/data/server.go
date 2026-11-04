@@ -9,6 +9,8 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
@@ -73,6 +75,19 @@ func (s *DataServer) findFileInUserSpaces(ctx context.Context, file string, flag
 	return nil, ErrFileNotExist
 }
 
+func (s *DataServer) acceptModifyDir(ctx context.Context, target_dir string) bool {
+	// split to grab dir in root
+	target_dir = strings.SplitN(target_dir, "/", 2)[0]
+
+	if slices.Contains(s.cfg.ServiceDirs, target_dir) {
+		is_internal, ok := ctx.Value(contextkeys.InternalRequest).(bool)
+		return is_internal && ok
+	}
+
+	// if target dir is not service dir - in any case we accepting modification
+	return true
+}
+
 func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	defer s.sem.Release()
 	s.sem.Acquire()
@@ -102,7 +117,13 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 		return ErrBrokenSequence
 	}
 
-	user_file, err := CompileUserFilepath(username, meta.Dir.GetValue(), meta.Name, SERVICE_NAME)
+	target_dir := meta.Dir.GetValue()
+
+	if !s.acceptModifyDir(stream.Context(), target_dir) {
+		return ErrModifyProtectedDir
+	}
+
+	user_file, err := CompileUserFilepath(username, target_dir, meta.Name, SERVICE_NAME)
 	if err != nil {
 		return err
 	}
@@ -373,11 +394,17 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 		return nil, ErrInternal
 	}
 
+	target_dir := dir.GetValue()
+
+	if !s.acceptModifyDir(ctx, target_dir) {
+		return nil, ErrModifyProtectedDir
+	}
+
 	if err := s.ensureUserDir(ctx, username); err != nil {
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, dir.GetValue(), SERVICE_NAME)
+	user_dir, err := CompileUserDirectory(username, target_dir, SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -407,11 +434,17 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 		return nil, ErrInternal
 	}
 
+	target_dir := dir.GetValue()
+
+	if !s.acceptModifyDir(ctx, target_dir) {
+		return nil, ErrModifyProtectedDir
+	}
+
 	if err := s.ensureUserDir(ctx, username); err != nil {
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, dir.GetValue(), SERVICE_NAME)
+	user_dir, err := CompileUserDirectory(username, target_dir, SERVICE_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -434,6 +467,12 @@ func (s *DataServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*emp
 	if err != nil {
 		slog.ErrorContext(ctx, "failed get username")
 		return nil, ErrInternal
+	}
+
+	target_dir := req.Dir.GetValue()
+
+	if !s.acceptModifyDir(ctx, target_dir) {
+		return nil, ErrModifyProtectedDir
 	}
 
 	if err := s.ensureUserDir(ctx, username); err != nil {

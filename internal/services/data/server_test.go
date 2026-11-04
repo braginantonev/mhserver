@@ -110,7 +110,7 @@ func TestSaveFile(t *testing.T) {
 		grpc.StreamInterceptor(auth_intc.Stream),
 	)
 
-	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"})
+	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
 	data_config.ChunkSize = uint64(SAVE_CHUNK_SIZE)
 
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data_config))
@@ -252,7 +252,7 @@ func TestReadFile(t *testing.T) {
 		grpc.StreamInterceptor(auth_intc.Stream),
 	)
 
-	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"})
+	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
 	data_config.ChunkSize = uint64(CHUNK_SIZE)
 
 	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data_config))
@@ -317,7 +317,7 @@ func TestGetSum(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"})
+	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
 	data_config.ChunkSize = uint64(CHUNK_SIZE)
 
 	data_service := data.NewDataServer(t.Context(), data_config)
@@ -478,7 +478,7 @@ func TestGetFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"})
+	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
 	data_config.ChunkSize = uint64(CHUNK_SIZE)
 
 	data_service := data.NewDataServer(t.Context(), data_config)

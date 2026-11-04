@@ -49,9 +49,15 @@ func (app *Application) registerGrpcServer(
 
 		slog.InfoContext(ctx, "init", slog.Any("user_spaces", user_spaces))
 
+		var service_dirs []string
+		for n := range app.cfg.Services.IntoServiceMap() {
+			service_dirs = append(service_dirs, string(n))
+		}
+
 		cfg := data.NewDataServerConfig(
 			workspace_path,
 			user_spaces,
+			service_dirs,
 		)
 		if err := config.LoadConfig(app.cfg.WorkspacePath, service_config, &cfg); err != nil {
 			return err
