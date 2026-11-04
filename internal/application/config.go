@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	"github.com/braginantonev/mhserver/internal/services/data"
+	"github.com/braginantonev/mhserver/internal/services/files"
 )
 
 type Server struct {
@@ -19,7 +19,7 @@ type LocalServiceConfig struct {
 
 type DataConfig struct {
 	LocalServiceConfig
-	data.DataServiceConfig
+	files.DataServiceConfig
 }
 
 type MusicConfig struct {
@@ -46,10 +46,10 @@ type ServiceConfigs struct {
 
 func (c *ServiceConfigs) IntoServiceMap() map[config.ServiceName]LocalServiceConfig {
 	return map[config.ServiceName]LocalServiceConfig{
-		data.SERVICE_NAME: c.Files.LocalServiceConfig,
-		"music":           c.Music.LocalServiceConfig,  // temp name for uncreated service
-		"images":          c.Images.LocalServiceConfig, // temp name for uncreated service
-		"llm":             c.LLM.LocalServiceConfig,    // temp name for uncreated service
+		files.SERVICE_NAME: c.Files.LocalServiceConfig,
+		"music":            c.Music.LocalServiceConfig,  // temp name for uncreated service
+		"images":           c.Images.LocalServiceConfig, // temp name for uncreated service
+		"llm":              c.LLM.LocalServiceConfig,    // temp name for uncreated service
 	}
 }
 

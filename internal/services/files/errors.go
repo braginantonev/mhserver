@@ -1,4 +1,4 @@
-package data
+package files
 
 import (
 	"google.golang.org/grpc/codes"

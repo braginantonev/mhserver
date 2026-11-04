@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.10
 // 	protoc        v7.36.1
-// source: data/data.proto
+// source: files/files.proto
 
-package data
+package files
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -31,7 +31,7 @@ type Directory struct {
 
 func (x *Directory) Reset() {
 	*x = Directory{}
-	mi := &file_data_data_proto_msgTypes[0]
+	mi := &file_files_files_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -43,7 +43,7 @@ func (x *Directory) String() string {
 func (*Directory) ProtoMessage() {}
 
 func (x *Directory) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[0]
+	mi := &file_files_files_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,7 +56,7 @@ func (x *Directory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Directory.ProtoReflect.Descriptor instead.
 func (*Directory) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{0}
+	return file_files_files_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Directory) GetValue() string {
@@ -77,7 +77,7 @@ type RequiredFile struct {
 
 func (x *RequiredFile) Reset() {
 	*x = RequiredFile{}
-	mi := &file_data_data_proto_msgTypes[1]
+	mi := &file_files_files_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -89,7 +89,7 @@ func (x *RequiredFile) String() string {
 func (*RequiredFile) ProtoMessage() {}
 
 func (x *RequiredFile) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[1]
+	mi := &file_files_files_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -102,7 +102,7 @@ func (x *RequiredFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequiredFile.ProtoReflect.Descriptor instead.
 func (*RequiredFile) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{1}
+	return file_files_files_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RequiredFile) GetDir() *Directory {
@@ -136,7 +136,7 @@ type Chunk struct {
 
 func (x *Chunk) Reset() {
 	*x = Chunk{}
-	mi := &file_data_data_proto_msgTypes[2]
+	mi := &file_files_files_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -148,7 +148,7 @@ func (x *Chunk) String() string {
 func (*Chunk) ProtoMessage() {}
 
 func (x *Chunk) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[2]
+	mi := &file_files_files_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -161,7 +161,7 @@ func (x *Chunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Chunk.ProtoReflect.Descriptor instead.
 func (*Chunk) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{2}
+	return file_files_files_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Chunk) GetData() []byte {
@@ -191,7 +191,7 @@ type SaveFileChunk struct {
 
 func (x *SaveFileChunk) Reset() {
 	*x = SaveFileChunk{}
-	mi := &file_data_data_proto_msgTypes[3]
+	mi := &file_files_files_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -203,7 +203,7 @@ func (x *SaveFileChunk) String() string {
 func (*SaveFileChunk) ProtoMessage() {}
 
 func (x *SaveFileChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[3]
+	mi := &file_files_files_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -216,7 +216,7 @@ func (x *SaveFileChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveFileChunk.ProtoReflect.Descriptor instead.
 func (*SaveFileChunk) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{3}
+	return file_files_files_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SaveFileChunk) GetInfo() isSaveFileChunk_Info {
@@ -269,7 +269,7 @@ type SHASum struct {
 
 func (x *SHASum) Reset() {
 	*x = SHASum{}
-	mi := &file_data_data_proto_msgTypes[4]
+	mi := &file_files_files_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -281,7 +281,7 @@ func (x *SHASum) String() string {
 func (*SHASum) ProtoMessage() {}
 
 func (x *SHASum) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[4]
+	mi := &file_files_files_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -294,7 +294,7 @@ func (x *SHASum) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SHASum.ProtoReflect.Descriptor instead.
 func (*SHASum) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{4}
+	return file_files_files_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SHASum) GetValue() []byte {
@@ -316,7 +316,7 @@ type FileInfo struct {
 
 func (x *FileInfo) Reset() {
 	*x = FileInfo{}
-	mi := &file_data_data_proto_msgTypes[5]
+	mi := &file_files_files_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -328,7 +328,7 @@ func (x *FileInfo) String() string {
 func (*FileInfo) ProtoMessage() {}
 
 func (x *FileInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[5]
+	mi := &file_files_files_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -341,7 +341,7 @@ func (x *FileInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileInfo.ProtoReflect.Descriptor instead.
 func (*FileInfo) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{5}
+	return file_files_files_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *FileInfo) GetName() string {
@@ -381,7 +381,7 @@ type FilesList struct {
 
 func (x *FilesList) Reset() {
 	*x = FilesList{}
-	mi := &file_data_data_proto_msgTypes[6]
+	mi := &file_files_files_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -393,7 +393,7 @@ func (x *FilesList) String() string {
 func (*FilesList) ProtoMessage() {}
 
 func (x *FilesList) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[6]
+	mi := &file_files_files_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -406,7 +406,7 @@ func (x *FilesList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilesList.ProtoReflect.Descriptor instead.
 func (*FilesList) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{6}
+	return file_files_files_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *FilesList) GetValue() []*FileInfo {
@@ -425,7 +425,7 @@ type Size struct {
 
 func (x *Size) Reset() {
 	*x = Size{}
-	mi := &file_data_data_proto_msgTypes[7]
+	mi := &file_files_files_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -437,7 +437,7 @@ func (x *Size) String() string {
 func (*Size) ProtoMessage() {}
 
 func (x *Size) ProtoReflect() protoreflect.Message {
-	mi := &file_data_data_proto_msgTypes[7]
+	mi := &file_files_files_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -450,7 +450,7 @@ func (x *Size) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Size.ProtoReflect.Descriptor instead.
 func (*Size) Descriptor() ([]byte, []int) {
-	return file_data_data_proto_rawDescGZIP(), []int{7}
+	return file_files_files_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Size) GetValue() uint64 {
@@ -460,25 +460,25 @@ func (x *Size) GetValue() uint64 {
 	return 0
 }
 
-var File_data_data_proto protoreflect.FileDescriptor
+var File_files_files_proto protoreflect.FileDescriptor
 
-const file_data_data_proto_rawDesc = "" +
+const file_files_files_proto_rawDesc = "" +
 	"\n" +
-	"\x0fdata/data.proto\x12\x04data\x1a\x1bgoogle/protobuf/empty.proto\"!\n" +
+	"\x11files/files.proto\x12\x05files\x1a\x1bgoogle/protobuf/empty.proto\"!\n" +
 	"\tDirectory\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"p\n" +
-	"\fRequiredFile\x12!\n" +
-	"\x03dir\x18\x01 \x01(\v2\x0f.data.DirectoryR\x03dir\x12\x12\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"q\n" +
+	"\fRequiredFile\x12\"\n" +
+	"\x03dir\x18\x01 \x01(\v2\x10.files.DirectoryR\x03dir\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
 	"\anewSize\x18\x03 \x01(\x04H\x00R\anewSize\x88\x01\x01B\n" +
 	"\n" +
 	"\b_newSize\"3\n" +
 	"\x05Chunk\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x04R\x06offset\"f\n" +
-	"\rSaveFileChunk\x12(\n" +
-	"\x04meta\x18\x01 \x01(\v2\x12.data.RequiredFileH\x00R\x04meta\x12#\n" +
-	"\x05chunk\x18\x02 \x01(\v2\v.data.ChunkH\x00R\x05chunkB\x06\n" +
+	"\x06offset\x18\x02 \x01(\x04R\x06offset\"h\n" +
+	"\rSaveFileChunk\x12)\n" +
+	"\x04meta\x18\x01 \x01(\v2\x13.files.RequiredFileH\x00R\x04meta\x12$\n" +
+	"\x05chunk\x18\x02 \x01(\v2\f.files.ChunkH\x00R\x05chunkB\x06\n" +
 	"\x04Info\"\x1e\n" +
 	"\x06SHASum\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\fR\x05value\"b\n" +
@@ -486,68 +486,67 @@ const file_data_data_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05isDir\x18\x02 \x01(\bR\x05isDir\x12\x12\n" +
 	"\x04size\x18\x03 \x01(\x04R\x04size\x12\x18\n" +
-	"\amodTime\x18\x04 \x01(\x04R\amodTime\"1\n" +
-	"\tFilesList\x12$\n" +
-	"\x05value\x18\x01 \x03(\v2\x0e.data.FileInfoR\x05value\"\x1c\n" +
+	"\amodTime\x18\x04 \x01(\x04R\amodTime\"2\n" +
+	"\tFilesList\x12%\n" +
+	"\x05value\x18\x01 \x03(\v2\x0f.files.FileInfoR\x05value\"\x1c\n" +
 	"\x04Size\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\x04R\x05value2\xb4\x03\n" +
-	"\vDataService\x129\n" +
-	"\bSaveFile\x12\x13.data.SaveFileChunk\x1a\x16.google.protobuf.Empty(\x01\x12-\n" +
-	"\bReadFile\x12\x12.data.RequiredFile\x1a\v.data.Chunk0\x01\x12*\n" +
-	"\x06GetSum\x12\x12.data.RequiredFile\x1a\f.data.SHASum\x12,\n" +
-	"\bGetFiles\x12\x0f.data.Directory\x1a\x0f.data.FilesList\x12;\n" +
-	"\x15GetAvailableDiskSpace\x12\x16.google.protobuf.Empty\x1a\n" +
-	".data.Size\x124\n" +
-	"\tCreateDir\x12\x0f.data.Directory\x1a\x16.google.protobuf.Empty\x124\n" +
-	"\tRemoveDir\x12\x0f.data.Directory\x1a\x16.google.protobuf.Empty\x128\n" +
+	"\x05value\x18\x01 \x01(\x04R\x05value2\xc0\x03\n" +
+	"\fFilesService\x12:\n" +
+	"\bSaveFile\x12\x14.files.SaveFileChunk\x1a\x16.google.protobuf.Empty(\x01\x12/\n" +
+	"\bReadFile\x12\x13.files.RequiredFile\x1a\f.files.Chunk0\x01\x12,\n" +
+	"\x06GetSum\x12\x13.files.RequiredFile\x1a\r.files.SHASum\x12.\n" +
+	"\bGetFiles\x12\x10.files.Directory\x1a\x10.files.FilesList\x12<\n" +
+	"\x15GetAvailableDiskSpace\x12\x16.google.protobuf.Empty\x1a\v.files.Size\x125\n" +
+	"\tCreateDir\x12\x10.files.Directory\x1a\x16.google.protobuf.Empty\x125\n" +
+	"\tRemoveDir\x12\x10.files.Directory\x1a\x16.google.protobuf.Empty\x129\n" +
 	"\n" +
-	"RemoveFile\x12\x12.data.RequiredFile\x1a\x16.google.protobuf.EmptyB.Z,github.com/braginantonev/mhserver/proto/datab\x06proto3"
+	"RemoveFile\x12\x13.files.RequiredFile\x1a\x16.google.protobuf.EmptyB/Z-github.com/braginantonev/mhserver/proto/filesb\x06proto3"
 
 var (
-	file_data_data_proto_rawDescOnce sync.Once
-	file_data_data_proto_rawDescData []byte
+	file_files_files_proto_rawDescOnce sync.Once
+	file_files_files_proto_rawDescData []byte
 )
 
-func file_data_data_proto_rawDescGZIP() []byte {
-	file_data_data_proto_rawDescOnce.Do(func() {
-		file_data_data_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_data_data_proto_rawDesc), len(file_data_data_proto_rawDesc)))
+func file_files_files_proto_rawDescGZIP() []byte {
+	file_files_files_proto_rawDescOnce.Do(func() {
+		file_files_files_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_files_files_proto_rawDesc), len(file_files_files_proto_rawDesc)))
 	})
-	return file_data_data_proto_rawDescData
+	return file_files_files_proto_rawDescData
 }
 
-var file_data_data_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
-var file_data_data_proto_goTypes = []any{
-	(*Directory)(nil),     // 0: data.Directory
-	(*RequiredFile)(nil),  // 1: data.RequiredFile
-	(*Chunk)(nil),         // 2: data.Chunk
-	(*SaveFileChunk)(nil), // 3: data.SaveFileChunk
-	(*SHASum)(nil),        // 4: data.SHASum
-	(*FileInfo)(nil),      // 5: data.FileInfo
-	(*FilesList)(nil),     // 6: data.FilesList
-	(*Size)(nil),          // 7: data.Size
+var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_files_files_proto_goTypes = []any{
+	(*Directory)(nil),     // 0: files.Directory
+	(*RequiredFile)(nil),  // 1: files.RequiredFile
+	(*Chunk)(nil),         // 2: files.Chunk
+	(*SaveFileChunk)(nil), // 3: files.SaveFileChunk
+	(*SHASum)(nil),        // 4: files.SHASum
+	(*FileInfo)(nil),      // 5: files.FileInfo
+	(*FilesList)(nil),     // 6: files.FilesList
+	(*Size)(nil),          // 7: files.Size
 	(*emptypb.Empty)(nil), // 8: google.protobuf.Empty
 }
-var file_data_data_proto_depIdxs = []int32{
-	0,  // 0: data.RequiredFile.dir:type_name -> data.Directory
-	1,  // 1: data.SaveFileChunk.meta:type_name -> data.RequiredFile
-	2,  // 2: data.SaveFileChunk.chunk:type_name -> data.Chunk
-	5,  // 3: data.FilesList.value:type_name -> data.FileInfo
-	3,  // 4: data.DataService.SaveFile:input_type -> data.SaveFileChunk
-	1,  // 5: data.DataService.ReadFile:input_type -> data.RequiredFile
-	1,  // 6: data.DataService.GetSum:input_type -> data.RequiredFile
-	0,  // 7: data.DataService.GetFiles:input_type -> data.Directory
-	8,  // 8: data.DataService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
-	0,  // 9: data.DataService.CreateDir:input_type -> data.Directory
-	0,  // 10: data.DataService.RemoveDir:input_type -> data.Directory
-	1,  // 11: data.DataService.RemoveFile:input_type -> data.RequiredFile
-	8,  // 12: data.DataService.SaveFile:output_type -> google.protobuf.Empty
-	2,  // 13: data.DataService.ReadFile:output_type -> data.Chunk
-	4,  // 14: data.DataService.GetSum:output_type -> data.SHASum
-	6,  // 15: data.DataService.GetFiles:output_type -> data.FilesList
-	7,  // 16: data.DataService.GetAvailableDiskSpace:output_type -> data.Size
-	8,  // 17: data.DataService.CreateDir:output_type -> google.protobuf.Empty
-	8,  // 18: data.DataService.RemoveDir:output_type -> google.protobuf.Empty
-	8,  // 19: data.DataService.RemoveFile:output_type -> google.protobuf.Empty
+var file_files_files_proto_depIdxs = []int32{
+	0,  // 0: files.RequiredFile.dir:type_name -> files.Directory
+	1,  // 1: files.SaveFileChunk.meta:type_name -> files.RequiredFile
+	2,  // 2: files.SaveFileChunk.chunk:type_name -> files.Chunk
+	5,  // 3: files.FilesList.value:type_name -> files.FileInfo
+	3,  // 4: files.FilesService.SaveFile:input_type -> files.SaveFileChunk
+	1,  // 5: files.FilesService.ReadFile:input_type -> files.RequiredFile
+	1,  // 6: files.FilesService.GetSum:input_type -> files.RequiredFile
+	0,  // 7: files.FilesService.GetFiles:input_type -> files.Directory
+	8,  // 8: files.FilesService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
+	0,  // 9: files.FilesService.CreateDir:input_type -> files.Directory
+	0,  // 10: files.FilesService.RemoveDir:input_type -> files.Directory
+	1,  // 11: files.FilesService.RemoveFile:input_type -> files.RequiredFile
+	8,  // 12: files.FilesService.SaveFile:output_type -> google.protobuf.Empty
+	2,  // 13: files.FilesService.ReadFile:output_type -> files.Chunk
+	4,  // 14: files.FilesService.GetSum:output_type -> files.SHASum
+	6,  // 15: files.FilesService.GetFiles:output_type -> files.FilesList
+	7,  // 16: files.FilesService.GetAvailableDiskSpace:output_type -> files.Size
+	8,  // 17: files.FilesService.CreateDir:output_type -> google.protobuf.Empty
+	8,  // 18: files.FilesService.RemoveDir:output_type -> google.protobuf.Empty
+	8,  // 19: files.FilesService.RemoveFile:output_type -> google.protobuf.Empty
 	12, // [12:20] is the sub-list for method output_type
 	4,  // [4:12] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
@@ -555,13 +554,13 @@ var file_data_data_proto_depIdxs = []int32{
 	0,  // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_data_data_proto_init() }
-func file_data_data_proto_init() {
-	if File_data_data_proto != nil {
+func init() { file_files_files_proto_init() }
+func file_files_files_proto_init() {
+	if File_files_files_proto != nil {
 		return
 	}
-	file_data_data_proto_msgTypes[1].OneofWrappers = []any{}
-	file_data_data_proto_msgTypes[3].OneofWrappers = []any{
+	file_files_files_proto_msgTypes[1].OneofWrappers = []any{}
+	file_files_files_proto_msgTypes[3].OneofWrappers = []any{
 		(*SaveFileChunk_Meta)(nil),
 		(*SaveFileChunk_Chunk)(nil),
 	}
@@ -569,17 +568,17 @@ func file_data_data_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_data_data_proto_rawDesc), len(file_data_data_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_files_files_proto_rawDesc), len(file_files_files_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_data_data_proto_goTypes,
-		DependencyIndexes: file_data_data_proto_depIdxs,
-		MessageInfos:      file_data_data_proto_msgTypes,
+		GoTypes:           file_files_files_proto_goTypes,
+		DependencyIndexes: file_files_files_proto_depIdxs,
+		MessageInfos:      file_files_files_proto_msgTypes,
 	}.Build()
-	File_data_data_proto = out.File
-	file_data_data_proto_goTypes = nil
-	file_data_data_proto_depIdxs = nil
+	File_files_files_proto = out.File
+	file_files_files_proto_goTypes = nil
+	file_files_files_proto_depIdxs = nil
 }

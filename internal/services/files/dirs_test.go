@@ -1,4 +1,4 @@
-package data_test
+package files_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	"github.com/braginantonev/mhserver/internal/services/data"
+	"github.com/braginantonev/mhserver/internal/services/files"
 )
 
 const Username string = "V"
@@ -29,35 +29,35 @@ func TestCompileUserDirectory(t *testing.T) {
 	}{
 		{
 			name:         "empty dir",
-			expected_err: data.ErrBadDirSyntax,
+			expected_err: files.ErrBadDirSyntax,
 		},
 		{
 			name:         "with twice point",
 			dir:          "/../a/",
-			expected_err: data.ErrBadDirSyntax,
+			expected_err: files.ErrBadDirSyntax,
 		},
 		{
 			name:     "single dir",
 			dir:      "single",
-			service:  data.SERVICE_NAME,
+			service:  files.SERVICE_NAME,
 			expected: compileExpectedDir("single"),
 		},
 		{
 			name:     "with included dirs",
 			dir:      "first/second/third",
-			service:  data.SERVICE_NAME,
+			service:  files.SERVICE_NAME,
 			expected: compileExpectedDir("first/second/third"),
 		},
 		{
 			name:     "with twice separator",
 			dir:      "abc//cba",
-			service:  data.SERVICE_NAME,
+			service:  files.SERVICE_NAME,
 			expected: compileExpectedDir("abc/cba"),
 		},
 		{
 			name:     "with suffix and prefix",
 			dir:      "/ab/av/",
-			service:  data.SERVICE_NAME,
+			service:  files.SERVICE_NAME,
 			expected: compileExpectedDir("/ab/av"),
 		},
 		{
@@ -70,7 +70,7 @@ func TestCompileUserDirectory(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := data.CompileUserDirectory(Username, test.dir, test.service)
+			got, err := files.CompileUserDirectory(Username, test.dir, test.service)
 			if err != test.expected_err {
 				t.Errorf("expected error: `%v`, but got: `%v`", test.expected_err, err)
 			}
@@ -93,12 +93,12 @@ func TestCompileUserFilepath(t *testing.T) {
 	}{
 		{
 			name:         "empty file",
-			expected_err: data.ErrBadFilenameSyntax,
+			expected_err: files.ErrBadFilenameSyntax,
 		},
 		{
 			name:         "dir in file",
 			file:         "wrong/a.docx",
-			expected_err: data.ErrBadFilenameSyntax,
+			expected_err: files.ErrBadFilenameSyntax,
 		},
 		{
 			name:     "simple file",
@@ -124,7 +124,7 @@ func TestCompileUserFilepath(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := data.CompileUserFilepath(Username, dir, test.file, data.SERVICE_NAME)
+			got, err := files.CompileUserFilepath(Username, dir, test.file, files.SERVICE_NAME)
 			if err != test.expected_err {
 				t.Errorf("expected error: `%v`, but got: `%v`", test.expected_err, err)
 			}

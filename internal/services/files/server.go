@@ -1,4 +1,4 @@
-package data
+package files
 
 import (
 	"context"
@@ -15,19 +15,19 @@ import (
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
-	pb "github.com/braginantonev/mhserver/proto/gen/data"
+	pb "github.com/braginantonev/mhserver/proto/gen/files"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type DataServer struct {
-	pb.DataServiceServer
+type FilesServer struct {
+	pb.FilesServiceServer
 
 	cfg DataServiceConfig
 	sem repository.Semaphore
 }
 
-func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
-	return &DataServer{
+func NewFilesServer(ctx context.Context, cfg DataServiceConfig) *FilesServer {
+	return &FilesServer{
 		cfg: cfg,
 		sem: repository.NewSemaphore(SEMAPHORE_SIZE),
 	}
@@ -35,7 +35,7 @@ func NewDataServer(ctx context.Context, cfg DataServiceConfig) *DataServer {
 
 // Exist user dir or not. If not exist - create user dir in all user spaces.
 // Of course, using a cache for this method - best idea. But this is not a big server, so I'm to lazy to do it.
-func (s *DataServer) ensureUserDir(ctx context.Context, username string) error {
+func (s *FilesServer) ensureUserDir(ctx context.Context, username string) error {
 	var needPreparingUspace []string
 
 	// we check all of uspace's, because new uspace's don't have an user dir.
@@ -59,7 +59,7 @@ func (s *DataServer) ensureUserDir(ctx context.Context, username string) error {
 	return nil
 }
 
-func (s *DataServer) findFileInUserSpaces(ctx context.Context, file string, flag int) (*os.File, error) {
+func (s *FilesServer) findFileInUserSpaces(ctx context.Context, file string, flag int) (*os.File, error) {
 	for _, uspace := range s.cfg.UserSpaces {
 		file, err := os.OpenFile(filepath.Join(s.cfg.WorkspacePath, uspace, file), flag, 0660)
 		if err == nil {
@@ -75,7 +75,7 @@ func (s *DataServer) findFileInUserSpaces(ctx context.Context, file string, flag
 	return nil, ErrFileNotExist
 }
 
-func (s *DataServer) acceptModifyDir(ctx context.Context, target_dir string) bool {
+func (s *FilesServer) acceptModifyDir(ctx context.Context, target_dir string) bool {
 	// split to grab dir in root
 	target_dir = strings.SplitN(strings.TrimPrefix(target_dir, "/"), "/", 2)[0]
 
@@ -88,7 +88,7 @@ func (s *DataServer) acceptModifyDir(ctx context.Context, target_dir string) boo
 	return true
 }
 
-func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
+func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
@@ -212,7 +212,7 @@ func (s *DataServer) SaveFile(stream pb.DataService_SaveFileServer) error {
 	}
 }
 
-func (s *DataServer) ReadFile(req *pb.RequiredFile, stream pb.DataService_ReadFileServer) error {
+func (s *FilesServer) ReadFile(req *pb.RequiredFile, stream pb.FilesService_ReadFileServer) error {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
@@ -268,7 +268,7 @@ readLoop:
 	return nil
 }
 
-func (s *DataServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHASum, error) {
+func (s *FilesServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHASum, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
@@ -302,7 +302,7 @@ func (s *DataServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHAS
 	return &pb.SHASum{Value: hash.Sum(nil)[:]}, nil
 }
 
-func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empty) (*pb.Size, error) {
+func (s *FilesServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empty) (*pb.Size, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
@@ -321,7 +321,7 @@ func (s *DataServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empty
 	return &pb.Size{Value: total}, nil
 }
 
-func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
+func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
@@ -384,7 +384,7 @@ func (s *DataServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.Files
 	return list, nil
 }
 
-func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
+func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
@@ -424,7 +424,7 @@ func (s *DataServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	return nil, nil
 }
 
-func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
+func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 
@@ -459,7 +459,7 @@ func (s *DataServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb
 	return nil, nil
 }
 
-func (s *DataServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*emptypb.Empty, error) {
+func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*emptypb.Empty, error) {
 	defer s.sem.Release()
 	s.sem.Acquire()
 

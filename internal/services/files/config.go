@@ -1,4 +1,4 @@
-package data
+package files
 
 import (
 	"github.com/braginantonev/mhserver/internal/config"
@@ -11,8 +11,6 @@ const (
 )
 
 type DataServiceConfig struct {
-	config.ServiceConfig
-
 	// Simply the uspace dir
 	WorkspacePath string
 	ChunkSize     uint64
@@ -28,7 +26,6 @@ type DataServiceConfig struct {
 
 func NewDataServerConfig(workspace_path string, user_spaces, service_dirs []string) DataServiceConfig {
 	return DataServiceConfig{
-		ServiceName:   SERVICE_NAME,
 		WorkspacePath: workspace_path,
 		ChunkSize:     DEFAULT_CHUNK_SIZE,
 		UserSpaces:    user_spaces,

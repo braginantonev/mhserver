@@ -11,9 +11,9 @@ import (
 	"github.com/braginantonev/mhserver/internal/interceptors"
 	"github.com/braginantonev/mhserver/internal/repository/ratelimit"
 	"github.com/braginantonev/mhserver/internal/services/auth"
-	"github.com/braginantonev/mhserver/internal/services/data"
+	"github.com/braginantonev/mhserver/internal/services/files"
 	auth_pb "github.com/braginantonev/mhserver/proto/gen/auth"
-	data_pb "github.com/braginantonev/mhserver/proto/gen/data"
+	data_pb "github.com/braginantonev/mhserver/proto/gen/files"
 	"google.golang.org/grpc"
 )
 
@@ -32,7 +32,7 @@ func (app *Application) registerGrpcServer(
 	service_config := string(service) + ".conf"
 
 	switch service {
-	case data.SERVICE_NAME:
+	case files.SERVICE_NAME:
 		workspace_path := filepath.Join(app.cfg.WorkspacePath, "uspace")
 
 		entries, err := os.ReadDir(workspace_path)
@@ -54,7 +54,7 @@ func (app *Application) registerGrpcServer(
 			service_dirs = append(service_dirs, string(n))
 		}
 
-		cfg := data.NewDataServerConfig(
+		cfg := files.NewDataServerConfig(
 			workspace_path,
 			user_spaces,
 			service_dirs,
@@ -62,7 +62,7 @@ func (app *Application) registerGrpcServer(
 		if err := config.LoadConfig(app.cfg.WorkspacePath, service_config, &cfg); err != nil {
 			return err
 		}
-		data_pb.RegisterDataServiceServer(grpc, data.NewDataServer(ctx, cfg))
+		data_pb.RegisterFilesServiceServer(grpc, files.NewFilesServer(ctx, cfg))
 
 	case auth.SERVICE_NAME:
 		cfg := auth.NewAuthServiceConfig(

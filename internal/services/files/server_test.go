@@ -1,4 +1,4 @@
-package data_test
+package files_test
 
 import (
 	"context"
@@ -14,9 +14,9 @@ import (
 	"testing"
 
 	"github.com/braginantonev/mhserver/internal/interceptors"
-	"github.com/braginantonev/mhserver/internal/services/data"
+	"github.com/braginantonev/mhserver/internal/services/files"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
-	pb "github.com/braginantonev/mhserver/proto/gen/data"
+	pb "github.com/braginantonev/mhserver/proto/gen/files"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -50,7 +50,7 @@ func createWorkspaceFolders(workspace_path, username string, user_spaces []strin
 }
 
 // streaming save
-func saveFile(ctx context.Context, data_client pb.DataServiceClient, req_file *pb.RequiredFile, reader io.Reader) error {
+func saveFile(ctx context.Context, data_client pb.FilesServiceClient, req_file *pb.RequiredFile, reader io.Reader) error {
 	stream, err := data_client.SaveFile(ctx)
 	if err != nil {
 		return err
@@ -110,10 +110,10 @@ func TestSaveFile(t *testing.T) {
 		grpc.StreamInterceptor(auth_intc.Stream),
 	)
 
-	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
+	data_config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
 	data_config.ChunkSize = uint64(SAVE_CHUNK_SIZE)
 
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data_config))
+	pb.RegisterFilesServiceServer(grpc_server, files.NewFilesServer(t.Context(), data_config))
 
 	lis := bufconn.Listen(SAVE_CHUNK_SIZE)
 	go grpc_server.Serve(lis)
@@ -126,7 +126,7 @@ func TestSaveFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data_client := pb.NewDataServiceClient(grpc_connection)
+	data_client := pb.NewFilesServiceClient(grpc_connection)
 
 	// To test: "save in test dir"
 	test_dir := "/save_data_test_dir/"
@@ -177,7 +177,7 @@ func TestSaveFile(t *testing.T) {
 				NewSize: new(small_test_file_len),
 			},
 			save_data:    small_test_file,
-			expected_err: data.ErrDirNotFound,
+			expected_err: files.ErrDirNotFound,
 		},
 		{
 			name: "save big file",
@@ -201,7 +201,7 @@ func TestSaveFile(t *testing.T) {
 				NewSize: new(small_test_file_len - 5),
 			},
 			save_data:    small_test_file,
-			expected_err: data.ErrUnexpectedFileChange,
+			expected_err: files.ErrUnexpectedFileChange,
 		},
 	}
 
@@ -252,10 +252,10 @@ func TestReadFile(t *testing.T) {
 		grpc.StreamInterceptor(auth_intc.Stream),
 	)
 
-	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
+	data_config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
 	data_config.ChunkSize = uint64(CHUNK_SIZE)
 
-	pb.RegisterDataServiceServer(grpc_server, data.NewDataServer(t.Context(), data_config))
+	pb.RegisterFilesServiceServer(grpc_server, files.NewFilesServer(t.Context(), data_config))
 
 	lis := bufconn.Listen(1024 * 1024)
 	go grpc_server.Serve(lis)
@@ -268,7 +268,7 @@ func TestReadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data_client := pb.NewDataServiceClient(grpc_connection)
+	data_client := pb.NewFilesServiceClient(grpc_connection)
 
 	// Create test file
 	file, err := os.OpenFile(filepath.Join(WORKSPACE_PATH, "0", TEST_USER, test_file_name), os.O_CREATE|os.O_WRONLY, 0777)
@@ -317,10 +317,10 @@ func TestGetSum(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
+	data_config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
 	data_config.ChunkSize = uint64(CHUNK_SIZE)
 
-	data_service := data.NewDataServer(t.Context(), data_config)
+	data_service := files.NewFilesServer(t.Context(), data_config)
 
 	// Вместо создания всей строки в памяти
 	genRandomFile := func(size uint64) (*os.File, error) {
@@ -478,10 +478,10 @@ func TestGetFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data_config := data.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
+	data_config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
 	data_config.ChunkSize = uint64(CHUNK_SIZE)
 
-	data_service := data.NewDataServer(t.Context(), data_config)
+	data_service := files.NewFilesServer(t.Context(), data_config)
 
 	extensions := []string{"jpg", "png", "txt", "doc", "docx", "1c", "svg"}
 	gen_filename := func(with_ext bool) string {
@@ -503,12 +503,12 @@ func TestGetFiles(t *testing.T) {
 		{
 			name:         "empty dir request",
 			target_dir:   "",
-			expected_err: data.ErrBadDirSyntax,
+			expected_err: files.ErrBadDirSyntax,
 		},
 		{
 			name:         "bad dir syntax",
 			target_dir:   "/../",
-			expected_err: data.ErrBadDirSyntax,
+			expected_err: files.ErrBadDirSyntax,
 		},
 		{
 			name:         "empty directory",
@@ -656,7 +656,7 @@ func TestGetFiles(t *testing.T) {
 			Value: "/unexpected_dir/",
 		})
 
-		if !errors.Is(err, data.ErrDirNotFound) {
+		if !errors.Is(err, files.ErrDirNotFound) {
 			t.Fatalf("expected ErrDirNotFound error, but got: %v", err)
 		}
 	})

@@ -1,10 +1,10 @@
 syntax = "proto3";
-package data;
-option go_package = "github.com/braginantonev/mhserver/proto/data";
+package files;
+option go_package = "github.com/braginantonev/mhserver/proto/files";
 
 import "google/protobuf/empty.proto";
 
-service DataService {
+service FilesService {
     rpc SaveFile (stream SaveFileChunk) returns (google.protobuf.Empty);
     rpc ReadFile (RequiredFile) returns (stream Chunk);
     rpc GetSum (RequiredFile) returns (SHASum);
