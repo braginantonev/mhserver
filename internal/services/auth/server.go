@@ -47,8 +47,11 @@ func (s *AuthServer) Login(ctx context.Context, user *pb.User) (*pb.LoginRespons
 	s.sem.Acquire()
 	defer s.sem.Release()
 
+	db_ctx, cancel := context.WithTimeout(ctx, DATABASE_TIMEOUT)
+	defer cancel()
+
 	var saved_pass_hash string
-	row := s.db.QueryRow(SELECT_USER_PASS, user.Name)
+	row := s.db.QueryRowContext(db_ctx, SELECT_USER_PASS, user.Name)
 	if err := row.Scan(&saved_pass_hash); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrUserNotExist
