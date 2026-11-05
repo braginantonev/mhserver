@@ -38,8 +38,7 @@ for p in "${PATHS[@]}"; do
     sudo mkdir $p
 done
 
-#db_pass=$(openssl rand -base64 32)
-db_pass="123"
+db_pass=$(openssl rand -base64 32)
 
 touch .env
 tee .env >/dev/null <<EOF

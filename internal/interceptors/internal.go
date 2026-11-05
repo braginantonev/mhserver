@@ -52,5 +52,5 @@ func (intc *InternalTokenInterceptor) Stream(srv any, ss grpc.ServerStream, info
 		handlerCtx = context.WithValue(ss.Context(), contextkeys.InternalRequest, true) // like in unary
 	}
 
-	return handler(NewWrappedStream(ss, handlerCtx), ss)
+	return handler(srv, NewWrappedStream(ss, handlerCtx))
 }
