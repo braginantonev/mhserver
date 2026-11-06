@@ -116,7 +116,7 @@ func TestSaveFile(t *testing.T) {
 	pb.RegisterFilesServiceServer(grpc_server, files.NewFilesServer(t.Context(), data_config))
 
 	lis := bufconn.Listen(SAVE_CHUNK_SIZE)
-	go grpc_server.Serve(lis)
+	go func() { _ = grpc_server.Serve(lis) }()
 
 	grpc_connection, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) { return lis.Dial() }),
@@ -258,7 +258,7 @@ func TestReadFile(t *testing.T) {
 	pb.RegisterFilesServiceServer(grpc_server, files.NewFilesServer(t.Context(), data_config))
 
 	lis := bufconn.Listen(1024 * 1024)
-	go grpc_server.Serve(lis)
+	go func() { _ = grpc_server.Serve(lis) }()
 
 	grpc_connection, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) { return lis.Dial() }),

@@ -17,10 +17,10 @@ func NewSemaphore(size int) Semaphore {
 	return &simpleSem{v: make(chan struct{}, size)}
 }
 
-func (self *simpleSem) Acquire() {
-	self.v <- struct{}{} // Второй вариант
+func (sem *simpleSem) Acquire() {
+	sem.v <- struct{}{}
 }
 
-func (self *simpleSem) Release() {
-	<-self.v
+func (sem *simpleSem) Release() {
+	<-sem.v
 }

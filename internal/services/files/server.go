@@ -258,10 +258,12 @@ readLoop:
 				return ErrInternal
 			}
 
-			stream.Send(&pb.Chunk{
+			if err = stream.Send(&pb.Chunk{
 				Offset: i * s.cfg.ChunkSize,
 				Data:   data[:n],
-			})
+			}); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -41,15 +41,15 @@ func checkJWTUserMatch(username, token, signature string) error {
 	return nil
 }
 
-// return cleanup function or error
-func insertTempSecretKey(db *sql.DB, secret_key string) (error, func()) {
+// return cleanup function
+func insertTempSecretKey(db *sql.DB, secret_key string) (func(), error) {
 	if _, err := db.Exec(INSERT_REGISTER_SECRET_KEY, secret_key); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, func() {
+	return func() {
 		_, _ = db.Exec("DELETE FROM register_secret_keys WHERE secret_key = ?", secret_key)
-	}
+	}, nil
 }
 
 func TestRegister(t *testing.T) {
@@ -130,7 +130,7 @@ func TestRegister(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			if test.reg_info.SecretKey == TEST_REGISTER_SECRET_KEY {
-				err, clean := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
+				clean, err := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
 				if err != nil {
 					t.Fatalf("failed to insert register key to DB: %v", err)
 				}
@@ -175,7 +175,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("already registered", func(t *testing.T) {
 		username := "register_test2"
-		err, clean := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
+		clean, err := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
 		if err != nil {
 			t.Fatalf("failed to insert register key to DB: %v", err)
 		}
@@ -251,7 +251,7 @@ func TestLogin(t *testing.T) {
 		Password: "123",
 	}
 
-	err, clean := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
+	clean, err := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
 	if err != nil {
 		t.Fatalf("failed insert register key (err = %s)", err)
 	}

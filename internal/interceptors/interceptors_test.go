@@ -17,25 +17,25 @@ func newEmptyServerStream(ctx context.Context) emptyServerStream {
 	}
 }
 
-func (_ emptyServerStream) SetHeader(_ metadata.MD) error {
+func (s emptyServerStream) SetHeader(_ metadata.MD) error {
 	return nil
 }
 
-func (_ emptyServerStream) SendHeader(_ metadata.MD) error {
+func (s emptyServerStream) SendHeader(_ metadata.MD) error {
 	return nil
 }
 
-func (_ emptyServerStream) SetTrailer(_ metadata.MD) {}
+func (s emptyServerStream) SetTrailer(_ metadata.MD) {}
 
-func (ess emptyServerStream) Context() context.Context {
-	return ess.ctx
+func (s emptyServerStream) Context() context.Context {
+	return s.ctx
 }
 
-func (_ emptyServerStream) SendMsg(_ any) error {
+func (s emptyServerStream) SendMsg(_ any) error {
 	return nil
 }
 
-func (_ emptyServerStream) RecvMsg(_ any) error {
+func (s emptyServerStream) RecvMsg(_ any) error {
 	return nil
 }
 
