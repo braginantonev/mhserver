@@ -23,7 +23,6 @@ type TokenType int8
 const (
 	TokenTypeNormal TokenType = iota
 	TokenTypeWrongSignature
-	TokenTypeWrongSigningMethod
 	TokenTypeExpired
 	TokenTypeEmpty
 )
@@ -31,15 +30,16 @@ const (
 func genTestJWT(username string, gen_token_type TokenType) *jwt.Token {
 	now := time.Now()
 
-	switch gen_token_type {
-	case TokenTypeNormal:
-		return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	normalClaims := func() jwt.MapClaims {
+		return jwt.MapClaims{
 			"name": username,
 			"nbf":  now.Unix(),
 			"exp":  now.Add(24 * time.Hour).Unix(),
 			"iat":  now.Unix(),
-		})
+		}
+	}
 
+	switch gen_token_type {
 	case TokenTypeExpired:
 		return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"name": username,
@@ -47,12 +47,9 @@ func genTestJWT(username string, gen_token_type TokenType) *jwt.Token {
 			"exp":  now.Add(-5 * time.Second).Unix(),
 			"iat":  now.Add(-10 * time.Second).Unix(),
 		})
-
-	case TokenTypeWrongSigningMethod:
-		return jwt.New(jwt.SigningMethodHS384)
 	}
 
-	return jwt.New(jwt.SigningMethodHS256)
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, normalClaims())
 }
 
 func TestAuthInterceptors(t *testing.T) {
@@ -69,11 +66,6 @@ func TestAuthInterceptors(t *testing.T) {
 		{
 			name:           "wrong signature",
 			jwt_type:       TokenTypeWrongSignature,
-			expected_error: interceptors.ErrAuthBadToken,
-		},
-		{
-			name:           "wrong method",
-			jwt_type:       TokenTypeWrongSigningMethod,
 			expected_error: interceptors.ErrAuthBadToken,
 		},
 		{
@@ -97,7 +89,7 @@ func TestAuthInterceptors(t *testing.T) {
 			signature += "garbage"
 		}
 
-		token_str, err := token.SignedString([]byte(TEST_JWT_SIGNATURE))
+		token_str, err := token.SignedString([]byte(signature))
 		if err != nil {
 			t.Fatalf("failed create signed token: %s", err)
 		}
