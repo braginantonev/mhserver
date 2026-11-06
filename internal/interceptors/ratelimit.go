@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 
 	"github.com/braginantonev/mhserver/internal/repository/ratelimit"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
@@ -36,31 +37,31 @@ func allowRequest(ctx context.Context, limiter *ratelimit.Limiter, ip string) er
 	return nil
 }
 
-func addRateLimitInfo(ctx context.Context, peer string, limiter *ratelimit.Limiter) {
-	grpc.SetTrailer(ctx, metadata.New(map[string]string{
+func addRateLimitInfo(ctx context.Context, ip string, limiter *ratelimit.Limiter) error {
+	return grpc.SetTrailer(ctx, metadata.New(map[string]string{
 		"x-ratelimit-limit":     fmt.Sprint(limiter.Limit()),
-		"x-ratelimit-remaining": fmt.Sprint(limiter.Remaining(peer)),
-		"x-ratelimit-reset":     fmt.Sprint(limiter.ResetIn(peer)),
+		"x-ratelimit-remaining": fmt.Sprint(limiter.Remaining(ip)),
+		"x-ratelimit-reset":     fmt.Sprint(limiter.ResetIn(ip)),
 	}))
 }
 
 type RateLimitStream struct {
 	grpc.ServerStream
-	peer    string
+	userIp  string
 	limiter *ratelimit.Limiter // use interceptor limiter
 }
 
 func (w RateLimitStream) RecvMsg(m any) error {
-	if err := allowRequest(w.Context(), w.limiter, w.peer); err != nil {
+	if err := allowRequest(w.Context(), w.limiter, w.userIp); err != nil {
 		return err
 	}
 	return w.ServerStream.RecvMsg(m)
 }
 
-func NewRateLimitStream(parent grpc.ServerStream, limiter *ratelimit.Limiter, peerAddr string) RateLimitStream {
+func NewRateLimitStream(parent grpc.ServerStream, limiter *ratelimit.Limiter, userIp string) RateLimitStream {
 	return RateLimitStream{
 		ServerStream: parent,
-		peer:         peerAddr,
+		userIp:       userIp,
 		limiter:      limiter,
 	}
 }
@@ -78,28 +79,55 @@ func NewRateLimitInterceptor(unaryLimiter, streamLimiter *ratelimit.Limiter) Rat
 	}
 }
 
-func (intc *RateLimitInterceptor) Unary(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (m any, err error) {
+func (intc *RateLimitInterceptor) getHost(ctx context.Context) (string, error) {
 	peer, ok := peer.FromContext(ctx)
 	if !ok {
-		return nil, ErrUnknownPeer
+		return "", ErrUnknownPeer
 	}
 
-	defer addRateLimitInfo(ctx, peer.Addr.String(), intc.unaryLimiter)
+	host, _, err := net.SplitHostPort(peer.Addr.String())
+	if err != nil {
+		slog.ErrorContext(ctx, "failed split host and port of user peer", slog.Any("error", err))
+		return peer.Addr.String(), nil
+	}
 
-	if err = allowRequest(ctx, intc.unaryLimiter, peer.Addr.String()); err != nil {
+	return host, nil
+}
+
+func (intc *RateLimitInterceptor) Unary(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (m any, err error) {
+	host, err := intc.getHost(ctx)
+	if err != nil {
 		return nil, err
 	}
+
+	if err = allowRequest(ctx, intc.unaryLimiter, host); err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err = addRateLimitInfo(ctx, host, intc.streamLimiter); err != nil {
+			slog.ErrorContext(ctx, "failed add ratelimit info to trailer", slog.Any("error", err))
+		}
+	}()
 
 	return handler(ctx, req)
 }
 
 func (intc *RateLimitInterceptor) Stream(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
-	peer, ok := peer.FromContext(ss.Context())
-	if !ok {
-		return ErrUnknownPeer
+	host, err := intc.getHost(ss.Context())
+	if err != nil {
+		return err
 	}
 
-	defer addRateLimitInfo(ss.Context(), peer.Addr.String(), intc.streamLimiter)
+	if err := allowRequest(ss.Context(), intc.streamLimiter, host); err != nil {
+		return err
+	}
 
-	return handler(srv, NewRateLimitStream(ss, intc.streamLimiter, peer.Addr.String()))
+	defer func() {
+		if err = addRateLimitInfo(ss.Context(), host, intc.streamLimiter); err != nil {
+			slog.ErrorContext(ss.Context(), "failed add ratelimit info to trailer", slog.Any("error", err))
+		}
+	}()
+
+	return handler(srv, NewRateLimitStream(ss, intc.streamLimiter, host))
 }
