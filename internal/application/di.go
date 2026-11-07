@@ -19,10 +19,6 @@ import (
 
 var ErrServiceNotRealized error = errors.New("service not realized")
 
-func authServiceName() config.ServiceName {
-	return auth.SERVICE_NAME
-}
-
 func (app *Application) registerGrpcServer(
 	ctx context.Context,
 	grpc *grpc.Server,
@@ -32,6 +28,15 @@ func (app *Application) registerGrpcServer(
 	service_config := string(service) + ".conf"
 
 	switch service {
+	case auth.SERVICE_NAME:
+		cfg := auth.NewAuthServiceConfig(
+			app.cfg.JWTSignature,
+		)
+		if err := config.LoadConfig(app.cfg.WorkspacePath, service_config, &cfg); err != nil {
+			return err
+		}
+		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(cfg, app.db))
+
 	case files.SERVICE_NAME:
 		workspace_path := filepath.Join(app.cfg.WorkspacePath, "uspace")
 
@@ -64,15 +69,6 @@ func (app *Application) registerGrpcServer(
 		}
 		data_pb.RegisterFilesServiceServer(grpc, files.NewFilesServer(ctx, cfg))
 
-	case auth.SERVICE_NAME:
-		cfg := auth.NewAuthServiceConfig(
-			app.cfg.JWTSignature,
-		)
-		if err := config.LoadConfig(app.cfg.WorkspacePath, service_config, &cfg); err != nil {
-			return err
-		}
-		auth_pb.RegisterAuthServiceServer(grpc, auth.NewAuthServer(cfg, app.db))
-
 	default:
 		return ErrServiceNotRealized
 	}
@@ -96,9 +92,9 @@ func (app *Application) getRateLimitInterceptor(ctx context.Context) interceptor
 
 	streamCfg, ok := app.cfg.RateLimiter["stream"]
 	if !ok {
-		// With chunk = 5 mb we have 200mb in second.
+		// With chunk = 1 mb we have 200mb in second.
 		// Thats good, because server for personal use, so for one person usually
-		streamCfg = config.LimiterConfig{Limit: 40, Interval: 1}
+		streamCfg = config.LimiterConfig{Limit: 200, Interval: 1}
 	}
 
 	return interceptors.NewRateLimitInterceptor(

@@ -112,12 +112,6 @@ func (app *Application) Run(ctx context.Context) error {
 		}
 	}
 
-	// register auth service, because auth config not provided in service configs
-	if err := app.registerGrpcServer(ctx, grpc_server, authServiceName(), nil); err != nil {
-		slog.ErrorContext(ctx, "Failed register service in server", slog.String("service", "auth"), slog.Any("error", err))
-		return fmt.Errorf("failed init services")
-	}
-
 	for _, s := range enabled {
 		if err := app.registerGrpcServer(ctx, grpc_server, s, dependencies); err != nil {
 			slog.ErrorContext(ctx, "Failed register service in server", slog.String("service", string(s)), slog.Any("error", err))

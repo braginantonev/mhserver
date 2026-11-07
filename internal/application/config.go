@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/braginantonev/mhserver/internal/config"
+	"github.com/braginantonev/mhserver/internal/services/auth"
 	"github.com/braginantonev/mhserver/internal/services/files"
 )
 
@@ -15,6 +16,11 @@ type Server struct {
 type LocalServiceConfig struct {
 	Enabled      bool
 	Dependencies map[config.ServiceName]config.Socket
+}
+
+type AuthConfig struct {
+	LocalServiceConfig
+	auth.AuthServiceConfig
 }
 
 type DataConfig struct {
@@ -38,6 +44,7 @@ type LLMConfig struct {
 }
 
 type ServiceConfigs struct {
+	Auth   AuthConfig
 	Files  DataConfig
 	Music  MusicConfig
 	Images ImagesConfig
@@ -46,6 +53,7 @@ type ServiceConfigs struct {
 
 func (c *ServiceConfigs) IntoServiceMap() map[config.ServiceName]LocalServiceConfig {
 	return map[config.ServiceName]LocalServiceConfig{
+		auth.SERVICE_NAME:  c.Auth.LocalServiceConfig,
 		files.SERVICE_NAME: c.Files.LocalServiceConfig,
 		"music":            c.Music.LocalServiceConfig,  // temp name for uncreated service
 		"images":           c.Images.LocalServiceConfig, // temp name for uncreated service
