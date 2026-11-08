@@ -2,15 +2,16 @@ package auth_test
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 
-	"github.com/braginantonev/mhserver/internal/repository/database"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/braginantonev/mhserver/internal/services/auth"
 	pb "github.com/braginantonev/mhserver/proto/gen/auth"
-	"github.com/go-sql-driver/mysql"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
@@ -24,6 +25,18 @@ const (
 	JWT_SIGNATURE  string = "123zxc"
 	WORKSPACE_PATH string = "/tmp/mhserver_tests"
 )
+
+type bcryptHash struct{}
+
+func (hash bcryptHash) Match(v driver.Value) bool {
+	pass, ok := v.(string)
+	if !ok {
+		return false
+	}
+
+	// bcrypt hash has `$2` prefix and mostly length = 60
+	return strings.HasPrefix(pass, "$2") && len(pass) == 60
+}
 
 func checkJWTUserMatch(username, token, signature string) error {
 	parsed, err := auth.ParseStringJWT(token, signature)
@@ -41,28 +54,10 @@ func checkJWTUserMatch(username, token, signature string) error {
 	return nil
 }
 
-// return cleanup function
-func insertTempSecretKey(db *sql.DB, secret_key string) (func(), error) {
-	if _, err := db.Exec(INSERT_REGISTER_SECRET_KEY, secret_key); err != nil {
-		return nil, err
-	}
-
-	return func() {
-		_, _ = db.Exec("DELETE FROM register_secret_keys WHERE secret_key = ?", secret_key)
-	}, nil
-}
-
 func TestRegister(t *testing.T) {
-	db, err := database.OpenDB(mysql.Config{
-		User:                 "mhserver_tests",
-		Passwd:               "",
-		Net:                  "tcp",
-		Addr:                 "127.0.0.1:3306",
-		DBName:               "mhs_main_test",
-		AllowNativePasswords: true,
-	})
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed create mock of db: %v", err)
 	}
 
 	// Create data grpc client
@@ -89,36 +84,68 @@ func TestRegister(t *testing.T) {
 
 	cases := [...]struct {
 		name         string
+		setup_mock   func(mock sqlmock.Sqlmock)
 		reg_info     *pb.RegisterRequest
 		expected_err error
 	}{
 		{
-			name: "long username",
+			name:       "long username",
+			setup_mock: func(mock sqlmock.Sqlmock) {},
 			reg_info: &pb.RegisterRequest{
 				User: &pb.User{
 					Name:     "[Cop Killers] X1_BestCockSucker_1X",
 					Password: "123",
 				},
-				SecretKey: "",
+				SecretKey: TEST_REGISTER_SECRET_KEY,
 			},
 			expected_err: auth.ErrNameTooLong,
 		},
 		{
-			name: "key not found",
+			name: "already registered",
+			setup_mock: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{"id"}).AddRow(0)
+				mock.ExpectQuery("^SELECT (.+) FROM users WHERE user = (.+)$").WithArgs("Arthur Morgan").WillReturnRows(rows)
+			},
 			reg_info: &pb.RegisterRequest{
 				User: &pb.User{
-					Name:     "unregistered",
+					Name:     "Arthur Morgan",
 					Password: "123",
 				},
-				SecretKey: "WRONG KEY",
+				SecretKey: TEST_REGISTER_SECRET_KEY,
+			},
+			expected_err: auth.ErrUserAlreadyExists,
+		},
+		{
+			name: "key not found",
+			setup_mock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("^SELECT (.+) FROM users WHERE user = (.+)$").WithArgs(sqlmock.AnyArg()).WillReturnError(sql.ErrNoRows)
+				mock.ExpectQuery("^SELECT (.+) FROM register_secret_keys WHERE secret_key = (.+)$").WithArgs(sqlmock.AnyArg()).WillReturnError(sql.ErrNoRows)
+			},
+			reg_info: &pb.RegisterRequest{
+				User: &pb.User{
+					Name:     "Dracula",
+					Password: "123",
+				},
+				SecretKey: "some undefined register key",
 			},
 			expected_err: auth.ErrRegSecretKeyNotFound,
 		},
 		{
 			name: "base register",
+			setup_mock: func(mock sqlmock.Sqlmock) {
+				id := 0
+				rows := sqlmock.NewRows([]string{"id"}).AddRow(id)
+				mock.ExpectQuery("^SELECT (.+) FROM users WHERE user = (.+)$").WithArgs(sqlmock.AnyArg()).WillReturnError(sql.ErrNoRows)
+				mock.ExpectQuery("^SELECT (.+) FROM register_secret_keys WHERE secret_key = (.+)$").WithArgs(TEST_REGISTER_SECRET_KEY).WillReturnRows(rows)
+
+				mock.ExpectBegin()
+				mock.ExpectExec("^INSERT INTO users ((.+), (.+)) VALUES ((.+), (.+))").WithArgs("V", bcryptHash{}).WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec("^DELETE FROM register_secret_keys WHERE id = (.+)$").WithArgs(id).WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectCommit()
+			},
 			reg_info: &pb.RegisterRequest{
 				User: &pb.User{
-					Name:     "register_test1",
+					Name:     "V",
 					Password: "123",
 				},
 				SecretKey: TEST_REGISTER_SECRET_KEY,
@@ -129,97 +156,24 @@ func TestRegister(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			if test.reg_info.SecretKey == TEST_REGISTER_SECRET_KEY {
-				clean, err := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
-				if err != nil {
-					t.Fatalf("failed to insert register key to DB: %v", err)
-				}
-				defer clean()
-			}
+			test.setup_mock(mock)
 
 			_, err := service_client.Register(t.Context(), test.reg_info)
 			if !errors.Is(err, test.expected_err) {
-				t.Errorf("expected error: %s, but got: %s", test.expected_err, err)
-			}
-
-			// skip check in database
-			if test.expected_err != nil {
-				return
-			}
-
-			var pass_from_db string
-			if err = db.QueryRow(auth.SELECT_USER_PASS, test.reg_info.User.Name).Scan(&pass_from_db); err != nil {
-				t.Error(err)
-			}
-
-			if err = bcrypt.CompareHashAndPassword([]byte(pass_from_db), []byte(test.reg_info.User.Password)); err != nil {
-				t.Errorf("password incorrect. error=%s", err.Error())
-			}
-
-			var reg_key int
-			if err = db.QueryRow(auth.SELECT_REGISTER_SECRET_KEY, test.reg_info.SecretKey).Scan(&reg_key); err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					return
-				}
-				t.Error("failed check delete reg key.", err.Error())
-			} else {
-				t.Errorf("secret key not deleted after registration (key_id = %d)", reg_key)
+				t.Errorf("expected error: %v, but got: %v", test.expected_err, err)
 			}
 		})
-
-		_, err := db.Exec("DELETE FROM users WHERE user = ?", test.reg_info.User.Name)
-		if err != nil {
-			fmt.Println(err)
-		}
 	}
 
-	t.Run("already registered", func(t *testing.T) {
-		username := "register_test2"
-		clean, err := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
-		if err != nil {
-			t.Fatalf("failed to insert register key to DB: %v", err)
-		}
-		defer clean()
-
-		// register user
-		hash, err := bcrypt.GenerateFromPassword([]byte("123"), bcrypt.DefaultCost)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = db.Exec(auth.INSERT_REG_USER, username, string(hash))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if _, err = service_client.Register(t.Context(), &pb.RegisterRequest{
-			User: &pb.User{
-				Name:     username,
-				Password: "123",
-			},
-			SecretKey: "xzc",
-		}); !errors.Is(err, auth.ErrUserAlreadyExists) {
-			t.Errorf("expected error `%s`, but got `%s`", auth.ErrUserAlreadyExists, err)
-		}
-
-		// cleanup
-		if _, err = db.Exec("DELETE FROM users WHERE user = ?", username); err != nil {
-			t.Errorf("failed delete user (err = %s)", err)
-		}
-	})
-
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("There were unfulfilled expectations: %v", err)
+	}
 }
 
 func TestLogin(t *testing.T) {
-	db, err := database.OpenDB(mysql.Config{
-		User:                 "mhserver_tests",
-		Passwd:               "",
-		Net:                  "tcp",
-		Addr:                 "127.0.0.1:3306",
-		DBName:               "mhs_main_test",
-		AllowNativePasswords: true,
-	})
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed create mock of db: %v", err)
 	}
 
 	// Create data grpc client
@@ -244,67 +198,63 @@ func TestLogin(t *testing.T) {
 
 	service_client := pb.NewAuthServiceClient(grpc_connection)
 
-	// register user
-
-	registered_user := &pb.User{
-		Name:     "login_user_1",
-		Password: "123",
-	}
-
-	clean, err := insertTempSecretKey(db, TEST_REGISTER_SECRET_KEY)
-	if err != nil {
-		t.Fatalf("failed insert register key (err = %s)", err)
-	}
-	defer clean()
-
-	if _, err := service_client.Register(t.Context(), &pb.RegisterRequest{
-		User:      registered_user,
-		SecretKey: TEST_REGISTER_SECRET_KEY,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	const GOOD_PASSWORD string = "123 (of course not)"
 
 	cases := [...]struct {
 		name         string
+		setup_mock   func(mock sqlmock.Sqlmock)
 		user         *pb.User
 		expected_err error
-		check_reg    bool
 	}{
 		{
 			name: "not registered",
+			setup_mock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("^SELECT password FROM users WHERE user = (.+)$").WithArgs(sqlmock.AnyArg()).WillReturnError(sql.ErrNoRows)
+			},
 			user: &pb.User{
-				Name:     "unregistered user",
+				Name:     "unregistered",
 				Password: "123",
 			},
 			expected_err: auth.ErrUserNotExist,
 		},
 		{
 			name: "wrong password",
+			setup_mock: func(mock sqlmock.Sqlmock) {
+				some_hash, _ := bcrypt.GenerateFromPassword([]byte("92JwfOyf3i8ibW9j/MuAIA=="), bcrypt.DefaultCost)
+				rows := sqlmock.NewRows([]string{"password"}).AddRow(string(some_hash))
+				mock.ExpectQuery("^SELECT password FROM users WHERE user = (.+)$").WithArgs(sqlmock.AnyArg()).WillReturnRows(rows)
+			},
 			user: &pb.User{
-				Name:     registered_user.Name,
+				Name:     "Mina",
 				Password: "wrong password",
 			},
 			expected_err: auth.ErrWrongPassword,
 		},
 		{
 			name: "normal login",
+			setup_mock: func(mock sqlmock.Sqlmock) {
+				hash, _ := bcrypt.GenerateFromPassword([]byte(GOOD_PASSWORD), bcrypt.DefaultCost)
+				rows := sqlmock.NewRows([]string{"password"}).AddRow(string(hash))
+				mock.ExpectQuery("^SELECT password FROM users WHERE user = (.+)$").WithArgs(sqlmock.AnyArg()).WillReturnRows(rows)
+			},
 			user: &pb.User{
-				Name:     registered_user.Name,
-				Password: registered_user.Password,
+				Name:     "Jason Statham",
+				Password: GOOD_PASSWORD,
 			},
 			expected_err: nil,
-			check_reg:    true,
 		},
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			test.setup_mock(mock)
+
 			token, err := service_client.Login(t.Context(), test.user)
 			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected error: %v, but got: %v", test.expected_err, err)
 			}
 
-			if !test.check_reg {
+			if test.expected_err != nil {
 				return
 			}
 
@@ -312,10 +262,5 @@ func TestLogin(t *testing.T) {
 				t.Error(err)
 			}
 		})
-	}
-
-	_, err = db.Exec("DELETE FROM users WHERE user = ?", registered_user.Name)
-	if err != nil {
-		fmt.Println(err)
 	}
 }
