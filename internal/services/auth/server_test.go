@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 const (
@@ -54,33 +56,36 @@ func checkJWTUserMatch(username, token, signature string) error {
 	return nil
 }
 
+func createClient(ctx context.Context, config auth.AuthServiceConfig, db *sql.DB) (pb.AuthServiceClient, error) {
+	grpc_server := grpc.NewServer()
+	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(config, db))
+
+	lis := bufconn.Listen(1024 * 1024)
+	go func() { _ = grpc_server.Serve(lis) }()
+
+	grpc_connection, err := grpc.NewClient("passthrough://bufnet",
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) { return lis.Dial() }),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return pb.NewAuthServiceClient(grpc_connection), nil
+}
+
 func TestRegister(t *testing.T) {
+	config := auth.NewAuthServiceConfig(JWT_SIGNATURE)
+
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("failed create mock of db: %v", err)
 	}
 
-	// Create data grpc client
-	grpc_server := grpc.NewServer()
-	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthServiceConfig(JWT_SIGNATURE), db))
-
-	lis, err := net.Listen("tcp", "localhost:8085")
+	client, err := createClient(t.Context(), config, db)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed create client: %v", err)
 	}
-
-	go func() {
-		if err := grpc_server.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	grpc_connection, err := grpc.NewClient("localhost:8085", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	service_client := pb.NewAuthServiceClient(grpc_connection)
 
 	cases := [...]struct {
 		name         string
@@ -158,7 +163,7 @@ func TestRegister(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			test.setup_mock(mock)
 
-			_, err := service_client.Register(t.Context(), test.reg_info)
+			_, err := client.Register(t.Context(), test.reg_info)
 			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected error: %v, but got: %v", test.expected_err, err)
 			}
@@ -171,32 +176,17 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
+	config := auth.NewAuthServiceConfig(JWT_SIGNATURE)
+
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("failed create mock of db: %v", err)
 	}
 
-	// Create data grpc client
-	grpc_server := grpc.NewServer()
-	pb.RegisterAuthServiceServer(grpc_server, auth.NewAuthServer(auth.NewAuthServiceConfig(JWT_SIGNATURE), db))
-
-	lis, err := net.Listen("tcp", "localhost:8085")
+	client, err := createClient(t.Context(), config, db)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed create client: %v", err)
 	}
-
-	go func() {
-		if err := grpc_server.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	grpc_connection, err := grpc.NewClient("localhost:8085", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	service_client := pb.NewAuthServiceClient(grpc_connection)
 
 	const GOOD_PASSWORD string = "123 (of course not)"
 
@@ -249,7 +239,7 @@ func TestLogin(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			test.setup_mock(mock)
 
-			token, err := service_client.Login(t.Context(), test.user)
+			token, err := client.Login(t.Context(), test.user)
 			if !errors.Is(err, test.expected_err) {
 				t.Errorf("expected error: %v, but got: %v", test.expected_err, err)
 			}

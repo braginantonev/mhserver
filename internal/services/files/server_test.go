@@ -24,10 +24,8 @@ import (
 )
 
 const (
-	WORKSPACE_PATH  string = "/tmp/mhserver_tests/"
-	TEST_USER       string = "user"
-	CHUNK_SIZE      int    = 1024
-	SAVE_CHUNK_SIZE int    = 5
+	WORKSPACE_PATH string = "/tmp/mhserver_tests/"
+	TEST_USER      string = "user"
 
 	TEST_FILE_BODY string = `- Скажи, дружище, ты стихи любишь?
 	- Стихи? Ну, не особо, сэр.
@@ -49,60 +47,7 @@ func createWorkspaceFolders(workspace_path, username string, user_spaces []strin
 	return nil
 }
 
-// streaming save
-func saveFile(ctx context.Context, data_client pb.FilesServiceClient, req_file *pb.RequiredFile, reader io.Reader) error {
-	stream, err := data_client.SaveFile(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = stream.CloseSend() }()
-
-	if err = stream.Send(&pb.SaveFileChunk{
-		Info: &pb.SaveFileChunk_Meta{
-			Meta: req_file,
-		},
-	}); err != nil {
-		return err
-	}
-
-sendLoop:
-	for i := uint64(0); ; i++ {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			chunk := make([]byte, SAVE_CHUNK_SIZE)
-			n, err := reader.Read(chunk)
-			if err != nil && err != io.EOF {
-				return err
-			}
-
-			if n == 0 && err == io.EOF {
-				break sendLoop
-			}
-
-			if err := stream.Send(&pb.SaveFileChunk{
-				Info: &pb.SaveFileChunk_Chunk{
-					Chunk: &pb.Chunk{
-						Data:   chunk[:n],
-						Offset: uint64(SAVE_CHUNK_SIZE) * i,
-					},
-				},
-			}); err != nil {
-				return err
-			}
-		}
-	}
-
-	_, err = stream.CloseAndRecv()
-	return err
-}
-
-func TestSaveFile(t *testing.T) {
-	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER, []string{"0"}); err != nil {
-		t.Fatal(err)
-	}
-
+func createClient(ctx context.Context, config files.DataServiceConfig) (pb.FilesServiceClient, error) {
 	auth_intc := interceptors.NewFakeAuthInterceptor(TEST_USER)
 
 	grpc_server := grpc.NewServer(
@@ -110,12 +55,9 @@ func TestSaveFile(t *testing.T) {
 		grpc.StreamInterceptor(auth_intc.Stream),
 	)
 
-	data_config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
-	data_config.ChunkSize = uint64(SAVE_CHUNK_SIZE)
+	pb.RegisterFilesServiceServer(grpc_server, files.NewFilesServer(ctx, config))
 
-	pb.RegisterFilesServiceServer(grpc_server, files.NewFilesServer(t.Context(), data_config))
-
-	lis := bufconn.Listen(SAVE_CHUNK_SIZE)
+	lis := bufconn.Listen(1024 * 1024)
 	go func() { _ = grpc_server.Serve(lis) }()
 
 	grpc_connection, err := grpc.NewClient("passthrough://bufnet",
@@ -123,64 +65,125 @@ func TestSaveFile(t *testing.T) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
+		return nil, err
+	}
+
+	return pb.NewFilesServiceClient(grpc_connection), nil
+}
+
+func TestSaveFile(t *testing.T) {
+	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, []string{})
+	config.ChunkSize = 5 // use small size
+
+	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
 		t.Fatal(err)
 	}
 
-	data_client := pb.NewFilesServiceClient(grpc_connection)
-
-	// To test: "save in test dir"
-	test_dir := "/save_data_test_dir/"
-	if err = os.MkdirAll(filepath.Join(WORKSPACE_PATH, "0", TEST_USER, test_dir), 0777); err != nil {
-		t.Fatal(err)
+	client, err := createClient(t.Context(), config)
+	if err != nil {
+		t.Fatalf("failed create service client: %v", err)
 	}
 
-	small_test_file := "I use arch btw"
-	small_test_file_len := uint64(len(small_test_file))
+	// streaming save
+	emulate_saving := func(ctx context.Context, req_file *pb.RequiredFile, reader io.Reader) error {
+		stream, err := client.SaveFile(ctx)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = stream.CloseSend() }()
+
+		if err = stream.Send(&pb.SaveFileChunk{
+			Info: &pb.SaveFileChunk_Meta{
+				Meta: req_file,
+			},
+		}); err != nil {
+			return err
+		}
+
+	sendLoop:
+		for i := uint64(0); ; i++ {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				chunk := make([]byte, config.ChunkSize)
+				n, err := reader.Read(chunk)
+				if err != nil && err != io.EOF {
+					return err
+				}
+
+				if n == 0 && err == io.EOF {
+					break sendLoop
+				}
+
+				if err := stream.Send(&pb.SaveFileChunk{
+					Info: &pb.SaveFileChunk_Chunk{
+						Chunk: &pb.Chunk{
+							Data:   chunk[:n],
+							Offset: uint64(config.ChunkSize) * i,
+						},
+					},
+				}); err != nil {
+					return err
+				}
+			}
+		}
+
+		_, err = stream.CloseAndRecv()
+		return err
+	}
 
 	cases := [...]struct {
 		name         string
+		setup        func() error
 		req_file     *pb.RequiredFile
 		save_data    string
 		expected_err error
 	}{
 		{
-			name: "save in root dir",
+			name:  "save in root dir",
+			setup: func() error { return nil },
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
 					Value: "/",
 				},
 				Name:    "save_data_single.txt",
-				NewSize: new(small_test_file_len),
+				NewSize: new(uint64(len(TEST_FILE_BODY))),
 			},
-			save_data:    small_test_file,
+			save_data:    TEST_FILE_BODY,
 			expected_err: nil,
 		},
 		{
 			name: "save in test dir",
+			setup: func() error {
+				return os.MkdirAll(filepath.Join(WORKSPACE_PATH, "0", TEST_USER, "save_in_test_dir"), 0777) // dir name like test name
+			},
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					Value: test_dir,
+					Value: "save_in_test_dir",
 				},
 				Name:    "test.txt",
-				NewSize: new(small_test_file_len),
+				NewSize: new(uint64(len(TEST_FILE_BODY))),
 			},
-			save_data:    small_test_file,
+			save_data:    TEST_FILE_BODY,
 			expected_err: nil,
 		},
 		{
-			name: "save in uncreated dir",
+			name:  "save in uncreated dir",
+			setup: func() error { return nil },
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
-					Value: "/uncreated_dir/",
+					Value: "uncreated_dir",
 				},
 				Name:    "cool.txt",
-				NewSize: new(small_test_file_len),
+				NewSize: new(uint64(len(TEST_FILE_BODY))),
 			},
-			save_data:    small_test_file,
+			save_data:    TEST_FILE_BODY,
 			expected_err: files.ErrDirNotFound,
 		},
 		{
-			name: "save big file",
+			name:  "save big file",
+			setup: func() error { return nil },
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
 					Value: "/",
@@ -192,22 +195,27 @@ func TestSaveFile(t *testing.T) {
 			expected_err: nil,
 		},
 		{
-			name: "save in out of file",
+			name:  "save in out of file",
+			setup: func() error { return nil },
 			req_file: &pb.RequiredFile{
 				Dir: &pb.Directory{
 					Value: "/",
 				},
 				Name:    "save_data_incorrect_chunk.txt",
-				NewSize: new(small_test_file_len - 5),
+				NewSize: new(uint64(len(TEST_FILE_BODY) / 2)),
 			},
-			save_data:    small_test_file,
+			save_data:    TEST_FILE_BODY,
 			expected_err: files.ErrUnexpectedFileChange,
 		},
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			err = saveFile(t.Context(), data_client, test.req_file, strings.NewReader(test.save_data))
+			if err = test.setup(); err != nil {
+				t.Fatalf("failed setup test: %v", err)
+			}
+
+			err = emulate_saving(t.Context(), test.req_file, strings.NewReader(test.save_data))
 
 			if test.expected_err != nil {
 				if !errors.Is(err, test.expected_err) {
@@ -239,88 +247,140 @@ func TestSaveFile(t *testing.T) {
 }
 
 func TestReadFile(t *testing.T) {
-	test_file_name := "get_data_test_file.txt"
+	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, []string{})
+	config.ChunkSize = 5
 
-	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER, []string{"0"}); err != nil {
-		t.Fatal(err)
+	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Fatalf("failed init workspace: %v", err)
 	}
 
-	auth_intc := interceptors.NewFakeAuthInterceptor(TEST_USER)
-
-	grpc_server := grpc.NewServer(
-		grpc.UnaryInterceptor(auth_intc.Unary),
-		grpc.StreamInterceptor(auth_intc.Stream),
-	)
-
-	data_config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
-	data_config.ChunkSize = uint64(CHUNK_SIZE)
-
-	pb.RegisterFilesServiceServer(grpc_server, files.NewFilesServer(t.Context(), data_config))
-
-	lis := bufconn.Listen(1024 * 1024)
-	go func() { _ = grpc_server.Serve(lis) }()
-
-	grpc_connection, err := grpc.NewClient("passthrough://bufnet",
-		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) { return lis.Dial() }),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	client, err := createClient(t.Context(), config)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed create service client: %v", err)
 	}
 
-	data_client := pb.NewFilesServiceClient(grpc_connection)
-
-	// Create test file
-	file, err := os.OpenFile(filepath.Join(WORKSPACE_PATH, "0", TEST_USER, test_file_name), os.O_CREATE|os.O_WRONLY, 0777)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = file.Write([]byte(TEST_FILE_BODY))
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = file.Close()
-
-	t.Run("normal get", func(t *testing.T) {
-		req := &pb.RequiredFile{
-			Dir: &pb.Directory{
-				Value: "/",
+	cases := [...]struct {
+		name         string
+		setup        func() error
+		req_file     *pb.RequiredFile
+		expected_err error
+	}{
+		{
+			name:  "empty filename",
+			setup: func() error { return nil },
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					Value: "/",
+				},
+				Name: "",
 			},
-			Name: test_file_name,
-		}
+			expected_err: files.ErrBadFilenameSyntax,
+		},
+		{
+			name:  "file not found",
+			setup: func() error { return nil },
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					Value: "/",
+				},
+				Name: "zxc.txt",
+			},
+			expected_err: files.ErrFileNotExist,
+		},
+		{
+			name:  "uncreated dir",
+			setup: func() error { return nil },
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					Value: "zxc/",
+				},
+				Name: "zxc.txt",
+			},
+			expected_err: files.ErrFileNotExist,
+		},
+		{
+			name: "read in root",
+			setup: func() error {
+				return os.WriteFile(filepath.Join(config.WorkspacePath, config.UserSpaces[0], TEST_USER, "read_in_root.txt"), []byte(TEST_FILE_BODY), 0777)
+			},
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					Value: "/",
+				},
+				Name: "read_in_root.txt",
+			},
+		},
+		{
+			name: "read in dir",
+			setup: func() error {
+				dir := filepath.Join(config.WorkspacePath, config.UserSpaces[0], TEST_USER, "read_in_dir")
+				if err := os.MkdirAll(dir, 0777); err != nil {
+					return err
+				}
+				return os.WriteFile(filepath.Join(dir, "read_in_dir.txt"), []byte(TEST_FILE_BODY), 0777)
+			},
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					Value: "read_in_dir",
+				},
+				Name: "read_in_dir.txt",
+			},
+		},
+		{
+			name: "new size set",
+			setup: func() error {
+				return os.WriteFile(filepath.Join(config.WorkspacePath, config.UserSpaces[0], TEST_USER, "new_size_set.txt"), []byte(TEST_FILE_BODY), 0777)
+			},
+			req_file: &pb.RequiredFile{
+				Dir: &pb.Directory{
+					Value: "/",
+				},
+				Name:    "new_size_set.txt",
+				NewSize: new(uint64(5)),
+			},
+		},
+	}
 
-		stream, err := data_client.ReadFile(t.Context(), req)
-		if err != nil {
-			t.Fatalf("failed create connection (%v)", err)
-		}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.setup(); err != nil {
+				t.Fatalf("failed setup test: %v", err)
+			}
 
-		for {
-			v, err := stream.Recv()
+			stream, err := client.ReadFile(t.Context(), test.req_file)
 			if err != nil {
-				if err == io.EOF {
+				t.Fatalf("failed create stream: %v", err)
+			}
+
+			for {
+				v, err := stream.Recv()
+				if err != nil {
+					if err != io.EOF && !errors.Is(err, test.expected_err) {
+						t.Fatalf("expected error: `%v`, but got: `%v`", test.expected_err, err)
+					}
 					break
 				}
-				t.Fatalf("failed get chunk (%v)", err)
-			}
 
-			expected := TEST_FILE_BODY[v.Offset : v.Offset+uint64(len(v.Data))]
-			if string(v.Data) != expected {
-				t.Errorf("expected chunk: `%s`, but got: `%s`", expected, string(v.Data))
+				expected := TEST_FILE_BODY[v.Offset : v.Offset+uint64(len(v.Data))]
+				if string(v.Data) != expected {
+					t.Errorf("expected chunk: `%s`, but got: `%s`", expected, string(v.Data))
+				}
 			}
-		}
-	})
+		})
+	}
 }
 
 func TestGetSum(t *testing.T) {
-	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER, []string{"0"}); err != nil {
-		t.Fatal(err)
+	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, []string{})
+
+	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Fatalf("failed init workspace: %v", err)
 	}
 
-	data_config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
-	data_config.ChunkSize = uint64(CHUNK_SIZE)
-
-	data_service := files.NewFilesServer(t.Context(), data_config)
+	client, err := createClient(t.Context(), config)
+	if err != nil {
+		t.Fatalf("failed create service client: %v", err)
+	}
 
 	// Вместо создания всей строки в памяти
 	genRandomFile := func(size uint64) (*os.File, error) {
@@ -329,16 +389,16 @@ func TestGetSum(t *testing.T) {
 			return nil, err
 		}
 
-		buffer := make([]byte, CHUNK_SIZE)
+		buffer := make([]byte, config.ChunkSize)
 		letters := []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n\t")
 
 		for written := uint64(0); written < size; {
-			toWrite := CHUNK_SIZE
-			if size-written < uint64(CHUNK_SIZE) {
-				toWrite = int(size - written)
+			toWrite := config.ChunkSize
+			if size-written < uint64(config.ChunkSize) {
+				toWrite = size - written
 			}
 
-			for i := 0; i < toWrite; i++ {
+			for i := uint64(0); i < toWrite; i++ {
 				buffer[i] = letters[rand.Intn(len(letters))]
 			}
 
@@ -456,7 +516,7 @@ func TestGetSum(t *testing.T) {
 			test.req_file.Name = test_file.Name()[strings.LastIndexByte(test_file.Name(), '/')+1:]
 
 			req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
-			got, err := data_service.GetSum(req_ctx, test.req_file)
+			got, err := client.GetSum(req_ctx, test.req_file)
 			if err != nil {
 				t.Fatalf("failed get sum (%v)", err)
 			}
@@ -469,19 +529,21 @@ func TestGetSum(t *testing.T) {
 }
 
 func TestGetFiles(t *testing.T) {
-	if err := createWorkspaceFolders(WORKSPACE_PATH, TEST_USER, []string{"0"}); err != nil {
-		t.Fatal(err)
+	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, []string{})
+
+	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Fatalf("failed init workspace: %v", err)
+	}
+
+	client, err := createClient(t.Context(), config)
+	if err != nil {
+		t.Fatalf("failed create service client: %v", err)
 	}
 
 	test_dir := "/get_files_test/"
 	if err := os.MkdirAll(filepath.Join(WORKSPACE_PATH, "0", TEST_USER, test_dir), 0777); err != nil {
 		t.Fatal(err)
 	}
-
-	data_config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, nil)
-	data_config.ChunkSize = uint64(CHUNK_SIZE)
-
-	data_service := files.NewFilesServer(t.Context(), data_config)
 
 	extensions := []string{"jpg", "png", "txt", "doc", "docx", "1c", "svg"}
 	gen_filename := func(with_ext bool) string {
@@ -572,7 +634,7 @@ func TestGetFiles(t *testing.T) {
 
 		t.Run(test.name, func(t *testing.T) {
 			req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
-			files_list, err := data_service.GetFiles(req_ctx, &pb.Directory{
+			files_list, err := client.GetFiles(req_ctx, &pb.Directory{
 				Value: test.target_dir,
 			})
 
@@ -633,7 +695,7 @@ func TestGetFiles(t *testing.T) {
 
 	t.Run("with dir contained another dir", func(t *testing.T) {
 		req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
-		files, err := data_service.GetFiles(req_ctx, &pb.Directory{
+		files, err := client.GetFiles(req_ctx, &pb.Directory{
 			Value: test_dir,
 		})
 
@@ -652,7 +714,7 @@ func TestGetFiles(t *testing.T) {
 
 	t.Run("dir not found", func(t *testing.T) {
 		req_ctx := context.WithValue(t.Context(), contextkeys.USERNAME, TEST_USER)
-		_, err := data_service.GetFiles(req_ctx, &pb.Directory{
+		_, err := client.GetFiles(req_ctx, &pb.Directory{
 			Value: "/unexpected_dir/",
 		})
 
