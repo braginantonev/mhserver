@@ -100,7 +100,7 @@ func (u *UserRate) Delete() {
 }
 
 type Limiter struct {
-	mux      *sync.Mutex
+	mux      sync.Mutex
 	limit    int
 	interval time.Duration
 	occupied map[string]*UserRate
@@ -108,7 +108,7 @@ type Limiter struct {
 
 func NewLimiter(ctx context.Context, max_requests int, interval time.Duration) *Limiter {
 	limiter := &Limiter{
-		mux:      &sync.Mutex{},
+		mux:      sync.Mutex{},
 		limit:    max_requests,
 		interval: interval,
 		occupied: make(map[string]*UserRate),

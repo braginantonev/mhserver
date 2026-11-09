@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/interceptors"
@@ -98,7 +99,7 @@ func (app *Application) getRateLimitInterceptor(ctx context.Context) interceptor
 	}
 
 	return interceptors.NewRateLimitInterceptor(
-		ratelimit.NewLimiter(ctx, unaryCfg.Limit, unaryCfg.Interval),   // unary limiter
-		ratelimit.NewLimiter(ctx, streamCfg.Limit, streamCfg.Interval), // stream limiter
+		ratelimit.NewLimiter(ctx, unaryCfg.Limit, unaryCfg.Interval*time.Second),   // unary limiter
+		ratelimit.NewLimiter(ctx, streamCfg.Limit, streamCfg.Interval*time.Second), // stream limiter
 	)
 }
