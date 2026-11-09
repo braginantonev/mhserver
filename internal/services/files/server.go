@@ -551,7 +551,7 @@ func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequ
 		return nil, err
 	}
 
-	new, err := CompileUserDirectory(username, req.GetNew().GetValue(), service)
+	new, err := CompileUserDirectory(username, new_dir, service)
 	if err != nil {
 		return nil, err
 	}
