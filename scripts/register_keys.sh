@@ -3,20 +3,41 @@
 db_pass=""
 
 # Available modes:
-# 0 - show available keys
-# 1 - generate new keys
-mode=0
+# 0 - show help
+# 1 - show available keys
+# 2 - generate new keys
+MODE=0
 
 for arg in "$@"; do
     case $arg in
-        --db_pass=*)
+        "--db_pass="* )
         db_pass="${arg#*=}"
         ;;
-        -G)
-        mode=1
+        "-S" )
+        MODE=1
+        ;;
+        "--show" )
+        MODE=1
+        ;;
+        "-G" )
+        MODE=2
+        ;;
+        "--generate" )
+        MODE=2
         ;;
     esac
 done
+
+show_help() {
+    echo \
+    "register_keys: register_keys.sh [option] [--db_pass=* database_password]
+Script to generate or check register keys.
+
+Options:
+    -G --generate generate, save and show new register secret keys
+    -S --show show unused register keys
+"
+}
 
 show_keys() {
     row=$(mariadb -u mhserver -D mhs_main -N --password=$db_pass <<-SQL
@@ -44,6 +65,11 @@ SQL
     done
 }
 
+if [ $MODE == 0 ]; then
+    show_help
+    exit 0
+fi
+
 mariadb -u mhserver --password=$db_pass <<-SQL
 exit
 SQL
@@ -53,11 +79,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-case $mode in
-    0)
+case $MODE in
+    1 )
     show_keys
     ;;
-    1)
+    2 )
     generate_keys
     show_keys
     ;;
