@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/braginantonev/mhserver/internal/config"
-	"github.com/braginantonev/mhserver/internal/repository/database"
 	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,16 +34,21 @@ func NewApplication() (*Application, error) {
 	slog.Info(fmt.Sprintf("Server will be serve at %s on %d port", cfg.Server.Address, cfg.Server.Port))
 	slog.Info(fmt.Sprintf("Server configured to use \"%s/%s\" database", DATABASE_USER, DATABASE_NAME))
 
-	db, err := database.OpenDB(mysql.Config{
+	db_cfg := mysql.Config{
 		User:                 DATABASE_USER,
 		Passwd:               cfg.Database.Password,
 		Net:                  "tcp",
 		Addr:                 cfg.Database.Socket.Compile(),
 		DBName:               DATABASE_NAME,
 		AllowNativePasswords: true,
-	})
+	}
 
+	db, err := sql.Open("mysql", db_cfg.FormatDSN())
 	if err != nil {
+		return nil, err
+	}
+
+	if err = db.Ping(); err != nil {
 		return nil, err
 	}
 
