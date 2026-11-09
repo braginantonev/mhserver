@@ -460,6 +460,110 @@ func (x *Size) GetValue() uint64 {
 	return 0
 }
 
+type RenameDirectoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Old           *Directory             `protobuf:"bytes,1,opt,name=old,proto3" json:"old,omitempty"`
+	New           *Directory             `protobuf:"bytes,2,opt,name=new,proto3" json:"new,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RenameDirectoryRequest) Reset() {
+	*x = RenameDirectoryRequest{}
+	mi := &file_files_files_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenameDirectoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenameDirectoryRequest) ProtoMessage() {}
+
+func (x *RenameDirectoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenameDirectoryRequest.ProtoReflect.Descriptor instead.
+func (*RenameDirectoryRequest) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *RenameDirectoryRequest) GetOld() *Directory {
+	if x != nil {
+		return x.Old
+	}
+	return nil
+}
+
+func (x *RenameDirectoryRequest) GetNew() *Directory {
+	if x != nil {
+		return x.New
+	}
+	return nil
+}
+
+type RenameFileRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Old           *RequiredFile          `protobuf:"bytes,1,opt,name=old,proto3" json:"old,omitempty"`
+	New           *RequiredFile          `protobuf:"bytes,2,opt,name=new,proto3" json:"new,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RenameFileRequest) Reset() {
+	*x = RenameFileRequest{}
+	mi := &file_files_files_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenameFileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenameFileRequest) ProtoMessage() {}
+
+func (x *RenameFileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenameFileRequest.ProtoReflect.Descriptor instead.
+func (*RenameFileRequest) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *RenameFileRequest) GetOld() *RequiredFile {
+	if x != nil {
+		return x.Old
+	}
+	return nil
+}
+
+func (x *RenameFileRequest) GetNew() *RequiredFile {
+	if x != nil {
+		return x.New
+	}
+	return nil
+}
+
 var File_files_files_proto protoreflect.FileDescriptor
 
 const file_files_files_proto_rawDesc = "" +
@@ -490,7 +594,13 @@ const file_files_files_proto_rawDesc = "" +
 	"\tFilesList\x12%\n" +
 	"\x05value\x18\x01 \x03(\v2\x0f.files.FileInfoR\x05value\"\x1c\n" +
 	"\x04Size\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\x04R\x05value2\xc0\x03\n" +
+	"\x05value\x18\x01 \x01(\x04R\x05value\"`\n" +
+	"\x16RenameDirectoryRequest\x12\"\n" +
+	"\x03old\x18\x01 \x01(\v2\x10.files.DirectoryR\x03old\x12\"\n" +
+	"\x03new\x18\x02 \x01(\v2\x10.files.DirectoryR\x03new\"a\n" +
+	"\x11RenameFileRequest\x12%\n" +
+	"\x03old\x18\x01 \x01(\v2\x13.files.RequiredFileR\x03old\x12%\n" +
+	"\x03new\x18\x02 \x01(\v2\x13.files.RequiredFileR\x03new2\xc4\x04\n" +
 	"\fFilesService\x12:\n" +
 	"\bSaveFile\x12\x14.files.SaveFileChunk\x1a\x16.google.protobuf.Empty(\x01\x12/\n" +
 	"\bReadFile\x12\x13.files.RequiredFile\x1a\f.files.Chunk0\x01\x12,\n" +
@@ -500,7 +610,10 @@ const file_files_files_proto_rawDesc = "" +
 	"\tCreateDir\x12\x10.files.Directory\x1a\x16.google.protobuf.Empty\x125\n" +
 	"\tRemoveDir\x12\x10.files.Directory\x1a\x16.google.protobuf.Empty\x129\n" +
 	"\n" +
-	"RemoveFile\x12\x13.files.RequiredFile\x1a\x16.google.protobuf.EmptyB/Z-github.com/braginantonev/mhserver/proto/filesb\x06proto3"
+	"RemoveFile\x12\x13.files.RequiredFile\x1a\x16.google.protobuf.Empty\x12B\n" +
+	"\tRenameDir\x12\x1d.files.RenameDirectoryRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
+	"\n" +
+	"RenameFile\x12\x18.files.RenameFileRequest\x1a\x16.google.protobuf.EmptyB/Z-github.com/braginantonev/mhserver/proto/filesb\x06proto3"
 
 var (
 	file_files_files_proto_rawDescOnce sync.Once
@@ -514,44 +627,54 @@ func file_files_files_proto_rawDescGZIP() []byte {
 	return file_files_files_proto_rawDescData
 }
 
-var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_files_files_proto_goTypes = []any{
-	(*Directory)(nil),     // 0: files.Directory
-	(*RequiredFile)(nil),  // 1: files.RequiredFile
-	(*Chunk)(nil),         // 2: files.Chunk
-	(*SaveFileChunk)(nil), // 3: files.SaveFileChunk
-	(*SHASum)(nil),        // 4: files.SHASum
-	(*FileInfo)(nil),      // 5: files.FileInfo
-	(*FilesList)(nil),     // 6: files.FilesList
-	(*Size)(nil),          // 7: files.Size
-	(*emptypb.Empty)(nil), // 8: google.protobuf.Empty
+	(*Directory)(nil),              // 0: files.Directory
+	(*RequiredFile)(nil),           // 1: files.RequiredFile
+	(*Chunk)(nil),                  // 2: files.Chunk
+	(*SaveFileChunk)(nil),          // 3: files.SaveFileChunk
+	(*SHASum)(nil),                 // 4: files.SHASum
+	(*FileInfo)(nil),               // 5: files.FileInfo
+	(*FilesList)(nil),              // 6: files.FilesList
+	(*Size)(nil),                   // 7: files.Size
+	(*RenameDirectoryRequest)(nil), // 8: files.RenameDirectoryRequest
+	(*RenameFileRequest)(nil),      // 9: files.RenameFileRequest
+	(*emptypb.Empty)(nil),          // 10: google.protobuf.Empty
 }
 var file_files_files_proto_depIdxs = []int32{
 	0,  // 0: files.RequiredFile.dir:type_name -> files.Directory
 	1,  // 1: files.SaveFileChunk.meta:type_name -> files.RequiredFile
 	2,  // 2: files.SaveFileChunk.chunk:type_name -> files.Chunk
 	5,  // 3: files.FilesList.value:type_name -> files.FileInfo
-	3,  // 4: files.FilesService.SaveFile:input_type -> files.SaveFileChunk
-	1,  // 5: files.FilesService.ReadFile:input_type -> files.RequiredFile
-	1,  // 6: files.FilesService.GetSum:input_type -> files.RequiredFile
-	0,  // 7: files.FilesService.GetFiles:input_type -> files.Directory
-	8,  // 8: files.FilesService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
-	0,  // 9: files.FilesService.CreateDir:input_type -> files.Directory
-	0,  // 10: files.FilesService.RemoveDir:input_type -> files.Directory
-	1,  // 11: files.FilesService.RemoveFile:input_type -> files.RequiredFile
-	8,  // 12: files.FilesService.SaveFile:output_type -> google.protobuf.Empty
-	2,  // 13: files.FilesService.ReadFile:output_type -> files.Chunk
-	4,  // 14: files.FilesService.GetSum:output_type -> files.SHASum
-	6,  // 15: files.FilesService.GetFiles:output_type -> files.FilesList
-	7,  // 16: files.FilesService.GetAvailableDiskSpace:output_type -> files.Size
-	8,  // 17: files.FilesService.CreateDir:output_type -> google.protobuf.Empty
-	8,  // 18: files.FilesService.RemoveDir:output_type -> google.protobuf.Empty
-	8,  // 19: files.FilesService.RemoveFile:output_type -> google.protobuf.Empty
-	12, // [12:20] is the sub-list for method output_type
-	4,  // [4:12] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	0,  // 4: files.RenameDirectoryRequest.old:type_name -> files.Directory
+	0,  // 5: files.RenameDirectoryRequest.new:type_name -> files.Directory
+	1,  // 6: files.RenameFileRequest.old:type_name -> files.RequiredFile
+	1,  // 7: files.RenameFileRequest.new:type_name -> files.RequiredFile
+	3,  // 8: files.FilesService.SaveFile:input_type -> files.SaveFileChunk
+	1,  // 9: files.FilesService.ReadFile:input_type -> files.RequiredFile
+	1,  // 10: files.FilesService.GetSum:input_type -> files.RequiredFile
+	0,  // 11: files.FilesService.GetFiles:input_type -> files.Directory
+	10, // 12: files.FilesService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
+	0,  // 13: files.FilesService.CreateDir:input_type -> files.Directory
+	0,  // 14: files.FilesService.RemoveDir:input_type -> files.Directory
+	1,  // 15: files.FilesService.RemoveFile:input_type -> files.RequiredFile
+	8,  // 16: files.FilesService.RenameDir:input_type -> files.RenameDirectoryRequest
+	9,  // 17: files.FilesService.RenameFile:input_type -> files.RenameFileRequest
+	10, // 18: files.FilesService.SaveFile:output_type -> google.protobuf.Empty
+	2,  // 19: files.FilesService.ReadFile:output_type -> files.Chunk
+	4,  // 20: files.FilesService.GetSum:output_type -> files.SHASum
+	6,  // 21: files.FilesService.GetFiles:output_type -> files.FilesList
+	7,  // 22: files.FilesService.GetAvailableDiskSpace:output_type -> files.Size
+	10, // 23: files.FilesService.CreateDir:output_type -> google.protobuf.Empty
+	10, // 24: files.FilesService.RemoveDir:output_type -> google.protobuf.Empty
+	10, // 25: files.FilesService.RemoveFile:output_type -> google.protobuf.Empty
+	10, // 26: files.FilesService.RenameDir:output_type -> google.protobuf.Empty
+	10, // 27: files.FilesService.RenameFile:output_type -> google.protobuf.Empty
+	18, // [18:28] is the sub-list for method output_type
+	8,  // [8:18] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_files_files_proto_init() }
@@ -570,7 +693,7 @@ func file_files_files_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_files_files_proto_rawDesc), len(file_files_files_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -89,8 +89,8 @@ func (s *FilesServer) acceptModifyDir(ctx context.Context, target_dir string) bo
 }
 
 func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
-	defer s.sem.Release()
 	s.sem.Acquire()
+	defer s.sem.Release()
 
 	username, err := GetUsernameFromContext(stream.Context())
 	if err != nil {
@@ -213,8 +213,8 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 }
 
 func (s *FilesServer) ReadFile(req *pb.RequiredFile, stream pb.FilesService_ReadFileServer) error {
-	defer s.sem.Release()
 	s.sem.Acquire()
+	defer s.sem.Release()
 
 	username, err := GetUsernameFromContext(stream.Context())
 	if err != nil {
@@ -271,8 +271,8 @@ readLoop:
 }
 
 func (s *FilesServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHASum, error) {
-	defer s.sem.Release()
 	s.sem.Acquire()
+	defer s.sem.Release()
 
 	username, err := GetUsernameFromContext(ctx)
 	if err != nil {
@@ -305,8 +305,8 @@ func (s *FilesServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHA
 }
 
 func (s *FilesServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empty) (*pb.Size, error) {
-	defer s.sem.Release()
 	s.sem.Acquire()
+	defer s.sem.Release()
 
 	username, ok := ctx.Value(contextkeys.USERNAME).(string)
 	if !ok {
@@ -324,8 +324,8 @@ func (s *FilesServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empt
 }
 
 func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
-	defer s.sem.Release()
 	s.sem.Acquire()
+	defer s.sem.Release()
 
 	username, err := GetUsernameFromContext(ctx)
 	if err != nil {
@@ -387,8 +387,8 @@ func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.File
 }
 
 func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
-	defer s.sem.Release()
 	s.sem.Acquire()
+	defer s.sem.Release()
 
 	username, err := GetUsernameFromContext(ctx)
 	if err != nil {
@@ -423,12 +423,12 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		}
 	}
 
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
-	defer s.sem.Release()
 	s.sem.Acquire()
+	defer s.sem.Release()
 
 	username, err := GetUsernameFromContext(ctx)
 	if err != nil {
@@ -458,12 +458,12 @@ func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		}
 	}
 
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*emptypb.Empty, error) {
-	defer s.sem.Release()
 	s.sem.Acquire()
+	defer s.sem.Release()
 
 	username, err := GetUsernameFromContext(ctx)
 	if err != nil {
@@ -506,5 +506,101 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*em
 		return nil, ErrFileNotExist
 	}
 
-	return nil, nil
+	return &emptypb.Empty{}, nil
+}
+
+func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequest) (*emptypb.Empty, error) {
+	s.sem.Acquire()
+	defer s.sem.Release()
+
+	username, err := GetUsernameFromContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed get username")
+		return nil, ErrInternal
+	}
+
+	target_dir := req.Old.GetValue()
+
+	if !s.acceptModifyDir(ctx, target_dir) {
+		return nil, ErrModifyProtectedDir
+	}
+
+	if err := s.ensureUserDir(ctx, username); err != nil {
+		return nil, err
+	}
+
+	target, err := CompileUserDirectory(username, target_dir, SERVICE_NAME)
+	if err != nil {
+		return nil, err
+	}
+
+	new, err := CompileUserDirectory(username, req.GetNew().GetValue(), SERVICE_NAME)
+	if err != nil {
+		return nil, err
+	}
+
+	var renamed bool
+	for _, usp := range s.cfg.UserSpaces {
+		if err = os.Rename(filepath.Join(s.cfg.WorkspacePath, usp, target), filepath.Join(s.cfg.WorkspacePath, usp, new)); err == nil {
+			renamed = true
+			// but we continue check next userspaces
+		} else {
+			slog.ErrorContext(ctx, "failed rename dir", slog.Any("error", err))
+			return nil, ErrInternal
+		}
+	}
+
+	if !renamed {
+		return nil, ErrDirNotFound
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *FilesServer) RenameFile(ctx context.Context, req *pb.RenameFileRequest) (*emptypb.Empty, error) {
+	s.sem.Acquire()
+	defer s.sem.Release()
+
+	username, err := GetUsernameFromContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed get username")
+		return nil, ErrInternal
+	}
+
+	target_dir := req.Old.GetDir().GetValue()
+
+	if !s.acceptModifyDir(ctx, target_dir) {
+		return nil, ErrModifyProtectedDir
+	}
+
+	if err := s.ensureUserDir(ctx, username); err != nil {
+		return nil, err
+	}
+
+	target, err := CompileUserFilepath(username, target_dir, req.GetOld().GetName(), SERVICE_NAME)
+	if err != nil {
+		return nil, err
+	}
+
+	new, err := CompileUserFilepath(username, target_dir, req.GetNew().GetName(), SERVICE_NAME)
+	if err != nil {
+		return nil, err
+	}
+
+	var renamed bool
+	for _, usp := range s.cfg.UserSpaces {
+		if err = os.Rename(filepath.Join(s.cfg.WorkspacePath, usp, target), filepath.Join(s.cfg.WorkspacePath, usp, new)); err == nil {
+			renamed = true
+			// but we continue check next userspaces
+		} else {
+			slog.ErrorContext(ctx, "failed rename file", slog.Any("error", err))
+			return nil, ErrInternal
+		}
+	}
+
+	if !renamed {
+		return nil, ErrFileNotExist
+	}
+
+	return &emptypb.Empty{}, nil
 }

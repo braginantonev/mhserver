@@ -13,6 +13,8 @@ service FilesService {
 	rpc CreateDir (Directory) returns (google.protobuf.Empty);
 	rpc RemoveDir (Directory) returns (google.protobuf.Empty);
     rpc RemoveFile (RequiredFile) returns (google.protobuf.Empty);
+    rpc RenameDir(RenameDirectoryRequest) returns (google.protobuf.Empty);
+    rpc RenameFile(RenameFileRequest) returns (google.protobuf.Empty);
 }
 
 message Directory {
@@ -54,4 +56,14 @@ message FilesList {
 
 message Size {
     uint64 value = 1;
+}
+
+message RenameDirectoryRequest {
+    Directory old = 1;
+    Directory new = 2;
+}
+
+message RenameFileRequest {
+    RequiredFile old = 1;
+    RequiredFile new = 2;
 }

@@ -38,7 +38,7 @@ func NewApplication() (*Application, error) {
 		User:                 DATABASE_USER,
 		Passwd:               cfg.Database.Password,
 		Net:                  "tcp",
-		Addr:                 cfg.Database.Socket.Compile(),
+		Addr:                 cfg.Database.Compile(),
 		DBName:               DATABASE_NAME,
 		AllowNativePasswords: true,
 	}
