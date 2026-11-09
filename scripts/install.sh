@@ -13,6 +13,8 @@ PATHS=("$INSTALL_PATH" "$LOGS_PATH" "$USER_SPACE_PATH")
 ## DIRS
 SCRIPTS_DIR=scripts
 
+DB_PASSWORD=""
+
 # $1 - prompt; Use $(yn_input) to get value
 yn_input() {
     local user_input=""
@@ -30,8 +32,8 @@ create_database() {
 
     echo "Create mhserver db user..."
     sudo mariadb -u root <<-EOF 
-CREATE USER IF NOT EXISTS 'mhserver'@'$db_serve' identified by '$db_pass';
-CREATE USER IF NOT EXISTS 'mhserver'@'localhost' identified by '$db_pass';
+CREATE USER IF NOT EXISTS 'mhserver'@'$db_serve' identified by '$DB_PASSWORD';
+CREATE USER IF NOT EXISTS 'mhserver'@'localhost' identified by '$DB_PASSWORD';
 EOF
     if [ $? -ne 0 ]; then
         echo -e "\aFailed create mariadb user"
@@ -48,9 +50,11 @@ EOF
         echo -e "\aError in generating server mariadb databases"
         exit 1
     fi
+}
 
+create_database_tables() {
     echo -e "Create server tables..."
-    mariadb -u mhserver -D mhs_main --password=$db_pass <<-EOF
+    mariadb -u mhserver -D mhs_main --password=$DB_PASSWORD <<-EOF
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user VARCHAR(30) NOT NULL,
@@ -77,12 +81,12 @@ clear_install() {
         sudo chown mhserver:mhserver $p
     done
 
-    local db_pass=$(openssl rand -base64 32)
+    DB_PASSWORD=$(openssl rand -base64 32)
 
     touch .env
     tee .env >/dev/null <<-EOF
 JWT_SIGNATURE = "$(openssl rand -base64 32)"
-DATABASE_PASSWORD = "$db_pass"
+DATABASE_PASSWORD = "$DB_PASSWORD"
 SERVER_TOKEN = "$(openssl rand -base64 8)"
 WORKSPACE_PATH = "$INSTALL_PATH"
 EOF
@@ -139,6 +143,11 @@ simple_update() {
             sudo install -o mhserver -g mhserver $current_dir/$f $INSTALL_PATH
         fi
     done
+
+    # update database tables
+    if [ -d "/var/lib/mysql" ] || systemctl list-unit-files | grep -q "mariadb.service"; then
+        create_database_tables
+    fi
 
     # update executable
     sudo install -o mhserver -g mhserver mhserver $INSTALL_PATH
