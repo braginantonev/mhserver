@@ -22,6 +22,52 @@ yn_input() {
     echo $user_input
 }
 
+create_database() {
+    local local_address=$(ip route get 8.8.8.8 | grep -oP 'src \K\S+')
+    local db_serve=$(echo $local_address | cut -d. -f1-3).%
+
+    echo "Database will access servers in net $db_serve (also localhost)"
+
+    echo "Create mhserver db user..."
+    sudo mariadb -u root <<-EOF 
+CREATE USER IF NOT EXISTS 'mhserver'@'$db_serve' identified by '$db_pass';
+CREATE USER IF NOT EXISTS 'mhserver'@'localhost' identified by '$db_pass';
+EOF
+    if [ $? -ne 0 ]; then
+        echo -e "\aFailed create mariadb user"
+        exit 1
+    fi
+
+    echo "Create server databases..."
+    sudo mariadb -u root <<-EOF
+CREATE DATABASE IF NOT EXISTS mhs_main;
+GRANT ALL PRIVILEGES ON mhs_main.* TO 'mhserver'@'$db_serve';
+GRANT ALL PRIVILEGES ON mhs_main.* TO 'mhserver'@'localhost';
+EOF
+    if [ $? -ne 0 ]; then
+        echo -e "\aError in generating server mariadb databases"
+        exit 1
+    fi
+
+    echo -e "Create server tables..."
+    mariadb -u mhserver -D mhs_main --password=$db_pass <<-EOF
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user VARCHAR(30) NOT NULL,
+    password VARCHAR(256) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS register_secret_keys (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    secret_key VARCHAR(64) NOT NULL
+);
+EOF
+    if [ $? -ne 0 ]; then
+        echo -e "\aError in creating database tables"
+        exit 1
+    fi
+}
+
 clear_install() {
     sudo useradd mhserver -G network,storage --system --shell /usr/sbin/nologin 
 
@@ -48,39 +94,8 @@ EOF
     sudo install -o mhserver -g mhserver -m 0660 .env $INSTALL_PATH
     rm .env 
 
-    echo "Create mhserver db user..."
-    sudo mariadb -u root -e "create user if not exists 'mhserver'@'localhost' identified by '$db_pass';"
-    if [ $? -ne 0 ]; then
-        echo -e "\aFailed create mariadb user"
-        exit 1
-    fi
-
-    echo "Create server databases..."
-    sudo mariadb -u root <<-EOF
-CREATE DATABASE IF NOT EXISTS mhs_main;
-GRANT ALL PRIVILEGES ON mhs_main.* TO 'mhserver'@'localhost';
-EOF
-    if [ $? -ne 0 ]; then
-        echo -e "\aError in generating server mariadb databases"
-        exit 1
-    fi
-
-    echo -e "Create server tables..."
-    mariadb -u mhserver -D mhs_main --password=$db_pass <<-EOF
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user VARCHAR(30) NOT NULL,
-    password VARCHAR(256) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS register_secret_keys (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    secret_key VARCHAR(64) NOT NULL
-);
-EOF
-    if [ $? -ne 0 ]; then
-        echo -e "\aError in creating database tables"
-        exit 1
+    if [[ $(yn_input "Do you want to create server database here?") == "y" ]]; then
+        create_database
     fi
 
     ./create_ssl.sh

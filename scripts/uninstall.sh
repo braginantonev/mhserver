@@ -36,10 +36,16 @@ done
 
 sudo rm -rf $INSTALL_PATH
 
-sudo mariadb -u root <<EOF
+if [ -d "/var/lib/mysql" ] || systemctl list-unit-files | grep -q "mariadb.service"; then
+    echo "MariaDb database found. Remove 'mhserver' user and 'mhs_main' database"
+
+    db_serve=$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' | cut -d. -f1-3).%
+    sudo mariadb -u root <<-EOF
 DROP DATABASE IF EXISTS mhs_main;
-DROP USER IF EXISTS mhserver;
+DROP USER IF EXISTS 'mhserver'@'localhost';
+DROP USER IF EXISTS 'mhserver'@'$db_serve';
 EOF
+fi
 
 sudo rm /etc/systemd/system/mhserver.service
 sudo systemctl daemon-reload

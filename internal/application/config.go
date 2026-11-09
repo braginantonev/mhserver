@@ -13,6 +13,11 @@ type Server struct {
 	config.Socket
 }
 
+type Database struct {
+	config.Socket
+	Password string
+}
+
 type LocalServiceConfig struct {
 	Enabled      bool
 	Dependencies map[config.ServiceName]config.Socket
@@ -64,9 +69,9 @@ func (c *ServiceConfigs) IntoServiceMap() map[config.ServiceName]LocalServiceCon
 type ApplicationConfig struct {
 	// Secrets
 	JWTSignature string
-	DBPass       string
 	ServerToken  string
 
+	Database      Database
 	WorkspacePath string
 	Server        Server
 	RateLimiter   map[string]config.LimiterConfig
@@ -93,7 +98,7 @@ func NewApplicationConfig() (ApplicationConfig, error) {
 	}
 	cfg.JWTSignature = signature
 
-	cfg.DBPass, ok = os.LookupEnv("DATABASE_PASSWORD")
+	cfg.Database.Password, ok = os.LookupEnv("DATABASE_PASSWORD")
 	if !ok {
 		return cfg, errors.New("database pass env not found")
 	}

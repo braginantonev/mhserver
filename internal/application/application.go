@@ -37,12 +37,13 @@ func NewApplication() (*Application, error) {
 
 	db, err := database.OpenDB(mysql.Config{
 		User:                 DATABASE_USER,
-		Passwd:               cfg.DBPass,
+		Passwd:               cfg.Database.Password,
 		Net:                  "tcp",
-		Addr:                 "127.0.0.1:3306",
+		Addr:                 cfg.Database.Socket.Compile(),
 		DBName:               DATABASE_NAME,
 		AllowNativePasswords: true,
 	})
+
 	if err != nil {
 		return nil, err
 	}
