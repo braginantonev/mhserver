@@ -100,6 +100,7 @@ EOF
 
     if [[ $(yn_input "Do you want to create server database here?") == "y" ]]; then
         create_database
+        create_database_tables
     fi
 
     ./create_ssl.sh
@@ -145,9 +146,9 @@ simple_update() {
     done
 
     # update database tables
-    if [ -d "/var/lib/mysql" ] || systemctl list-unit-files | grep -q "mariadb.service"; then
-        create_database_tables
-    fi
+    #if [ -d "/var/lib/mysql" ] || systemctl list-unit-files | grep -q "mariadb.service"; then
+    #    create_database_tables
+    #fi
 
     # update executable
     sudo install -o mhserver -g mhserver mhserver $INSTALL_PATH
