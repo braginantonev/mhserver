@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
@@ -88,12 +89,20 @@ func (s *FilesServer) acceptModifyDir(ctx context.Context, target_dir string) bo
 	return true
 }
 
+func (s *FilesServer) getTargetService(ctx context.Context) config.ServiceName {
+	ss, ok := ctx.Value(contextkeys.SenderService).(config.ServiceName)
+	if !ok {
+		return SERVICE_NAME
+	}
+	return ss
+}
+
 func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(stream.Context())
-	if err != nil {
+	username, ok := GetUsernameFromContext(stream.Context())
+	if !ok {
 		slog.ErrorContext(stream.Context(), "failed get username")
 		return ErrInternal
 	}
@@ -123,7 +132,7 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 		return ErrModifyProtectedDir
 	}
 
-	user_file, err := CompileUserFilepath(username, target_dir, meta.Name, SERVICE_NAME)
+	user_file, err := CompileUserFilepath(username, target_dir, meta.Name, s.getTargetService(stream.Context()))
 	if err != nil {
 		return err
 	}
@@ -216,8 +225,8 @@ func (s *FilesServer) ReadFile(req *pb.RequiredFile, stream pb.FilesService_Read
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(stream.Context())
-	if err != nil {
+	username, ok := GetUsernameFromContext(stream.Context())
+	if !ok {
 		slog.ErrorContext(stream.Context(), "failed get username")
 		return ErrInternal
 	}
@@ -226,7 +235,7 @@ func (s *FilesServer) ReadFile(req *pb.RequiredFile, stream pb.FilesService_Read
 		return err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name, SERVICE_NAME)
+	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name, s.getTargetService(stream.Context()))
 	if err != nil {
 		return err
 	}
@@ -274,8 +283,8 @@ func (s *FilesServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHA
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(ctx)
-	if err != nil {
+	username, ok := GetUsernameFromContext(ctx)
+	if !ok {
 		slog.ErrorContext(ctx, "failed get username")
 		return nil, ErrInternal
 	}
@@ -284,7 +293,7 @@ func (s *FilesServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHA
 		return nil, err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name, SERVICE_NAME)
+	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name, s.getTargetService(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -327,8 +336,8 @@ func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.File
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(ctx)
-	if err != nil {
+	username, ok := GetUsernameFromContext(ctx)
+	if !ok {
 		slog.ErrorContext(ctx, "failed get username")
 		return nil, ErrInternal
 	}
@@ -337,7 +346,7 @@ func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.File
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, dir.GetValue(), SERVICE_NAME)
+	user_dir, err := CompileUserDirectory(username, dir.GetValue(), s.getTargetService(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -390,8 +399,8 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(ctx)
-	if err != nil {
+	username, ok := GetUsernameFromContext(ctx)
+	if !ok {
 		slog.ErrorContext(ctx, "failed get username")
 		return nil, ErrInternal
 	}
@@ -406,7 +415,7 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, target_dir, SERVICE_NAME)
+	user_dir, err := CompileUserDirectory(username, target_dir, s.getTargetService(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -430,8 +439,8 @@ func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptyp
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(ctx)
-	if err != nil {
+	username, ok := GetUsernameFromContext(ctx)
+	if !ok {
 		slog.ErrorContext(ctx, "failed get username")
 		return nil, ErrInternal
 	}
@@ -446,7 +455,7 @@ func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, target_dir, SERVICE_NAME)
+	user_dir, err := CompileUserDirectory(username, target_dir, s.getTargetService(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -465,8 +474,8 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*em
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(ctx)
-	if err != nil {
+	username, ok := GetUsernameFromContext(ctx)
+	if !ok {
 		slog.ErrorContext(ctx, "failed get username")
 		return nil, ErrInternal
 	}
@@ -481,7 +490,7 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*em
 		return nil, err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.GetDir().Value, req.GetName(), SERVICE_NAME)
+	user_file, err := CompileUserFilepath(username, req.GetDir().Value, req.GetName(), s.getTargetService(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -513,8 +522,8 @@ func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequ
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(ctx)
-	if err != nil {
+	username, ok := GetUsernameFromContext(ctx)
+	if !ok {
 		slog.ErrorContext(ctx, "failed get username")
 		return nil, ErrInternal
 	}
@@ -529,12 +538,14 @@ func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequ
 		return nil, err
 	}
 
-	target, err := CompileUserDirectory(username, target_dir, SERVICE_NAME)
+	service := s.getTargetService(ctx)
+
+	target, err := CompileUserDirectory(username, target_dir, service)
 	if err != nil {
 		return nil, err
 	}
 
-	new, err := CompileUserDirectory(username, req.GetNew().GetValue(), SERVICE_NAME)
+	new, err := CompileUserDirectory(username, req.GetNew().GetValue(), service)
 	if err != nil {
 		return nil, err
 	}
@@ -561,8 +572,8 @@ func (s *FilesServer) RenameFile(ctx context.Context, req *pb.RenameFileRequest)
 	s.sem.Acquire()
 	defer s.sem.Release()
 
-	username, err := GetUsernameFromContext(ctx)
-	if err != nil {
+	username, ok := GetUsernameFromContext(ctx)
+	if !ok {
 		slog.ErrorContext(ctx, "failed get username")
 		return nil, ErrInternal
 	}
@@ -577,12 +588,14 @@ func (s *FilesServer) RenameFile(ctx context.Context, req *pb.RenameFileRequest)
 		return nil, err
 	}
 
-	target, err := CompileUserFilepath(username, target_dir, req.GetOld().GetName(), SERVICE_NAME)
+	service := s.getTargetService(ctx)
+
+	target, err := CompileUserFilepath(username, target_dir, req.GetOld().GetName(), service)
 	if err != nil {
 		return nil, err
 	}
 
-	new, err := CompileUserFilepath(username, target_dir, req.GetNew().GetName(), SERVICE_NAME)
+	new, err := CompileUserFilepath(username, target_dir, req.GetNew().GetName(), service)
 	if err != nil {
 		return nil, err
 	}

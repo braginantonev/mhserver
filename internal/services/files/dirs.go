@@ -2,7 +2,6 @@ package files
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
 	"strings"
 
@@ -10,12 +9,12 @@ import (
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
 )
 
-func GetUsernameFromContext(ctx context.Context) (string, error) {
+func GetUsernameFromContext(ctx context.Context) (string, bool) {
 	username, ok := ctx.Value(contextkeys.USERNAME).(string)
 	if !ok {
-		return "", errors.New("failed get username from context")
+		return "", false
 	}
-	return username, nil
+	return username, true
 }
 
 func CompileUserDirectory(username, dir string, target_service config.ServiceName) (string, error) {
