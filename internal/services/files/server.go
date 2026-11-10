@@ -25,18 +25,28 @@ type FilesServer struct {
 
 	cfg DataServiceConfig
 	sem repository.Semaphore
+
+	// Ensured users - it's users, whish user dir create in every uspace.
+	// To avoid checking every rpc, we keep them in array.
+	// Also, server is home, so users can't be more than 10 e.g., so I use array instead hash map
+	// Update this, if server will be support deleting the users.
+	ensuredUsers []string
 }
 
 func NewFilesServer(ctx context.Context, cfg DataServiceConfig) *FilesServer {
 	return &FilesServer{
-		cfg: cfg,
-		sem: repository.NewSemaphore(SEMAPHORE_SIZE),
+		cfg:          cfg,
+		sem:          repository.NewSemaphore(SEMAPHORE_SIZE),
+		ensuredUsers: make([]string, 0, 10),
 	}
 }
 
 // Exist user dir or not. If not exist - create user dir in all user spaces.
-// Of course, using a cache for this method - best idea. But this is not a big server, so I'm to lazy to do it.
 func (s *FilesServer) ensureUserDir(ctx context.Context, username string) error {
+	if slices.Contains(s.ensuredUsers, username) {
+		return nil
+	}
+
 	var needPreparingUspace []string
 
 	// we check all of uspace's, because new uspace's don't have an user dir.
@@ -57,6 +67,7 @@ func (s *FilesServer) ensureUserDir(ctx context.Context, username string) error 
 		}
 	}
 
+	s.ensuredUsers = append(s.ensuredUsers, username)
 	return nil
 }
 
