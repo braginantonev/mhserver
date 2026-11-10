@@ -420,14 +420,28 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		return nil, err
 	}
 
+	// We use stat to check exist dir or not. Of course os.MkdirAll which we use pass already existed dir, but he don't check if this existed dir is not dir.
+	// If we try to MkdirAll on existed `test.json` (for example), we get error: syscall.ENOTDIR. Yea, we can use errors.Is() and check that, but if this error
+	// we get in 2 uspace e.g.? We create dirs in 0 and 1 uspace's, but get error in 2. It's a break a rule: dir in every uspace.
+	for _, usp := range s.cfg.UserSpaces {
+		fi, err := os.Stat(filepath.Join(s.cfg.WorkspacePath, usp, user_dir))
+		if err != nil {
+			if !os.IsNotExist(err) {
+				slog.ErrorContext(ctx, "failed get dir stat", slog.Any("error", err))
+				return nil, ErrInternal
+			}
+		} else {
+			if fi.IsDir() {
+				return nil, ErrDirAlreadyExist
+			} else {
+				return nil, ErrBadDirSyntax
+			}
+		}
+	}
+
 	for _, usp := range s.cfg.UserSpaces {
 		if err := os.MkdirAll(filepath.Join(s.cfg.WorkspacePath, usp, user_dir), 0770); err != nil {
-			if os.IsExist(err) {
-				// we return value here, because if dir already exist - he also exist in other uspace's
-				return nil, ErrDirAlreadyExist
-			}
-
-			slog.ErrorContext(ctx, "failed create user direction", slog.Any("err", err))
+			slog.ErrorContext(ctx, "failed create user directory", slog.Any("err", err))
 			return nil, ErrInternal
 		}
 	}
