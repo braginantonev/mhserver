@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/services/files"
 )
 
@@ -23,7 +22,6 @@ func TestCompileUserDirectory(t *testing.T) {
 	cases := [...]struct {
 		name         string
 		dir          string
-		service      config.ServiceName
 		expected     string
 		expected_err error
 	}{
@@ -39,38 +37,28 @@ func TestCompileUserDirectory(t *testing.T) {
 		{
 			name:     "single dir",
 			dir:      "single",
-			service:  files.SERVICE_NAME,
 			expected: compileExpectedDir("single"),
 		},
 		{
 			name:     "with included dirs",
 			dir:      "first/second/third",
-			service:  files.SERVICE_NAME,
 			expected: compileExpectedDir("first/second/third"),
 		},
 		{
 			name:     "with twice separator",
 			dir:      "abc//cba",
-			service:  files.SERVICE_NAME,
 			expected: compileExpectedDir("abc/cba"),
 		},
 		{
 			name:     "with suffix and prefix",
 			dir:      "/ab/av/",
-			service:  files.SERVICE_NAME,
 			expected: compileExpectedDir("/ab/av"),
-		},
-		{
-			name:     "another service",
-			dir:      "ab/av",
-			service:  "llm",
-			expected: compileExpectedDir("llm/ab/av"),
 		},
 	}
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := files.CompileUserDirectory(Username, test.dir, test.service)
+			got, err := files.CompileUserDirectory(Username, test.dir)
 			if err != test.expected_err {
 				t.Errorf("expected error: `%v`, but got: `%v`", test.expected_err, err)
 			}
@@ -124,7 +112,7 @@ func TestCompileUserFilepath(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := files.CompileUserFilepath(Username, dir, test.file, files.SERVICE_NAME)
+			got, err := files.CompileUserFilepath(Username, dir, test.file)
 			if err != test.expected_err {
 				t.Errorf("expected error: `%v`, but got: `%v`", test.expected_err, err)
 			}

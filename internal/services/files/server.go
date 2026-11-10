@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
@@ -100,14 +99,6 @@ func (s *FilesServer) acceptModifyDir(ctx context.Context, target_dir string) bo
 	return true
 }
 
-func (s *FilesServer) getTargetService(ctx context.Context) config.ServiceName {
-	ss, ok := ctx.Value(contextkeys.SenderService).(config.ServiceName)
-	if !ok {
-		return SERVICE_NAME
-	}
-	return ss
-}
-
 func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 	s.sem.Acquire()
 	defer s.sem.Release()
@@ -143,7 +134,7 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 		return ErrModifyProtectedDir
 	}
 
-	user_file, err := CompileUserFilepath(username, target_dir, meta.Name, s.getTargetService(stream.Context()))
+	user_file, err := CompileUserFilepath(username, target_dir, meta.Name)
 	if err != nil {
 		return err
 	}
@@ -246,7 +237,7 @@ func (s *FilesServer) ReadFile(req *pb.RequiredFile, stream pb.FilesService_Read
 		return err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name, s.getTargetService(stream.Context()))
+	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name)
 	if err != nil {
 		return err
 	}
@@ -304,7 +295,7 @@ func (s *FilesServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHA
 		return nil, err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name, s.getTargetService(ctx))
+	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +348,7 @@ func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.File
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, dir.GetValue(), s.getTargetService(ctx))
+	user_dir, err := CompileUserDirectory(username, dir.GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -426,14 +417,15 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, target_dir, s.getTargetService(ctx))
+	user_dir, err := CompileUserDirectory(username, target_dir)
 	if err != nil {
 		return nil, err
 	}
 
-	// We use stat to check exist dir or not. Of course os.MkdirAll which we use pass already existed dir, but he don't check if this existed dir is not dir.
-	// If we try to MkdirAll on existed `test.json` (for example), we get error: syscall.ENOTDIR. Yea, we can use errors.Is() and check that, but if this error
+	// We use Stat() to check exist dir or not. Of course os.MkdirAll also use Stat() which we use pass already existed dir, but he don't check if this existed dir is not dir.
+	// If we try to MkdirAll on existed `test.json` (for example), we get error: `syscall.ENOTDIR`. Yea, we can use errors.Is() and check that, but if this error
 	// we get in 2 uspace e.g.? We create dirs in 0 and 1 uspace's, but get error in 2. It's a break a rule: dir in every uspace.
+	// Mb it's wrong. I don't like that double Stat() usage
 	for _, usp := range s.cfg.UserSpaces {
 		fi, err := os.Stat(filepath.Join(s.cfg.WorkspacePath, usp, user_dir))
 		if err != nil {
@@ -480,7 +472,7 @@ func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, target_dir, s.getTargetService(ctx))
+	user_dir, err := CompileUserDirectory(username, target_dir)
 	if err != nil {
 		return nil, err
 	}
@@ -515,7 +507,7 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*em
 		return nil, err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.GetDir().Value, req.GetName(), s.getTargetService(ctx))
+	user_file, err := CompileUserFilepath(username, req.GetDir().Value, req.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -569,14 +561,12 @@ func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequ
 		return nil, err
 	}
 
-	service := s.getTargetService(ctx)
-
-	target, err := CompileUserDirectory(username, old_dir, service)
+	target, err := CompileUserDirectory(username, old_dir)
 	if err != nil {
 		return nil, err
 	}
 
-	new, err := CompileUserDirectory(username, new_dir, service)
+	new, err := CompileUserDirectory(username, new_dir)
 	if err != nil {
 		return nil, err
 	}
@@ -624,14 +614,12 @@ func (s *FilesServer) RenameFile(ctx context.Context, req *pb.RenameFileRequest)
 		return nil, err
 	}
 
-	service := s.getTargetService(ctx)
-
-	target, err := CompileUserFilepath(username, target_dir, req.Old.GetName(), service)
+	target, err := CompileUserFilepath(username, target_dir, req.Old.GetName())
 	if err != nil {
 		return nil, err
 	}
 
-	new, err := CompileUserFilepath(username, target_dir, req.New.GetName(), service)
+	new, err := CompileUserFilepath(username, target_dir, req.New.GetName())
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/braginantonev/mhserver/pkg/contextkeys"
 )
 
@@ -17,22 +16,16 @@ func GetUsernameFromContext(ctx context.Context) (string, bool) {
 	return username, true
 }
 
-func CompileUserDirectory(username, dir string, target_service config.ServiceName) (string, error) {
+func CompileUserDirectory(username, dir string) (string, error) {
 	if !DirIsCorrect(dir) {
 		return "", ErrBadDirSyntax
 	}
 
-	// files service keep files in uspace
-	if target_service == SERVICE_NAME {
-		return filepath.Join(username, dir), nil
-	}
-
-	// another services keep files in protected dirs
-	return filepath.Join(username, string(target_service), dir), nil
+	return filepath.Join(username, dir), nil
 }
 
-func CompileUserFilepath(username, dir, file string, target_service config.ServiceName) (string, error) {
-	user_dir, err := CompileUserDirectory(username, dir, target_service)
+func CompileUserFilepath(username, dir, file string) (string, error) {
+	user_dir, err := CompileUserDirectory(username, dir)
 	if err != nil {
 		return "", err
 	}
@@ -45,9 +38,9 @@ func CompileUserFilepath(username, dir, file string, target_service config.Servi
 }
 
 func DirIsCorrect(path string) bool {
-	return len(path) != 0 && !strings.Contains(path, "..")
+	return len(path) != 0 && len(path) < 75 && !strings.Contains(path, "..")
 }
 
 func FileIsCorrect(filename string) bool {
-	return len(filename) != 0 && !strings.ContainsRune(filename, '/')
+	return len(filename) != 0 && len(filename) < 75 && !strings.ContainsRune(filename, '/')
 }
