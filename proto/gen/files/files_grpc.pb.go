@@ -28,8 +28,8 @@ const (
 	FilesService_CreateDir_FullMethodName             = "/files.FilesService/CreateDir"
 	FilesService_RemoveDir_FullMethodName             = "/files.FilesService/RemoveDir"
 	FilesService_RemoveFile_FullMethodName            = "/files.FilesService/RemoveFile"
-	FilesService_RenameDir_FullMethodName             = "/files.FilesService/RenameDir"
-	FilesService_RenameFile_FullMethodName            = "/files.FilesService/RenameFile"
+	FilesService_ReplaceDir_FullMethodName            = "/files.FilesService/ReplaceDir"
+	FilesService_ReplaceFile_FullMethodName           = "/files.FilesService/ReplaceFile"
 )
 
 // FilesServiceClient is the client API for FilesService service.
@@ -44,8 +44,8 @@ type FilesServiceClient interface {
 	CreateDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RemoveDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RemoveFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RenameDir(ctx context.Context, in *RenameDirectoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RenameFile(ctx context.Context, in *RenameFileRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ReplaceDir(ctx context.Context, in *ReplaceDirRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ReplaceFile(ctx context.Context, in *ReplaceFileRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type filesServiceClient struct {
@@ -148,20 +148,20 @@ func (c *filesServiceClient) RemoveFile(ctx context.Context, in *RequiredFile, o
 	return out, nil
 }
 
-func (c *filesServiceClient) RenameDir(ctx context.Context, in *RenameDirectoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *filesServiceClient) ReplaceDir(ctx context.Context, in *ReplaceDirRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, FilesService_RenameDir_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, FilesService_ReplaceDir_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *filesServiceClient) RenameFile(ctx context.Context, in *RenameFileRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *filesServiceClient) ReplaceFile(ctx context.Context, in *ReplaceFileRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, FilesService_RenameFile_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, FilesService_ReplaceFile_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +180,8 @@ type FilesServiceServer interface {
 	CreateDir(context.Context, *Directory) (*emptypb.Empty, error)
 	RemoveDir(context.Context, *Directory) (*emptypb.Empty, error)
 	RemoveFile(context.Context, *RequiredFile) (*emptypb.Empty, error)
-	RenameDir(context.Context, *RenameDirectoryRequest) (*emptypb.Empty, error)
-	RenameFile(context.Context, *RenameFileRequest) (*emptypb.Empty, error)
+	ReplaceDir(context.Context, *ReplaceDirRequest) (*emptypb.Empty, error)
+	ReplaceFile(context.Context, *ReplaceFileRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedFilesServiceServer()
 }
 
@@ -216,11 +216,11 @@ func (UnimplementedFilesServiceServer) RemoveDir(context.Context, *Directory) (*
 func (UnimplementedFilesServiceServer) RemoveFile(context.Context, *RequiredFile) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveFile not implemented")
 }
-func (UnimplementedFilesServiceServer) RenameDir(context.Context, *RenameDirectoryRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RenameDir not implemented")
+func (UnimplementedFilesServiceServer) ReplaceDir(context.Context, *ReplaceDirRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReplaceDir not implemented")
 }
-func (UnimplementedFilesServiceServer) RenameFile(context.Context, *RenameFileRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RenameFile not implemented")
+func (UnimplementedFilesServiceServer) ReplaceFile(context.Context, *ReplaceFileRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReplaceFile not implemented")
 }
 func (UnimplementedFilesServiceServer) mustEmbedUnimplementedFilesServiceServer() {}
 func (UnimplementedFilesServiceServer) testEmbeddedByValue()                      {}
@@ -369,38 +369,38 @@ func _FilesService_RemoveFile_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FilesService_RenameDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RenameDirectoryRequest)
+func _FilesService_ReplaceDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplaceDirRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FilesServiceServer).RenameDir(ctx, in)
+		return srv.(FilesServiceServer).ReplaceDir(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FilesService_RenameDir_FullMethodName,
+		FullMethod: FilesService_ReplaceDir_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FilesServiceServer).RenameDir(ctx, req.(*RenameDirectoryRequest))
+		return srv.(FilesServiceServer).ReplaceDir(ctx, req.(*ReplaceDirRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FilesService_RenameFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RenameFileRequest)
+func _FilesService_ReplaceFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplaceFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FilesServiceServer).RenameFile(ctx, in)
+		return srv.(FilesServiceServer).ReplaceFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FilesService_RenameFile_FullMethodName,
+		FullMethod: FilesService_ReplaceFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FilesServiceServer).RenameFile(ctx, req.(*RenameFileRequest))
+		return srv.(FilesServiceServer).ReplaceFile(ctx, req.(*ReplaceFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -437,12 +437,12 @@ var FilesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _FilesService_RemoveFile_Handler,
 		},
 		{
-			MethodName: "RenameDir",
-			Handler:    _FilesService_RenameDir_Handler,
+			MethodName: "ReplaceDir",
+			Handler:    _FilesService_ReplaceDir_Handler,
 		},
 		{
-			MethodName: "RenameFile",
-			Handler:    _FilesService_RenameFile_Handler,
+			MethodName: "ReplaceFile",
+			Handler:    _FilesService_ReplaceFile_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
