@@ -14,9 +14,8 @@ var (
 	ErrIncorrectChunkSize   error = status.Error(codes.InvalidArgument, "incorrect chunk size")
 
 	// Directory errors
-	ErrDirNotFound     error = status.Error(codes.NotFound, "directory not found")
-	ErrDirAlreadyExist error = status.Error(codes.AlreadyExists, "directory already exist")
-	ErrBadDirSyntax    error = status.Error(codes.InvalidArgument, "directory have bad syntax")
+	ErrDirNotFound  error = status.Error(codes.NotFound, "directory not found")
+	ErrBadDirSyntax error = status.Error(codes.InvalidArgument, "directory have bad syntax")
 
 	// Filename errors
 	ErrEmptyFilename     error = status.Error(codes.InvalidArgument, "file name is empty")
@@ -30,5 +29,6 @@ var (
 	ErrFileNotExist  error = status.Error(codes.NotFound, "file not exist")
 	ErrReadOutOfFile error = status.Error(codes.OutOfRange, "reading outside of file")
 
-	ErrModifyProtectedDir error = status.Error(codes.PermissionDenied, "attempt to modify protected dir")
+	ErrModifyProtectedDir  error = status.Error(codes.PermissionDenied, "attempt to modify protected dir")
+	ErrTargetAlreadyExists error = status.Error(codes.AlreadyExists, "target already exists")
 )

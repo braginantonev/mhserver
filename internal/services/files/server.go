@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/braginantonev/mhserver/internal/repository"
 	"github.com/braginantonev/mhserver/internal/repository/freemem"
@@ -435,7 +436,7 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 			}
 		} else {
 			if fi.IsDir() {
-				return nil, ErrDirAlreadyExist
+				return nil, ErrTargetAlreadyExists
 			} else {
 				return nil, ErrBadDirSyntax
 			}
@@ -535,7 +536,7 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*em
 	return &emptypb.Empty{}, nil
 }
 
-func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequest) (*emptypb.Empty, error) {
+func (s *FilesServer) ReplaceDir(ctx context.Context, req *pb.ReplaceDirRequest) (*emptypb.Empty, error) {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
@@ -545,14 +546,12 @@ func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequ
 		return nil, ErrInternal
 	}
 
-	old_dir := req.Old.GetValue()
-	if !s.acceptModifyDir(ctx, old_dir) {
+	target := req.Target.GetValue()
+	if !s.acceptModifyDir(ctx, target) {
 		return nil, ErrModifyProtectedDir
 	}
 
-	// we also check a new dir, because os.Rename don't cause an error, if old and new paths in different dirs
-	// user can set new_dir in protected dir, what not good of course
-	new_dir := req.New.GetValue()
+	new_dir := req.To.GetValue()
 	if !s.acceptModifyDir(ctx, new_dir) {
 		return nil, ErrModifyProtectedDir
 	}
@@ -561,7 +560,7 @@ func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequ
 		return nil, err
 	}
 
-	target, err := CompileUserDirectory(username, old_dir)
+	target, err := CompileUserDirectory(username, target)
 	if err != nil {
 		return nil, err
 	}
@@ -571,14 +570,14 @@ func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequ
 		return nil, err
 	}
 
-	var renamed bool
 	for _, usp := range s.cfg.UserSpaces {
-		if err = os.Rename(filepath.Join(s.cfg.WorkspacePath, usp, target), filepath.Join(s.cfg.WorkspacePath, usp, new)); err == nil {
-			renamed = true
-			// but we continue check next userspaces
-		} else {
+		if err = os.Rename(filepath.Join(s.cfg.WorkspacePath, usp, target), filepath.Join(s.cfg.WorkspacePath, usp, new)); err != nil {
+			if os.IsExist(err) || errors.Is(err, syscall.ENOTDIR) {
+				return nil, ErrTargetAlreadyExists
+			}
+
 			if os.IsNotExist(err) {
-				continue
+				return nil, ErrDirNotFound
 			}
 
 			slog.ErrorContext(ctx, "failed rename dir", slog.Any("error", err))
@@ -586,14 +585,10 @@ func (s *FilesServer) RenameDir(ctx context.Context, req *pb.RenameDirectoryRequ
 		}
 	}
 
-	if !renamed {
-		return nil, ErrDirNotFound
-	}
-
 	return &emptypb.Empty{}, nil
 }
 
-func (s *FilesServer) RenameFile(ctx context.Context, req *pb.RenameFileRequest) (*emptypb.Empty, error) {
+func (s *FilesServer) ReplaceFile(ctx context.Context, req *pb.ReplaceFileRequest) (*emptypb.Empty, error) {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
@@ -603,10 +598,13 @@ func (s *FilesServer) RenameFile(ctx context.Context, req *pb.RenameFileRequest)
 		return nil, ErrInternal
 	}
 
-	// besides RenameDir() we don't check new_dir, because we use only old dir
-	// simple, we just skip target directory and use old
-	target_dir := req.Old.GetDir().GetValue()
+	target_dir := req.Target.GetDir().GetValue()
 	if !s.acceptModifyDir(ctx, target_dir) {
+		return nil, ErrModifyProtectedDir
+	}
+
+	new_dir := req.To.GetDir().GetValue()
+	if !s.acceptModifyDir(ctx, new_dir) {
 		return nil, ErrModifyProtectedDir
 	}
 
@@ -614,12 +612,12 @@ func (s *FilesServer) RenameFile(ctx context.Context, req *pb.RenameFileRequest)
 		return nil, err
 	}
 
-	target, err := CompileUserFilepath(username, target_dir, req.Old.GetName())
+	target, err := CompileUserFilepath(username, target_dir, req.Target.GetName())
 	if err != nil {
 		return nil, err
 	}
 
-	new, err := CompileUserFilepath(username, target_dir, req.New.GetName())
+	new, err := CompileUserFilepath(username, new_dir, req.To.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -631,7 +629,11 @@ func (s *FilesServer) RenameFile(ctx context.Context, req *pb.RenameFileRequest)
 			break // one file - one uspace
 		} else {
 			if os.IsNotExist(err) {
-				continue
+				continue // search file in next uspace
+			}
+
+			if os.IsExist(err) {
+				return nil, ErrTargetAlreadyExists
 			}
 
 			slog.ErrorContext(ctx, "failed rename file", slog.Any("error", err))
