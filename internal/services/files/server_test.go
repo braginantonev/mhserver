@@ -20,12 +20,13 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 )
 
 const (
-	WORKSPACE_PATH string = "/tmp/mhserver_tests/"
-	TEST_USER      string = "user"
+	WORKSPACE_PATH    string = "/tmp/mhserver_tests/"
+	TEST_SERVER_TOKEN string = "123321"
 
 	TEST_FILE_BODY string = `- Скажи, дружище, ты стихи любишь?
 	- Стихи? Ну, не особо, сэр.
@@ -47,12 +48,28 @@ func createWorkspaceFolders(workspace_path, username string, user_spaces []strin
 	return nil
 }
 
-func createClient(ctx context.Context, config files.DataServiceConfig) (pb.FilesServiceClient, error) {
-	auth_intc := interceptors.NewFakeAuthInterceptor(TEST_USER)
+func cleanTestDir(workspace_path, username string, user_spaces []string) error {
+	for _, usp := range user_spaces {
+		if err := os.RemoveAll(filepath.Join(workspace_path, usp, username)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createClient(ctx context.Context, user string, config files.DataServiceConfig) (pb.FilesServiceClient, error) {
+	auth_intc := interceptors.NewFakeAuthInterceptor(user)
+	internal_intc := interceptors.NewServiceInterceptor(TEST_SERVER_TOKEN)
 
 	grpc_server := grpc.NewServer(
-		grpc.UnaryInterceptor(auth_intc.Unary),
-		grpc.StreamInterceptor(auth_intc.Stream),
+		grpc.ChainUnaryInterceptor(
+			internal_intc.Unary,
+			auth_intc.Unary,
+		),
+		grpc.ChainStreamInterceptor(
+			internal_intc.Stream,
+			auth_intc.Stream,
+		),
 	)
 
 	pb.RegisterFilesServiceServer(grpc_server, files.NewFilesServer(ctx, config))
@@ -72,6 +89,8 @@ func createClient(ctx context.Context, config files.DataServiceConfig) (pb.Files
 }
 
 func TestSaveFile(t *testing.T) {
+	const TEST_USER string = "TEST_SAVE_FILE"
+
 	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, []string{})
 	config.ChunkSize = 5 // use small size
 
@@ -79,7 +98,7 @@ func TestSaveFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := createClient(t.Context(), config)
+	client, err := createClient(t.Context(), TEST_USER, config)
 	if err != nil {
 		t.Fatalf("failed create service client: %v", err)
 	}
@@ -247,6 +266,8 @@ func TestSaveFile(t *testing.T) {
 }
 
 func TestReadFile(t *testing.T) {
+	const TEST_USER string = "TEST_READ_FILE"
+
 	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, []string{})
 	config.ChunkSize = 5
 
@@ -254,7 +275,7 @@ func TestReadFile(t *testing.T) {
 		t.Fatalf("failed init workspace: %v", err)
 	}
 
-	client, err := createClient(t.Context(), config)
+	client, err := createClient(t.Context(), TEST_USER, config)
 	if err != nil {
 		t.Fatalf("failed create service client: %v", err)
 	}
@@ -371,13 +392,15 @@ func TestReadFile(t *testing.T) {
 }
 
 func TestGetSum(t *testing.T) {
+	const TEST_USER string = "TEST_GET_SUM"
+
 	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, []string{})
 
 	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
 		t.Fatalf("failed init workspace: %v", err)
 	}
 
-	client, err := createClient(t.Context(), config)
+	client, err := createClient(t.Context(), TEST_USER, config)
 	if err != nil {
 		t.Fatalf("failed create service client: %v", err)
 	}
@@ -529,13 +552,15 @@ func TestGetSum(t *testing.T) {
 }
 
 func TestGetFiles(t *testing.T) {
+	const TEST_USER string = "TEST_GET_FILES"
+
 	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0"}, []string{})
 
 	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
 		t.Fatalf("failed init workspace: %v", err)
 	}
 
-	client, err := createClient(t.Context(), config)
+	client, err := createClient(t.Context(), TEST_USER, config)
 	if err != nil {
 		t.Fatalf("failed create service client: %v", err)
 	}
@@ -725,5 +750,591 @@ func TestGetFiles(t *testing.T) {
 
 	if err := os.RemoveAll(WORKSPACE_PATH + TEST_USER + "/files" + test_dir); err != nil {
 		t.Errorf("failed cleanup: %v", err)
+	}
+}
+
+func TestCreateDir(t *testing.T) {
+	const TEST_USER string = "TEST_CREATE_DIR"
+
+	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0", "1", "2", "3"}, []string{"create_dir"})
+
+	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Fatalf("failed init workspace: %v", err)
+	}
+
+	client, err := createClient(t.Context(), TEST_USER, config)
+	if err != nil {
+		t.Fatalf("failed create service client: %v", err)
+	}
+
+	cases := [...]struct {
+		name         string
+		setup        func() error
+		metadata     metadata.MD
+		dir          *pb.Directory
+		expected_err error
+	}{
+		{
+			name:         "empty request",
+			setup:        func() error { return nil },
+			dir:          nil,
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:  "empty dir name",
+			setup: func() error { return nil },
+			dir: &pb.Directory{
+				Value: "",
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:  "with double point",
+			setup: func() error { return nil },
+			dir: &pb.Directory{
+				Value: "..",
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:  "normal create",
+			setup: func() error { return nil },
+			dir: &pb.Directory{
+				Value: "normal_create",
+			},
+			expected_err: nil,
+		},
+		{
+			name: "already exists",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err = os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, "already_exists"), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			dir: &pb.Directory{
+				Value: "already_exists",
+			},
+			expected_err: files.ErrTargetAlreadyExists,
+		},
+		{
+			name: "not a directory",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if _, err = os.Create(filepath.Join(config.WorkspacePath, usp, TEST_USER, "text.json")); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			dir: &pb.Directory{
+				Value: "text.json",
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:     "create protected without token",
+			metadata: nil,
+			setup:    func() error { return nil },
+			dir: &pb.Directory{
+				Value: config.ServiceDirs[0],
+			},
+			expected_err: files.ErrModifyProtectedDir,
+		},
+		{
+			name:     "create protected dir with token",
+			setup:    func() error { return nil },
+			metadata: metadata.Pairs("internal-token", TEST_SERVER_TOKEN, string(contextkeys.SenderService), config.ServiceDirs[0]),
+			dir: &pb.Directory{
+				Value: config.ServiceDirs[0],
+			},
+			expected_err: nil,
+		},
+		{
+			name: "create in protected dir without token",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, config.ServiceDirs[0]), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: nil,
+			dir: &pb.Directory{
+				Value: config.ServiceDirs[0] + "/create_in_protected_dir_without_token",
+			},
+			expected_err: files.ErrModifyProtectedDir,
+		},
+		{
+			name: "create in protected dir with token",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, config.ServiceDirs[0]), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: metadata.Pairs("internal-token", TEST_SERVER_TOKEN, string(contextkeys.SenderService), config.ServiceDirs[0]),
+			dir: &pb.Directory{
+				Value: config.ServiceDirs[0] + "/create_in_protected_dir_with_token",
+			},
+			expected_err: nil,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.setup(); err != nil {
+				t.Fatalf("failed setup test: %v", err)
+			}
+
+			ctx := metadata.NewOutgoingContext(t.Context(), test.metadata)
+
+			_, err := client.CreateDir(ctx, test.dir)
+			if !errors.Is(err, test.expected_err) {
+				t.Fatalf("expected error: `%v`, but got: `%v`", test.expected_err, err)
+			}
+
+			if test.expected_err != nil {
+				return
+			}
+
+			for _, usp := range config.UserSpaces {
+				target := filepath.Join(config.WorkspacePath, usp, TEST_USER, test.dir.GetValue())
+				if _, err = os.Stat(target); err != nil {
+					if os.IsNotExist(err) {
+						t.Errorf("expected created dir - `%s`, but he not exists", target)
+					} else {
+						t.Errorf("failed stat dir: %v", err)
+					}
+				}
+			}
+		})
+	}
+
+	if err = cleanTestDir(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Errorf("failed clean test dir: %v", err)
+	}
+}
+
+func TestRemoveDir(t *testing.T) {
+	const TEST_USER string = "TEST_REMOVE_DIR"
+
+	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0", "1", "2", "3"}, []string{"some_service"})
+
+	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Fatalf("failed init workspace: %v", err)
+	}
+
+	client, err := createClient(t.Context(), TEST_USER, config)
+	if err != nil {
+		t.Fatalf("failed create service client: %v", err)
+	}
+
+	cases := [...]struct {
+		name         string
+		setup        func() error
+		metadata     metadata.MD
+		dir          *pb.Directory
+		expected_err error
+	}{
+		{
+			name:         "empty request",
+			setup:        func() error { return nil },
+			metadata:     nil,
+			dir:          nil,
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:     "empty dir name",
+			setup:    func() error { return nil },
+			metadata: nil,
+			dir: &pb.Directory{
+				Value: "",
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:  "with double point",
+			setup: func() error { return nil },
+			dir: &pb.Directory{
+				Value: "a/../../../0", // attempt to remove user space
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name: "normal remove",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err = os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, "normal_remove"), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: nil,
+			dir: &pb.Directory{
+				Value: "normal_remove",
+			},
+			expected_err: nil,
+		},
+		{
+			name:     "not exists",
+			setup:    func() error { return nil },
+			metadata: nil,
+			dir: &pb.Directory{
+				Value: "not_exists",
+			},
+			expected_err: nil,
+		},
+		{
+			name: "remove file",
+			setup: func() error {
+				_, err := os.Create(filepath.Join(config.WorkspacePath, config.UserSpaces[0], TEST_USER, "remove_file"))
+				return err
+			},
+			metadata: nil,
+			dir: &pb.Directory{
+				Value: "remove_file",
+			},
+			expected_err: nil,
+		},
+		{
+			name: "remove protected dir without token",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err = os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, config.ServiceDirs[0]), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: nil,
+			dir: &pb.Directory{
+				Value: config.ServiceDirs[0],
+			},
+			expected_err: files.ErrModifyProtectedDir,
+		},
+		{
+			name: "remove in protected dir with token",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err = os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, config.ServiceDirs[0], "remove_in_protected_dir_with_token"), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: metadata.Pairs("internal-token", TEST_SERVER_TOKEN, string(contextkeys.SenderService), config.ServiceDirs[0]),
+			dir: &pb.Directory{
+				Value: config.ServiceDirs[0] + "/remove_in_protected_dir_with_token",
+			},
+			expected_err: nil,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.setup(); err != nil {
+				t.Fatalf("failed setup test: %v", err)
+			}
+
+			ctx := metadata.NewOutgoingContext(t.Context(), test.metadata)
+			_, err := client.RemoveDir(ctx, test.dir)
+			if !errors.Is(err, test.expected_err) {
+				t.Errorf("expected error: `%v`, but got: `%v`", test.expected_err, err)
+			}
+
+			if test.expected_err != nil {
+				return
+			}
+
+			for _, usp := range config.UserSpaces {
+				target := filepath.Join(config.WorkspacePath, usp, TEST_USER, test.dir.GetValue())
+				if _, err := os.Stat(target); err != nil && !os.IsNotExist(err) {
+					if os.IsExist(err) {
+						t.Errorf("expected removed dir - `%s`, but he exists", target)
+					} else {
+						t.Errorf("failed stat dir: %v", err)
+					}
+				}
+			}
+		})
+	}
+
+	if err := cleanTestDir(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Errorf("failed clean test dir: %v", err)
+	}
+}
+
+func TestReplaceDir(t *testing.T) {
+	const TEST_USER string = "TEST_RENAME_DIR"
+
+	config := files.NewDataServerConfig(WORKSPACE_PATH, []string{"0", "1", "2", "3"}, []string{"some_service"})
+
+	if err := createWorkspaceFolders(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Fatalf("failed init workspace: %v", err)
+	}
+
+	client, err := createClient(t.Context(), TEST_USER, config)
+	if err != nil {
+		t.Fatalf("failed create service client: %v", err)
+	}
+
+	cases := [...]struct {
+		name         string
+		setup        func() error
+		metadata     metadata.MD
+		req          *pb.ReplaceDirRequest
+		expected_err error
+	}{
+		{
+			name:         "empty request",
+			setup:        func() error { return nil },
+			metadata:     nil,
+			req:          nil,
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:     "empty dir name",
+			setup:    func() error { return nil },
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "",
+				},
+				To: &pb.Directory{
+					Value: "",
+				},
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:     "empty target dir",
+			setup:    func() error { return nil },
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "some dir",
+				},
+				To: &pb.Directory{
+					Value: "",
+				},
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:     "empty new dir",
+			setup:    func() error { return nil },
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "",
+				},
+				To: &pb.Directory{
+					Value: "some dir",
+				},
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:     "out of uspace",
+			setup:    func() error { return nil },
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "../../../../mhserver",
+				},
+				To: &pb.Directory{
+					Value: "mhserver",
+				},
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:     "to parent dir",
+			setup:    func() error { return nil },
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "some dir",
+				},
+				To: &pb.Directory{
+					Value: "../",
+				},
+			},
+			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name: "to existed dir",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, "to_existed_dir"), 0777); err != nil {
+						return err
+					}
+
+				}
+				return nil
+			},
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "to_existed_dir",
+				},
+				To: &pb.Directory{
+					Value: "to_existed_dir",
+				},
+			},
+			expected_err: files.ErrTargetAlreadyExists,
+		},
+		{
+			name: "to existed file",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, "to_existed_file"), 0777); err != nil {
+						return err
+					}
+					if _, err := os.Create(filepath.Join(config.WorkspacePath, usp, TEST_USER, "to_existed_file.txt")); err != nil {
+						return nil
+					}
+				}
+				return nil
+			},
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "to_existed_file",
+				},
+				To: &pb.Directory{
+					Value: "to_existed_file.txt",
+				},
+			},
+			expected_err: files.ErrTargetAlreadyExists,
+		},
+		{
+			name: "to another dir",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, "to_another_dir"), 0777); err != nil {
+						return err
+					}
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, "to_another_dir_to"), 0777); err != nil {
+						return nil
+					}
+				}
+				return nil
+			},
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "to_another_dir",
+				},
+				To: &pb.Directory{
+					Value: "to_another_dir_to/to_another_dir",
+				},
+			},
+			expected_err: nil,
+		},
+		{
+			name: "rename",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, "rename"), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: "rename",
+				},
+				To: &pb.Directory{
+					Value: "rename_new",
+				},
+			},
+			expected_err: nil,
+		},
+		{
+			name: "protected without token",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, config.ServiceDirs[0]), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: config.ServiceDirs[0],
+				},
+				To: &pb.Directory{
+					Value: "some dir",
+				},
+			},
+			expected_err: files.ErrModifyProtectedDir,
+		},
+		{
+			name: "protected with token",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, config.ServiceDirs[0]), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: metadata.Pairs("internal-token", TEST_SERVER_TOKEN, string(contextkeys.SenderService), config.ServiceDirs[0]),
+			req: &pb.ReplaceDirRequest{
+				Target: &pb.Directory{
+					Value: config.ServiceDirs[0],
+				},
+				To: &pb.Directory{
+					Value: config.ServiceDirs[0] + "_new",
+				},
+			},
+			expected_err: nil,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.setup(); err != nil {
+				t.Fatalf("failed setup test: %v", err)
+			}
+
+			ctx := metadata.NewOutgoingContext(t.Context(), test.metadata)
+			_, err := client.ReplaceDir(ctx, test.req)
+			if !errors.Is(err, test.expected_err) {
+				t.Errorf("expected error: `%v`, but got: `%v`", test.expected_err, err)
+			}
+
+			if test.expected_err != nil {
+				return
+			}
+
+			for _, usp := range config.UserSpaces {
+				to := filepath.Join(config.WorkspacePath, usp, TEST_USER, test.req.To.Value)
+
+				if _, err := os.Stat(to); err != nil {
+					if os.IsNotExist(err) {
+						t.Errorf("expected replaced dir - `%s`, but he don't exists", to)
+					} else {
+						t.Errorf("failed stat dir: %v", err)
+					}
+				}
+			}
+		})
+	}
+
+	if err := cleanTestDir(config.WorkspacePath, TEST_USER, config.UserSpaces); err != nil {
+		t.Errorf("failed clean test dir: %v", err)
 	}
 }
