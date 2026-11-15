@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	SERVICE_NAME       config.ServiceName = "files"
-	SEMAPHORE_SIZE     int                = 100
-	DEFAULT_CHUNK_SIZE uint64             = 1 * 1024 * 1024
+	SERVICE_NAME        config.ServiceName = "files"
+	MAIN_SEMAPHORE_SIZE int                = 100
+	LOAD_SEMAPHORE_SIZE int                = 20
+	DEFAULT_CHUNK_SIZE  uint64             = 1 * 1024 * 1024
 )
 
 type DataServiceConfig struct {

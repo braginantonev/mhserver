@@ -28,8 +28,9 @@ type existedFile struct {
 type FilesServer struct {
 	pb.FilesServiceServer
 
-	cfg DataServiceConfig
-	sem repository.Semaphore
+	cfg    DataServiceConfig
+	reqSem repository.Semaphore
+	IOSem  repository.Semaphore
 
 	// Ensured users - it's users, whish user dir create in every uspace.
 	// To avoid checking every rpc, we keep them in array.
@@ -41,7 +42,8 @@ type FilesServer struct {
 func NewFilesServer(ctx context.Context, cfg DataServiceConfig) *FilesServer {
 	return &FilesServer{
 		cfg:          cfg,
-		sem:          repository.NewSemaphore(SEMAPHORE_SIZE),
+		reqSem:       repository.NewSemaphore(MAIN_SEMAPHORE_SIZE),
+		IOSem:        repository.NewSemaphore(LOAD_SEMAPHORE_SIZE),
 		ensuredUsers: make([]string, 0, 10),
 	}
 }
@@ -126,8 +128,8 @@ func (s *FilesServer) getAvailableUspace(ctx context.Context, to_save uint64) (s
 }
 
 func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(stream.Context())
 	if !ok {
@@ -196,6 +198,9 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 
 	var saved uint64
 	for {
+		s.IOSem.Acquire()
+		defer s.IOSem.Release()
+
 		req, err := stream.Recv()
 		if err == io.EOF {
 			if err = file.Sync(); err != nil {
@@ -225,8 +230,8 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 }
 
 func (s *FilesServer) ReadFile(req *pb.TargetFile, stream pb.FilesService_ReadFileServer) error {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(stream.Context())
 	if !ok {
@@ -260,6 +265,9 @@ func (s *FilesServer) ReadFile(req *pb.TargetFile, stream pb.FilesService_ReadFi
 
 readLoop:
 	for i := range chunks_count {
+		s.IOSem.Acquire()
+		defer s.IOSem.Release()
+
 		select {
 		case <-stream.Context().Done():
 			break readLoop
@@ -283,8 +291,8 @@ readLoop:
 }
 
 func (s *FilesServer) GetSum(ctx context.Context, req *pb.TargetFile) (*pb.SHASum, error) {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(ctx)
 	if !ok {
@@ -317,8 +325,8 @@ func (s *FilesServer) GetSum(ctx context.Context, req *pb.TargetFile) (*pb.SHASu
 }
 
 func (s *FilesServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empty) (*pb.Size, error) {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := ctx.Value(contextkeys.USERNAME).(string)
 	if !ok {
@@ -336,8 +344,8 @@ func (s *FilesServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empt
 }
 
 func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.TargetDirectory) (*pb.FilesList, error) {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(ctx)
 	if !ok {
@@ -399,8 +407,8 @@ func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.TargetDirectory) (*p
 }
 
 func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.TargetDirectory) (*emptypb.Empty, error) {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(ctx)
 	if !ok {
@@ -452,8 +460,8 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.TargetDirectory) (*
 }
 
 func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.TargetDirectory) (*emptypb.Empty, error) {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(ctx)
 	if !ok {
@@ -487,8 +495,8 @@ func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.TargetDirectory) (*
 }
 
 func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.TargetFile) (*emptypb.Empty, error) {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(ctx)
 	if !ok {
@@ -535,8 +543,8 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.TargetFile) (*empt
 }
 
 func (s *FilesServer) ReplaceDir(ctx context.Context, req *pb.ReplaceDirRequest) (*emptypb.Empty, error) {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(ctx)
 	if !ok {
@@ -585,8 +593,8 @@ func (s *FilesServer) ReplaceDir(ctx context.Context, req *pb.ReplaceDirRequest)
 }
 
 func (s *FilesServer) ReplaceFile(ctx context.Context, req *pb.ReplaceFileRequest) (*emptypb.Empty, error) {
-	s.sem.Acquire()
-	defer s.sem.Release()
+	s.reqSem.Acquire()
+	defer s.reqSem.Release()
 
 	username, ok := GetUsernameFromContext(ctx)
 	if !ok {
