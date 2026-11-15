@@ -36,14 +36,14 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FilesServiceClient interface {
-	SaveFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SaveFileChunk, emptypb.Empty], error)
-	ReadFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Chunk], error)
-	GetSum(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*SHASum, error)
-	GetFiles(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*FilesList, error)
+	SaveFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SaveFileRequest, emptypb.Empty], error)
+	ReadFile(ctx context.Context, in *TargetFile, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LocatedChunk], error)
+	GetSum(ctx context.Context, in *TargetFile, opts ...grpc.CallOption) (*SHASum, error)
+	GetFiles(ctx context.Context, in *TargetDirectory, opts ...grpc.CallOption) (*FilesList, error)
 	GetAvailableDiskSpace(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Size, error)
-	CreateDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RemoveDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RemoveFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateDir(ctx context.Context, in *TargetDirectory, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RemoveDir(ctx context.Context, in *TargetDirectory, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RemoveFile(ctx context.Context, in *TargetFile, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ReplaceDir(ctx context.Context, in *ReplaceDirRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ReplaceFile(ctx context.Context, in *ReplaceFileRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -56,26 +56,26 @@ func NewFilesServiceClient(cc grpc.ClientConnInterface) FilesServiceClient {
 	return &filesServiceClient{cc}
 }
 
-func (c *filesServiceClient) SaveFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SaveFileChunk, emptypb.Empty], error) {
+func (c *filesServiceClient) SaveFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SaveFileRequest, emptypb.Empty], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &FilesService_ServiceDesc.Streams[0], FilesService_SaveFile_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[SaveFileChunk, emptypb.Empty]{ClientStream: stream}
+	x := &grpc.GenericClientStream[SaveFileRequest, emptypb.Empty]{ClientStream: stream}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type FilesService_SaveFileClient = grpc.ClientStreamingClient[SaveFileChunk, emptypb.Empty]
+type FilesService_SaveFileClient = grpc.ClientStreamingClient[SaveFileRequest, emptypb.Empty]
 
-func (c *filesServiceClient) ReadFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Chunk], error) {
+func (c *filesServiceClient) ReadFile(ctx context.Context, in *TargetFile, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LocatedChunk], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &FilesService_ServiceDesc.Streams[1], FilesService_ReadFile_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[RequiredFile, Chunk]{ClientStream: stream}
+	x := &grpc.GenericClientStream[TargetFile, LocatedChunk]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -86,9 +86,9 @@ func (c *filesServiceClient) ReadFile(ctx context.Context, in *RequiredFile, opt
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type FilesService_ReadFileClient = grpc.ServerStreamingClient[Chunk]
+type FilesService_ReadFileClient = grpc.ServerStreamingClient[LocatedChunk]
 
-func (c *filesServiceClient) GetSum(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*SHASum, error) {
+func (c *filesServiceClient) GetSum(ctx context.Context, in *TargetFile, opts ...grpc.CallOption) (*SHASum, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SHASum)
 	err := c.cc.Invoke(ctx, FilesService_GetSum_FullMethodName, in, out, cOpts...)
@@ -98,7 +98,7 @@ func (c *filesServiceClient) GetSum(ctx context.Context, in *RequiredFile, opts 
 	return out, nil
 }
 
-func (c *filesServiceClient) GetFiles(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*FilesList, error) {
+func (c *filesServiceClient) GetFiles(ctx context.Context, in *TargetDirectory, opts ...grpc.CallOption) (*FilesList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(FilesList)
 	err := c.cc.Invoke(ctx, FilesService_GetFiles_FullMethodName, in, out, cOpts...)
@@ -118,7 +118,7 @@ func (c *filesServiceClient) GetAvailableDiskSpace(ctx context.Context, in *empt
 	return out, nil
 }
 
-func (c *filesServiceClient) CreateDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *filesServiceClient) CreateDir(ctx context.Context, in *TargetDirectory, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, FilesService_CreateDir_FullMethodName, in, out, cOpts...)
@@ -128,7 +128,7 @@ func (c *filesServiceClient) CreateDir(ctx context.Context, in *Directory, opts 
 	return out, nil
 }
 
-func (c *filesServiceClient) RemoveDir(ctx context.Context, in *Directory, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *filesServiceClient) RemoveDir(ctx context.Context, in *TargetDirectory, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, FilesService_RemoveDir_FullMethodName, in, out, cOpts...)
@@ -138,7 +138,7 @@ func (c *filesServiceClient) RemoveDir(ctx context.Context, in *Directory, opts 
 	return out, nil
 }
 
-func (c *filesServiceClient) RemoveFile(ctx context.Context, in *RequiredFile, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *filesServiceClient) RemoveFile(ctx context.Context, in *TargetFile, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, FilesService_RemoveFile_FullMethodName, in, out, cOpts...)
@@ -172,14 +172,14 @@ func (c *filesServiceClient) ReplaceFile(ctx context.Context, in *ReplaceFileReq
 // All implementations must embed UnimplementedFilesServiceServer
 // for forward compatibility.
 type FilesServiceServer interface {
-	SaveFile(grpc.ClientStreamingServer[SaveFileChunk, emptypb.Empty]) error
-	ReadFile(*RequiredFile, grpc.ServerStreamingServer[Chunk]) error
-	GetSum(context.Context, *RequiredFile) (*SHASum, error)
-	GetFiles(context.Context, *Directory) (*FilesList, error)
+	SaveFile(grpc.ClientStreamingServer[SaveFileRequest, emptypb.Empty]) error
+	ReadFile(*TargetFile, grpc.ServerStreamingServer[LocatedChunk]) error
+	GetSum(context.Context, *TargetFile) (*SHASum, error)
+	GetFiles(context.Context, *TargetDirectory) (*FilesList, error)
 	GetAvailableDiskSpace(context.Context, *emptypb.Empty) (*Size, error)
-	CreateDir(context.Context, *Directory) (*emptypb.Empty, error)
-	RemoveDir(context.Context, *Directory) (*emptypb.Empty, error)
-	RemoveFile(context.Context, *RequiredFile) (*emptypb.Empty, error)
+	CreateDir(context.Context, *TargetDirectory) (*emptypb.Empty, error)
+	RemoveDir(context.Context, *TargetDirectory) (*emptypb.Empty, error)
+	RemoveFile(context.Context, *TargetFile) (*emptypb.Empty, error)
 	ReplaceDir(context.Context, *ReplaceDirRequest) (*emptypb.Empty, error)
 	ReplaceFile(context.Context, *ReplaceFileRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedFilesServiceServer()
@@ -192,28 +192,28 @@ type FilesServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedFilesServiceServer struct{}
 
-func (UnimplementedFilesServiceServer) SaveFile(grpc.ClientStreamingServer[SaveFileChunk, emptypb.Empty]) error {
+func (UnimplementedFilesServiceServer) SaveFile(grpc.ClientStreamingServer[SaveFileRequest, emptypb.Empty]) error {
 	return status.Errorf(codes.Unimplemented, "method SaveFile not implemented")
 }
-func (UnimplementedFilesServiceServer) ReadFile(*RequiredFile, grpc.ServerStreamingServer[Chunk]) error {
+func (UnimplementedFilesServiceServer) ReadFile(*TargetFile, grpc.ServerStreamingServer[LocatedChunk]) error {
 	return status.Errorf(codes.Unimplemented, "method ReadFile not implemented")
 }
-func (UnimplementedFilesServiceServer) GetSum(context.Context, *RequiredFile) (*SHASum, error) {
+func (UnimplementedFilesServiceServer) GetSum(context.Context, *TargetFile) (*SHASum, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSum not implemented")
 }
-func (UnimplementedFilesServiceServer) GetFiles(context.Context, *Directory) (*FilesList, error) {
+func (UnimplementedFilesServiceServer) GetFiles(context.Context, *TargetDirectory) (*FilesList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFiles not implemented")
 }
 func (UnimplementedFilesServiceServer) GetAvailableDiskSpace(context.Context, *emptypb.Empty) (*Size, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAvailableDiskSpace not implemented")
 }
-func (UnimplementedFilesServiceServer) CreateDir(context.Context, *Directory) (*emptypb.Empty, error) {
+func (UnimplementedFilesServiceServer) CreateDir(context.Context, *TargetDirectory) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateDir not implemented")
 }
-func (UnimplementedFilesServiceServer) RemoveDir(context.Context, *Directory) (*emptypb.Empty, error) {
+func (UnimplementedFilesServiceServer) RemoveDir(context.Context, *TargetDirectory) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveDir not implemented")
 }
-func (UnimplementedFilesServiceServer) RemoveFile(context.Context, *RequiredFile) (*emptypb.Empty, error) {
+func (UnimplementedFilesServiceServer) RemoveFile(context.Context, *TargetFile) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveFile not implemented")
 }
 func (UnimplementedFilesServiceServer) ReplaceDir(context.Context, *ReplaceDirRequest) (*emptypb.Empty, error) {
@@ -244,25 +244,25 @@ func RegisterFilesServiceServer(s grpc.ServiceRegistrar, srv FilesServiceServer)
 }
 
 func _FilesService_SaveFile_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(FilesServiceServer).SaveFile(&grpc.GenericServerStream[SaveFileChunk, emptypb.Empty]{ServerStream: stream})
+	return srv.(FilesServiceServer).SaveFile(&grpc.GenericServerStream[SaveFileRequest, emptypb.Empty]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type FilesService_SaveFileServer = grpc.ClientStreamingServer[SaveFileChunk, emptypb.Empty]
+type FilesService_SaveFileServer = grpc.ClientStreamingServer[SaveFileRequest, emptypb.Empty]
 
 func _FilesService_ReadFile_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(RequiredFile)
+	m := new(TargetFile)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(FilesServiceServer).ReadFile(m, &grpc.GenericServerStream[RequiredFile, Chunk]{ServerStream: stream})
+	return srv.(FilesServiceServer).ReadFile(m, &grpc.GenericServerStream[TargetFile, LocatedChunk]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type FilesService_ReadFileServer = grpc.ServerStreamingServer[Chunk]
+type FilesService_ReadFileServer = grpc.ServerStreamingServer[LocatedChunk]
 
 func _FilesService_GetSum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequiredFile)
+	in := new(TargetFile)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -274,13 +274,13 @@ func _FilesService_GetSum_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: FilesService_GetSum_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FilesServiceServer).GetSum(ctx, req.(*RequiredFile))
+		return srv.(FilesServiceServer).GetSum(ctx, req.(*TargetFile))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _FilesService_GetFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Directory)
+	in := new(TargetDirectory)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -292,7 +292,7 @@ func _FilesService_GetFiles_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: FilesService_GetFiles_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FilesServiceServer).GetFiles(ctx, req.(*Directory))
+		return srv.(FilesServiceServer).GetFiles(ctx, req.(*TargetDirectory))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -316,7 +316,7 @@ func _FilesService_GetAvailableDiskSpace_Handler(srv interface{}, ctx context.Co
 }
 
 func _FilesService_CreateDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Directory)
+	in := new(TargetDirectory)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -328,13 +328,13 @@ func _FilesService_CreateDir_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: FilesService_CreateDir_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FilesServiceServer).CreateDir(ctx, req.(*Directory))
+		return srv.(FilesServiceServer).CreateDir(ctx, req.(*TargetDirectory))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _FilesService_RemoveDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Directory)
+	in := new(TargetDirectory)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -346,13 +346,13 @@ func _FilesService_RemoveDir_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: FilesService_RemoveDir_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FilesServiceServer).RemoveDir(ctx, req.(*Directory))
+		return srv.(FilesServiceServer).RemoveDir(ctx, req.(*TargetDirectory))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _FilesService_RemoveFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequiredFile)
+	in := new(TargetFile)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func _FilesService_RemoveFile_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: FilesService_RemoveFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FilesServiceServer).RemoveFile(ctx, req.(*RequiredFile))
+		return srv.(FilesServiceServer).RemoveFile(ctx, req.(*TargetFile))
 	}
 	return interceptor(ctx, in, info, handler)
 }

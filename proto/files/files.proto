@@ -5,37 +5,41 @@ option go_package = "github.com/braginantonev/mhserver/proto/files";
 import "google/protobuf/empty.proto";
 
 service FilesService {
-    rpc SaveFile (stream SaveFileChunk) returns (google.protobuf.Empty);
-    rpc ReadFile (RequiredFile) returns (stream Chunk);
-    rpc GetSum (RequiredFile) returns (SHASum);
-    rpc GetFiles (Directory) returns (FilesList);
+    rpc SaveFile (stream SaveFileRequest) returns (google.protobuf.Empty);
+    rpc ReadFile (TargetFile) returns (stream LocatedChunk);
+    rpc GetSum (TargetFile) returns (SHASum);
+    rpc GetFiles (TargetDirectory) returns (FilesList);
 	rpc GetAvailableDiskSpace (google.protobuf.Empty) returns (Size);
-	rpc CreateDir (Directory) returns (google.protobuf.Empty);
-	rpc RemoveDir (Directory) returns (google.protobuf.Empty);
-    rpc RemoveFile (RequiredFile) returns (google.protobuf.Empty);
+	rpc CreateDir (TargetDirectory) returns (google.protobuf.Empty);
+	rpc RemoveDir (TargetDirectory) returns (google.protobuf.Empty);
+    rpc RemoveFile (TargetFile) returns (google.protobuf.Empty);
     rpc ReplaceDir(ReplaceDirRequest) returns (google.protobuf.Empty);
     rpc ReplaceFile(ReplaceFileRequest) returns (google.protobuf.Empty);
 }
 
-message Directory {
-    string value = 2;
+message TargetDirectory {
+    string value = 1;
 }
 
-message RequiredFile {
-    Directory dir = 1;
+message TargetFile {
+    string directory = 1;
     string name = 2;
-    optional uint64 newSize = 3;
 }
 
-message Chunk {
+message NewFile {
+    TargetFile target = 1;
+    uint64 size = 2;
+}
+
+message LocatedChunk {
     bytes data = 1;
     uint64 offset = 2;
 }
 
-message SaveFileChunk {
+message SaveFileRequest {
     oneof Info {
-        RequiredFile meta = 1;
-        Chunk chunk = 2;
+        NewFile meta = 1;
+        bytes chunk = 2;
     }
 }
 
@@ -59,11 +63,11 @@ message Size {
 }
 
 message ReplaceDirRequest {
-    Directory target = 1;
-    Directory to = 2;
+    string target = 1;
+    string to = 2;
 }
 
 message ReplaceFileRequest {
-    RequiredFile target = 1;
-    RequiredFile to = 2;
+    TargetFile target = 1;
+    TargetFile to = 2;
 }

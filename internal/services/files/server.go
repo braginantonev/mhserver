@@ -20,6 +20,11 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+type existedFile struct {
+	*os.File
+	uspace string
+}
+
 type FilesServer struct {
 	pb.FilesServiceServer
 
@@ -71,20 +76,24 @@ func (s *FilesServer) ensureUserDir(ctx context.Context, username string) error 
 	return nil
 }
 
-func (s *FilesServer) findFileInUserSpaces(ctx context.Context, file string, flag int) (*os.File, error) {
+func (s *FilesServer) findFileInUserSpaces(ctx context.Context, file string, flag int) (existedFile, error) {
 	for _, uspace := range s.cfg.UserSpaces {
 		file, err := os.OpenFile(filepath.Join(s.cfg.WorkspacePath, uspace, file), flag, 0660)
 		if err == nil {
-			return file, nil
+			return existedFile{File: file, uspace: uspace}, nil
+		}
+
+		if err == syscall.EISDIR {
+			return existedFile{}, ErrFileNotExist
 		}
 
 		if !os.IsNotExist(err) {
 			slog.ErrorContext(ctx, "failed open file", slog.Any("error", err))
-			return nil, ErrInternal
+			return existedFile{}, ErrInternal
 		}
 	}
 
-	return nil, ErrFileNotExist
+	return existedFile{}, ErrFileNotExist
 }
 
 func (s *FilesServer) acceptModifyDir(ctx context.Context, target_dir string) bool {
@@ -98,6 +107,22 @@ func (s *FilesServer) acceptModifyDir(ctx context.Context, target_dir string) bo
 
 	// if target dir is not service dir - in any case we accepting modification
 	return true
+}
+
+func (s *FilesServer) getAvailableUspace(ctx context.Context, to_save uint64) (string, error) {
+	for _, usp := range s.cfg.UserSpaces {
+		space, err := freemem.GetAvailableDiskSpace(filepath.Join(s.cfg.WorkspacePath, usp))
+		if err != nil {
+			slog.ErrorContext(ctx, "failed get available disk space in uspace", slog.Any("error", err))
+			return "", ErrInternal
+		}
+
+		if space >= to_save {
+			return usp, nil
+		}
+	}
+
+	return "", ErrNotEnoughDiskSpace
 }
 
 func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
@@ -129,71 +154,49 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 		return ErrBrokenSequence
 	}
 
-	target_dir := meta.Dir.GetValue()
+	if meta.Size == 0 {
+		return ErrNullSizeToSave
+	}
+
+	target_dir := meta.Target.GetDirectory()
 
 	if !s.acceptModifyDir(stream.Context(), target_dir) {
 		return ErrModifyProtectedDir
 	}
 
-	user_file, err := CompileUserFilepath(username, target_dir, meta.Name)
+	target, err := CompileUserFilepath(username, target_dir, meta.Target.GetName())
 	if err != nil {
 		return err
 	}
 
-	var file *os.File
-	var file_size uint64
-	if meta.NewSize == nil { // update file, no create. We search file in uspace's
-		file, err = s.findFileInUserSpaces(stream.Context(), user_file, os.O_WRONLY)
-		if err != nil {
-			return err
-		}
-
-		stat, err := file.Stat()
-		if err != nil {
-			slog.ErrorContext(stream.Context(), "failed get stat of exist file", slog.Any("error", err))
+	for _, usp := range s.cfg.UserSpaces {
+		if _, err := os.Stat(filepath.Join(s.cfg.WorkspacePath, usp, target)); err == nil {
+			return ErrTargetAlreadyExists
+		} else if !os.IsNotExist(err) {
+			slog.ErrorContext(stream.Context(), "failed get stat for check existed file", slog.Any("error", err))
 			return ErrInternal
 		}
+	}
 
-		file_size = uint64(stat.Size())
+	available_uspace, err := s.getAvailableUspace(stream.Context(), meta.Size)
+	if err != nil {
+		return err
+	}
 
-	} else { // create and truncate file. We find uspace, where available space must be enough for file
-		var available_uspace string
-		for _, usp := range s.cfg.UserSpaces {
-			space, err := freemem.GetAvailableDiskSpace(filepath.Join(s.cfg.WorkspacePath, usp))
-			if err != nil {
-				slog.ErrorContext(stream.Context(), "failed get available disk space in uspace", slog.Any("error", err))
-				return ErrInternal
-			}
-
-			if space >= *meta.NewSize {
-				available_uspace = usp
-				break
-			}
+	file, err := os.OpenFile(filepath.Join(s.cfg.WorkspacePath, available_uspace, target), os.O_CREATE|os.O_WRONLY, 0640)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return ErrDirNotFound
 		}
 
-		if len(available_uspace) == 0 {
-			return ErrNotEnoughDiskSpace
-		}
-
-		file, err = os.OpenFile(filepath.Join(s.cfg.WorkspacePath, available_uspace, user_file), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0660)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return ErrDirNotFound
-			}
-
-			slog.ErrorContext(stream.Context(), "failed create file", slog.Any("error", err))
-			return ErrInternal
-		}
-
-		if err = file.Truncate(int64(*meta.NewSize)); err != nil {
-			slog.ErrorContext(stream.Context(), "failed truncate file", slog.Any("error", err))
-			return ErrInternal
-		}
-
-		file_size = *meta.NewSize
+		slog.ErrorContext(stream.Context(), "failed create new file", slog.Any("error", err))
+		return ErrInternal
 	}
 	defer func() { _ = file.Close() }()
 
+	chunk := make([]byte, 0, s.cfg.ChunkSize)
+
+	var saved uint64
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -204,27 +207,26 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 			return stream.SendAndClose(&emptypb.Empty{})
 		}
 
-		chunk := req.GetChunk()
-		if chunk == nil {
-			return ErrBrokenSequence
+		chunk = req.GetChunk()
+		if len(chunk) == 0 {
+			continue
 		}
 
-		if err != nil {
-			return err
-		}
-
-		if chunk.Offset+uint64(len(chunk.Data)) > file_size {
+		if saved >= meta.Size {
 			return ErrUnexpectedFileChange
 		}
 
-		if _, err = file.WriteAt(chunk.Data, int64(chunk.Offset)); err != nil {
+		n, err := file.Write(chunk)
+		if err != nil {
 			slog.ErrorContext(stream.Context(), "failed write chunk to file", slog.Any("error", err))
 			return ErrInternal
 		}
+
+		saved += uint64(n)
 	}
 }
 
-func (s *FilesServer) ReadFile(req *pb.RequiredFile, stream pb.FilesService_ReadFileServer) error {
+func (s *FilesServer) ReadFile(req *pb.TargetFile, stream pb.FilesService_ReadFileServer) error {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
@@ -238,7 +240,7 @@ func (s *FilesServer) ReadFile(req *pb.RequiredFile, stream pb.FilesService_Read
 		return err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name)
+	user_file, err := CompileUserFilepath(username, req.Directory, req.Name)
 	if err != nil {
 		return err
 	}
@@ -270,7 +272,7 @@ readLoop:
 				return ErrInternal
 			}
 
-			if err = stream.Send(&pb.Chunk{
+			if err = stream.Send(&pb.LocatedChunk{
 				Offset: i * s.cfg.ChunkSize,
 				Data:   data[:n],
 			}); err != nil {
@@ -282,7 +284,7 @@ readLoop:
 	return nil
 }
 
-func (s *FilesServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHASum, error) {
+func (s *FilesServer) GetSum(ctx context.Context, req *pb.TargetFile) (*pb.SHASum, error) {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
@@ -296,7 +298,7 @@ func (s *FilesServer) GetSum(ctx context.Context, req *pb.RequiredFile) (*pb.SHA
 		return nil, err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.Dir.GetValue(), req.Name)
+	user_file, err := CompileUserFilepath(username, req.Directory, req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +337,7 @@ func (s *FilesServer) GetAvailableDiskSpace(ctx context.Context, _ *emptypb.Empt
 	return &pb.Size{Value: total}, nil
 }
 
-func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.FilesList, error) {
+func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.TargetDirectory) (*pb.FilesList, error) {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
@@ -398,7 +400,7 @@ func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.File
 	return list, nil
 }
 
-func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
+func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.TargetDirectory) (*emptypb.Empty, error) {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
@@ -451,7 +453,7 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 	return &emptypb.Empty{}, nil
 }
 
-func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptypb.Empty, error) {
+func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.TargetDirectory) (*emptypb.Empty, error) {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
@@ -486,7 +488,7 @@ func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptyp
 	return &emptypb.Empty{}, nil
 }
 
-func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*emptypb.Empty, error) {
+func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.TargetFile) (*emptypb.Empty, error) {
 	s.sem.Acquire()
 	defer s.sem.Release()
 
@@ -496,9 +498,7 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*em
 		return nil, ErrInternal
 	}
 
-	target_dir := req.Dir.GetValue()
-
-	if !s.acceptModifyDir(ctx, target_dir) {
+	if !s.acceptModifyDir(ctx, req.Directory) {
 		return nil, ErrModifyProtectedDir
 	}
 
@@ -506,7 +506,7 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*em
 		return nil, err
 	}
 
-	user_file, err := CompileUserFilepath(username, target_dir, req.Name)
+	user_file, err := CompileUserFilepath(username, req.Directory, req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -546,13 +546,11 @@ func (s *FilesServer) ReplaceDir(ctx context.Context, req *pb.ReplaceDirRequest)
 		return nil, ErrInternal
 	}
 
-	target := req.Target.GetValue()
-	if !s.acceptModifyDir(ctx, target) {
+	if !s.acceptModifyDir(ctx, req.Target) {
 		return nil, ErrModifyProtectedDir
 	}
 
-	new_dir := req.To.GetValue()
-	if !s.acceptModifyDir(ctx, new_dir) {
+	if !s.acceptModifyDir(ctx, req.To) {
 		return nil, ErrModifyProtectedDir
 	}
 
@@ -560,12 +558,12 @@ func (s *FilesServer) ReplaceDir(ctx context.Context, req *pb.ReplaceDirRequest)
 		return nil, err
 	}
 
-	target, err := CompileUserDirectory(username, target)
+	target, err := CompileUserDirectory(username, req.Target)
 	if err != nil {
 		return nil, err
 	}
 
-	new, err := CompileUserDirectory(username, new_dir)
+	new, err := CompileUserDirectory(username, req.To)
 	if err != nil {
 		return nil, err
 	}
@@ -598,12 +596,12 @@ func (s *FilesServer) ReplaceFile(ctx context.Context, req *pb.ReplaceFileReques
 		return nil, ErrInternal
 	}
 
-	target_dir := req.Target.GetDir().GetValue() // todo: test get dir with getter
+	target_dir := req.Target.GetDirectory()
 	if !s.acceptModifyDir(ctx, target_dir) {
 		return nil, ErrModifyProtectedDir
 	}
 
-	new_dir := req.To.GetDir().GetValue()
+	new_dir := req.To.GetDirectory()
 	if !s.acceptModifyDir(ctx, new_dir) {
 		return nil, ErrModifyProtectedDir
 	}

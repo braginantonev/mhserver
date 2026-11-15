@@ -22,27 +22,27 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Directory struct {
+type TargetDirectory struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Directory) Reset() {
-	*x = Directory{}
+func (x *TargetDirectory) Reset() {
+	*x = TargetDirectory{}
 	mi := &file_files_files_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Directory) String() string {
+func (x *TargetDirectory) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Directory) ProtoMessage() {}
+func (*TargetDirectory) ProtoMessage() {}
 
-func (x *Directory) ProtoReflect() protoreflect.Message {
+func (x *TargetDirectory) ProtoReflect() protoreflect.Message {
 	mi := &file_files_files_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -54,41 +54,40 @@ func (x *Directory) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Directory.ProtoReflect.Descriptor instead.
-func (*Directory) Descriptor() ([]byte, []int) {
+// Deprecated: Use TargetDirectory.ProtoReflect.Descriptor instead.
+func (*TargetDirectory) Descriptor() ([]byte, []int) {
 	return file_files_files_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Directory) GetValue() string {
+func (x *TargetDirectory) GetValue() string {
 	if x != nil {
 		return x.Value
 	}
 	return ""
 }
 
-type RequiredFile struct {
+type TargetFile struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Dir           *Directory             `protobuf:"bytes,1,opt,name=dir,proto3" json:"dir,omitempty"`
+	Directory     string                 `protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	NewSize       *uint64                `protobuf:"varint,3,opt,name=newSize,proto3,oneof" json:"newSize,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RequiredFile) Reset() {
-	*x = RequiredFile{}
+func (x *TargetFile) Reset() {
+	*x = TargetFile{}
 	mi := &file_files_files_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RequiredFile) String() string {
+func (x *TargetFile) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RequiredFile) ProtoMessage() {}
+func (*TargetFile) ProtoMessage() {}
 
-func (x *RequiredFile) ProtoReflect() protoreflect.Message {
+func (x *TargetFile) ProtoReflect() protoreflect.Message {
 	mi := &file_files_files_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -100,33 +99,78 @@ func (x *RequiredFile) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RequiredFile.ProtoReflect.Descriptor instead.
-func (*RequiredFile) Descriptor() ([]byte, []int) {
+// Deprecated: Use TargetFile.ProtoReflect.Descriptor instead.
+func (*TargetFile) Descriptor() ([]byte, []int) {
 	return file_files_files_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RequiredFile) GetDir() *Directory {
+func (x *TargetFile) GetDirectory() string {
 	if x != nil {
-		return x.Dir
+		return x.Directory
 	}
-	return nil
+	return ""
 }
 
-func (x *RequiredFile) GetName() string {
+func (x *TargetFile) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *RequiredFile) GetNewSize() uint64 {
-	if x != nil && x.NewSize != nil {
-		return *x.NewSize
+type NewFile struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Target        *TargetFile            `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	Size          uint64                 `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewFile) Reset() {
+	*x = NewFile{}
+	mi := &file_files_files_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewFile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewFile) ProtoMessage() {}
+
+func (x *NewFile) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewFile.ProtoReflect.Descriptor instead.
+func (*NewFile) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *NewFile) GetTarget() *TargetFile {
+	if x != nil {
+		return x.Target
+	}
+	return nil
+}
+
+func (x *NewFile) GetSize() uint64 {
+	if x != nil {
+		return x.Size
 	}
 	return 0
 }
 
-type Chunk struct {
+type LocatedChunk struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	Offset        uint64                 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
@@ -134,21 +178,21 @@ type Chunk struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Chunk) Reset() {
-	*x = Chunk{}
-	mi := &file_files_files_proto_msgTypes[2]
+func (x *LocatedChunk) Reset() {
+	*x = LocatedChunk{}
+	mi := &file_files_files_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Chunk) String() string {
+func (x *LocatedChunk) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Chunk) ProtoMessage() {}
+func (*LocatedChunk) ProtoMessage() {}
 
-func (x *Chunk) ProtoReflect() protoreflect.Message {
-	mi := &file_files_files_proto_msgTypes[2]
+func (x *LocatedChunk) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -159,51 +203,51 @@ func (x *Chunk) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Chunk.ProtoReflect.Descriptor instead.
-func (*Chunk) Descriptor() ([]byte, []int) {
-	return file_files_files_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use LocatedChunk.ProtoReflect.Descriptor instead.
+func (*LocatedChunk) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Chunk) GetData() []byte {
+func (x *LocatedChunk) GetData() []byte {
 	if x != nil {
 		return x.Data
 	}
 	return nil
 }
 
-func (x *Chunk) GetOffset() uint64 {
+func (x *LocatedChunk) GetOffset() uint64 {
 	if x != nil {
 		return x.Offset
 	}
 	return 0
 }
 
-type SaveFileChunk struct {
+type SaveFileRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Info:
 	//
-	//	*SaveFileChunk_Meta
-	//	*SaveFileChunk_Chunk
-	Info          isSaveFileChunk_Info `protobuf_oneof:"Info"`
+	//	*SaveFileRequest_Meta
+	//	*SaveFileRequest_Chunk
+	Info          isSaveFileRequest_Info `protobuf_oneof:"Info"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SaveFileChunk) Reset() {
-	*x = SaveFileChunk{}
-	mi := &file_files_files_proto_msgTypes[3]
+func (x *SaveFileRequest) Reset() {
+	*x = SaveFileRequest{}
+	mi := &file_files_files_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SaveFileChunk) String() string {
+func (x *SaveFileRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SaveFileChunk) ProtoMessage() {}
+func (*SaveFileRequest) ProtoMessage() {}
 
-func (x *SaveFileChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_files_files_proto_msgTypes[3]
+func (x *SaveFileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -214,51 +258,51 @@ func (x *SaveFileChunk) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SaveFileChunk.ProtoReflect.Descriptor instead.
-func (*SaveFileChunk) Descriptor() ([]byte, []int) {
-	return file_files_files_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use SaveFileRequest.ProtoReflect.Descriptor instead.
+func (*SaveFileRequest) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *SaveFileChunk) GetInfo() isSaveFileChunk_Info {
+func (x *SaveFileRequest) GetInfo() isSaveFileRequest_Info {
 	if x != nil {
 		return x.Info
 	}
 	return nil
 }
 
-func (x *SaveFileChunk) GetMeta() *RequiredFile {
+func (x *SaveFileRequest) GetMeta() *NewFile {
 	if x != nil {
-		if x, ok := x.Info.(*SaveFileChunk_Meta); ok {
+		if x, ok := x.Info.(*SaveFileRequest_Meta); ok {
 			return x.Meta
 		}
 	}
 	return nil
 }
 
-func (x *SaveFileChunk) GetChunk() *Chunk {
+func (x *SaveFileRequest) GetChunk() []byte {
 	if x != nil {
-		if x, ok := x.Info.(*SaveFileChunk_Chunk); ok {
+		if x, ok := x.Info.(*SaveFileRequest_Chunk); ok {
 			return x.Chunk
 		}
 	}
 	return nil
 }
 
-type isSaveFileChunk_Info interface {
-	isSaveFileChunk_Info()
+type isSaveFileRequest_Info interface {
+	isSaveFileRequest_Info()
 }
 
-type SaveFileChunk_Meta struct {
-	Meta *RequiredFile `protobuf:"bytes,1,opt,name=meta,proto3,oneof"`
+type SaveFileRequest_Meta struct {
+	Meta *NewFile `protobuf:"bytes,1,opt,name=meta,proto3,oneof"`
 }
 
-type SaveFileChunk_Chunk struct {
-	Chunk *Chunk `protobuf:"bytes,2,opt,name=chunk,proto3,oneof"`
+type SaveFileRequest_Chunk struct {
+	Chunk []byte `protobuf:"bytes,2,opt,name=chunk,proto3,oneof"`
 }
 
-func (*SaveFileChunk_Meta) isSaveFileChunk_Info() {}
+func (*SaveFileRequest_Meta) isSaveFileRequest_Info() {}
 
-func (*SaveFileChunk_Chunk) isSaveFileChunk_Info() {}
+func (*SaveFileRequest_Chunk) isSaveFileRequest_Info() {}
 
 type SHASum struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -269,7 +313,7 @@ type SHASum struct {
 
 func (x *SHASum) Reset() {
 	*x = SHASum{}
-	mi := &file_files_files_proto_msgTypes[4]
+	mi := &file_files_files_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -281,7 +325,7 @@ func (x *SHASum) String() string {
 func (*SHASum) ProtoMessage() {}
 
 func (x *SHASum) ProtoReflect() protoreflect.Message {
-	mi := &file_files_files_proto_msgTypes[4]
+	mi := &file_files_files_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -294,7 +338,7 @@ func (x *SHASum) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SHASum.ProtoReflect.Descriptor instead.
 func (*SHASum) Descriptor() ([]byte, []int) {
-	return file_files_files_proto_rawDescGZIP(), []int{4}
+	return file_files_files_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SHASum) GetValue() []byte {
@@ -316,7 +360,7 @@ type FileInfo struct {
 
 func (x *FileInfo) Reset() {
 	*x = FileInfo{}
-	mi := &file_files_files_proto_msgTypes[5]
+	mi := &file_files_files_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -328,7 +372,7 @@ func (x *FileInfo) String() string {
 func (*FileInfo) ProtoMessage() {}
 
 func (x *FileInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_files_files_proto_msgTypes[5]
+	mi := &file_files_files_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -341,7 +385,7 @@ func (x *FileInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileInfo.ProtoReflect.Descriptor instead.
 func (*FileInfo) Descriptor() ([]byte, []int) {
-	return file_files_files_proto_rawDescGZIP(), []int{5}
+	return file_files_files_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *FileInfo) GetName() string {
@@ -381,7 +425,7 @@ type FilesList struct {
 
 func (x *FilesList) Reset() {
 	*x = FilesList{}
-	mi := &file_files_files_proto_msgTypes[6]
+	mi := &file_files_files_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -393,7 +437,7 @@ func (x *FilesList) String() string {
 func (*FilesList) ProtoMessage() {}
 
 func (x *FilesList) ProtoReflect() protoreflect.Message {
-	mi := &file_files_files_proto_msgTypes[6]
+	mi := &file_files_files_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -406,7 +450,7 @@ func (x *FilesList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilesList.ProtoReflect.Descriptor instead.
 func (*FilesList) Descriptor() ([]byte, []int) {
-	return file_files_files_proto_rawDescGZIP(), []int{6}
+	return file_files_files_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *FilesList) GetValue() []*FileInfo {
@@ -425,7 +469,7 @@ type Size struct {
 
 func (x *Size) Reset() {
 	*x = Size{}
-	mi := &file_files_files_proto_msgTypes[7]
+	mi := &file_files_files_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -437,7 +481,7 @@ func (x *Size) String() string {
 func (*Size) ProtoMessage() {}
 
 func (x *Size) ProtoReflect() protoreflect.Message {
-	mi := &file_files_files_proto_msgTypes[7]
+	mi := &file_files_files_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -450,7 +494,7 @@ func (x *Size) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Size.ProtoReflect.Descriptor instead.
 func (*Size) Descriptor() ([]byte, []int) {
-	return file_files_files_proto_rawDescGZIP(), []int{7}
+	return file_files_files_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Size) GetValue() uint64 {
@@ -462,15 +506,15 @@ func (x *Size) GetValue() uint64 {
 
 type ReplaceDirRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Target        *Directory             `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
-	To            *Directory             `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	Target        string                 `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	To            string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ReplaceDirRequest) Reset() {
 	*x = ReplaceDirRequest{}
-	mi := &file_files_files_proto_msgTypes[8]
+	mi := &file_files_files_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -482,7 +526,7 @@ func (x *ReplaceDirRequest) String() string {
 func (*ReplaceDirRequest) ProtoMessage() {}
 
 func (x *ReplaceDirRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_files_files_proto_msgTypes[8]
+	mi := &file_files_files_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -495,34 +539,34 @@ func (x *ReplaceDirRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplaceDirRequest.ProtoReflect.Descriptor instead.
 func (*ReplaceDirRequest) Descriptor() ([]byte, []int) {
-	return file_files_files_proto_rawDescGZIP(), []int{8}
+	return file_files_files_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *ReplaceDirRequest) GetTarget() *Directory {
+func (x *ReplaceDirRequest) GetTarget() string {
 	if x != nil {
 		return x.Target
 	}
-	return nil
+	return ""
 }
 
-func (x *ReplaceDirRequest) GetTo() *Directory {
+func (x *ReplaceDirRequest) GetTo() string {
 	if x != nil {
 		return x.To
 	}
-	return nil
+	return ""
 }
 
 type ReplaceFileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Target        *RequiredFile          `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
-	To            *RequiredFile          `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	Target        *TargetFile            `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	To            *TargetFile            `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ReplaceFileRequest) Reset() {
 	*x = ReplaceFileRequest{}
-	mi := &file_files_files_proto_msgTypes[9]
+	mi := &file_files_files_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -534,7 +578,7 @@ func (x *ReplaceFileRequest) String() string {
 func (*ReplaceFileRequest) ProtoMessage() {}
 
 func (x *ReplaceFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_files_files_proto_msgTypes[9]
+	mi := &file_files_files_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -547,17 +591,17 @@ func (x *ReplaceFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplaceFileRequest.ProtoReflect.Descriptor instead.
 func (*ReplaceFileRequest) Descriptor() ([]byte, []int) {
-	return file_files_files_proto_rawDescGZIP(), []int{9}
+	return file_files_files_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *ReplaceFileRequest) GetTarget() *RequiredFile {
+func (x *ReplaceFileRequest) GetTarget() *TargetFile {
 	if x != nil {
 		return x.Target
 	}
 	return nil
 }
 
-func (x *ReplaceFileRequest) GetTo() *RequiredFile {
+func (x *ReplaceFileRequest) GetTo() *TargetFile {
 	if x != nil {
 		return x.To
 	}
@@ -568,21 +612,22 @@ var File_files_files_proto protoreflect.FileDescriptor
 
 const file_files_files_proto_rawDesc = "" +
 	"\n" +
-	"\x11files/files.proto\x12\x05files\x1a\x1bgoogle/protobuf/empty.proto\"!\n" +
-	"\tDirectory\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"q\n" +
-	"\fRequiredFile\x12\"\n" +
-	"\x03dir\x18\x01 \x01(\v2\x10.files.DirectoryR\x03dir\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
-	"\anewSize\x18\x03 \x01(\x04H\x00R\anewSize\x88\x01\x01B\n" +
+	"\x11files/files.proto\x12\x05files\x1a\x1bgoogle/protobuf/empty.proto\"'\n" +
+	"\x0fTargetDirectory\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\">\n" +
 	"\n" +
-	"\b_newSize\"3\n" +
-	"\x05Chunk\x12\x12\n" +
+	"TargetFile\x12\x1c\n" +
+	"\tdirectory\x18\x01 \x01(\tR\tdirectory\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"H\n" +
+	"\aNewFile\x12)\n" +
+	"\x06target\x18\x01 \x01(\v2\x11.files.TargetFileR\x06target\x12\x12\n" +
+	"\x04size\x18\x02 \x01(\x04R\x04size\":\n" +
+	"\fLocatedChunk\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x04R\x06offset\"h\n" +
-	"\rSaveFileChunk\x12)\n" +
-	"\x04meta\x18\x01 \x01(\v2\x13.files.RequiredFileH\x00R\x04meta\x12$\n" +
-	"\x05chunk\x18\x02 \x01(\v2\f.files.ChunkH\x00R\x05chunkB\x06\n" +
+	"\x06offset\x18\x02 \x01(\x04R\x06offset\"W\n" +
+	"\x0fSaveFileRequest\x12$\n" +
+	"\x04meta\x18\x01 \x01(\v2\x0e.files.NewFileH\x00R\x04meta\x12\x16\n" +
+	"\x05chunk\x18\x02 \x01(\fH\x00R\x05chunkB\x06\n" +
 	"\x04Info\"\x1e\n" +
 	"\x06SHASum\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\fR\x05value\"b\n" +
@@ -594,23 +639,23 @@ const file_files_files_proto_rawDesc = "" +
 	"\tFilesList\x12%\n" +
 	"\x05value\x18\x01 \x03(\v2\x0f.files.FileInfoR\x05value\"\x1c\n" +
 	"\x04Size\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\x04R\x05value\"_\n" +
-	"\x11ReplaceDirRequest\x12(\n" +
-	"\x06target\x18\x01 \x01(\v2\x10.files.DirectoryR\x06target\x12 \n" +
-	"\x02to\x18\x02 \x01(\v2\x10.files.DirectoryR\x02to\"f\n" +
-	"\x12ReplaceFileRequest\x12+\n" +
-	"\x06target\x18\x01 \x01(\v2\x13.files.RequiredFileR\x06target\x12#\n" +
-	"\x02to\x18\x02 \x01(\v2\x13.files.RequiredFileR\x02to2\xc2\x04\n" +
-	"\fFilesService\x12:\n" +
-	"\bSaveFile\x12\x14.files.SaveFileChunk\x1a\x16.google.protobuf.Empty(\x01\x12/\n" +
-	"\bReadFile\x12\x13.files.RequiredFile\x1a\f.files.Chunk0\x01\x12,\n" +
-	"\x06GetSum\x12\x13.files.RequiredFile\x1a\r.files.SHASum\x12.\n" +
-	"\bGetFiles\x12\x10.files.Directory\x1a\x10.files.FilesList\x12<\n" +
-	"\x15GetAvailableDiskSpace\x12\x16.google.protobuf.Empty\x1a\v.files.Size\x125\n" +
-	"\tCreateDir\x12\x10.files.Directory\x1a\x16.google.protobuf.Empty\x125\n" +
-	"\tRemoveDir\x12\x10.files.Directory\x1a\x16.google.protobuf.Empty\x129\n" +
+	"\x05value\x18\x01 \x01(\x04R\x05value\";\n" +
+	"\x11ReplaceDirRequest\x12\x16\n" +
+	"\x06target\x18\x01 \x01(\tR\x06target\x12\x0e\n" +
+	"\x02to\x18\x02 \x01(\tR\x02to\"b\n" +
+	"\x12ReplaceFileRequest\x12)\n" +
+	"\x06target\x18\x01 \x01(\v2\x11.files.TargetFileR\x06target\x12!\n" +
+	"\x02to\x18\x02 \x01(\v2\x11.files.TargetFileR\x02to2\xd7\x04\n" +
+	"\fFilesService\x12<\n" +
+	"\bSaveFile\x12\x16.files.SaveFileRequest\x1a\x16.google.protobuf.Empty(\x01\x124\n" +
+	"\bReadFile\x12\x11.files.TargetFile\x1a\x13.files.LocatedChunk0\x01\x12*\n" +
+	"\x06GetSum\x12\x11.files.TargetFile\x1a\r.files.SHASum\x124\n" +
+	"\bGetFiles\x12\x16.files.TargetDirectory\x1a\x10.files.FilesList\x12<\n" +
+	"\x15GetAvailableDiskSpace\x12\x16.google.protobuf.Empty\x1a\v.files.Size\x12;\n" +
+	"\tCreateDir\x12\x16.files.TargetDirectory\x1a\x16.google.protobuf.Empty\x12;\n" +
+	"\tRemoveDir\x12\x16.files.TargetDirectory\x1a\x16.google.protobuf.Empty\x127\n" +
 	"\n" +
-	"RemoveFile\x12\x13.files.RequiredFile\x1a\x16.google.protobuf.Empty\x12>\n" +
+	"RemoveFile\x12\x11.files.TargetFile\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\n" +
 	"ReplaceDir\x12\x18.files.ReplaceDirRequest\x1a\x16.google.protobuf.Empty\x12@\n" +
 	"\vReplaceFile\x12\x19.files.ReplaceFileRequest\x1a\x16.google.protobuf.EmptyB/Z-github.com/braginantonev/mhserver/proto/filesb\x06proto3"
@@ -627,54 +672,52 @@ func file_files_files_proto_rawDescGZIP() []byte {
 	return file_files_files_proto_rawDescData
 }
 
-var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_files_files_proto_goTypes = []any{
-	(*Directory)(nil),          // 0: files.Directory
-	(*RequiredFile)(nil),       // 1: files.RequiredFile
-	(*Chunk)(nil),              // 2: files.Chunk
-	(*SaveFileChunk)(nil),      // 3: files.SaveFileChunk
-	(*SHASum)(nil),             // 4: files.SHASum
-	(*FileInfo)(nil),           // 5: files.FileInfo
-	(*FilesList)(nil),          // 6: files.FilesList
-	(*Size)(nil),               // 7: files.Size
-	(*ReplaceDirRequest)(nil),  // 8: files.ReplaceDirRequest
-	(*ReplaceFileRequest)(nil), // 9: files.ReplaceFileRequest
-	(*emptypb.Empty)(nil),      // 10: google.protobuf.Empty
+	(*TargetDirectory)(nil),    // 0: files.TargetDirectory
+	(*TargetFile)(nil),         // 1: files.TargetFile
+	(*NewFile)(nil),            // 2: files.NewFile
+	(*LocatedChunk)(nil),       // 3: files.LocatedChunk
+	(*SaveFileRequest)(nil),    // 4: files.SaveFileRequest
+	(*SHASum)(nil),             // 5: files.SHASum
+	(*FileInfo)(nil),           // 6: files.FileInfo
+	(*FilesList)(nil),          // 7: files.FilesList
+	(*Size)(nil),               // 8: files.Size
+	(*ReplaceDirRequest)(nil),  // 9: files.ReplaceDirRequest
+	(*ReplaceFileRequest)(nil), // 10: files.ReplaceFileRequest
+	(*emptypb.Empty)(nil),      // 11: google.protobuf.Empty
 }
 var file_files_files_proto_depIdxs = []int32{
-	0,  // 0: files.RequiredFile.dir:type_name -> files.Directory
-	1,  // 1: files.SaveFileChunk.meta:type_name -> files.RequiredFile
-	2,  // 2: files.SaveFileChunk.chunk:type_name -> files.Chunk
-	5,  // 3: files.FilesList.value:type_name -> files.FileInfo
-	0,  // 4: files.ReplaceDirRequest.target:type_name -> files.Directory
-	0,  // 5: files.ReplaceDirRequest.to:type_name -> files.Directory
-	1,  // 6: files.ReplaceFileRequest.target:type_name -> files.RequiredFile
-	1,  // 7: files.ReplaceFileRequest.to:type_name -> files.RequiredFile
-	3,  // 8: files.FilesService.SaveFile:input_type -> files.SaveFileChunk
-	1,  // 9: files.FilesService.ReadFile:input_type -> files.RequiredFile
-	1,  // 10: files.FilesService.GetSum:input_type -> files.RequiredFile
-	0,  // 11: files.FilesService.GetFiles:input_type -> files.Directory
-	10, // 12: files.FilesService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
-	0,  // 13: files.FilesService.CreateDir:input_type -> files.Directory
-	0,  // 14: files.FilesService.RemoveDir:input_type -> files.Directory
-	1,  // 15: files.FilesService.RemoveFile:input_type -> files.RequiredFile
-	8,  // 16: files.FilesService.ReplaceDir:input_type -> files.ReplaceDirRequest
-	9,  // 17: files.FilesService.ReplaceFile:input_type -> files.ReplaceFileRequest
-	10, // 18: files.FilesService.SaveFile:output_type -> google.protobuf.Empty
-	2,  // 19: files.FilesService.ReadFile:output_type -> files.Chunk
-	4,  // 20: files.FilesService.GetSum:output_type -> files.SHASum
-	6,  // 21: files.FilesService.GetFiles:output_type -> files.FilesList
-	7,  // 22: files.FilesService.GetAvailableDiskSpace:output_type -> files.Size
-	10, // 23: files.FilesService.CreateDir:output_type -> google.protobuf.Empty
-	10, // 24: files.FilesService.RemoveDir:output_type -> google.protobuf.Empty
-	10, // 25: files.FilesService.RemoveFile:output_type -> google.protobuf.Empty
-	10, // 26: files.FilesService.ReplaceDir:output_type -> google.protobuf.Empty
-	10, // 27: files.FilesService.ReplaceFile:output_type -> google.protobuf.Empty
-	18, // [18:28] is the sub-list for method output_type
-	8,  // [8:18] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	1,  // 0: files.NewFile.target:type_name -> files.TargetFile
+	2,  // 1: files.SaveFileRequest.meta:type_name -> files.NewFile
+	6,  // 2: files.FilesList.value:type_name -> files.FileInfo
+	1,  // 3: files.ReplaceFileRequest.target:type_name -> files.TargetFile
+	1,  // 4: files.ReplaceFileRequest.to:type_name -> files.TargetFile
+	4,  // 5: files.FilesService.SaveFile:input_type -> files.SaveFileRequest
+	1,  // 6: files.FilesService.ReadFile:input_type -> files.TargetFile
+	1,  // 7: files.FilesService.GetSum:input_type -> files.TargetFile
+	0,  // 8: files.FilesService.GetFiles:input_type -> files.TargetDirectory
+	11, // 9: files.FilesService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
+	0,  // 10: files.FilesService.CreateDir:input_type -> files.TargetDirectory
+	0,  // 11: files.FilesService.RemoveDir:input_type -> files.TargetDirectory
+	1,  // 12: files.FilesService.RemoveFile:input_type -> files.TargetFile
+	9,  // 13: files.FilesService.ReplaceDir:input_type -> files.ReplaceDirRequest
+	10, // 14: files.FilesService.ReplaceFile:input_type -> files.ReplaceFileRequest
+	11, // 15: files.FilesService.SaveFile:output_type -> google.protobuf.Empty
+	3,  // 16: files.FilesService.ReadFile:output_type -> files.LocatedChunk
+	5,  // 17: files.FilesService.GetSum:output_type -> files.SHASum
+	7,  // 18: files.FilesService.GetFiles:output_type -> files.FilesList
+	8,  // 19: files.FilesService.GetAvailableDiskSpace:output_type -> files.Size
+	11, // 20: files.FilesService.CreateDir:output_type -> google.protobuf.Empty
+	11, // 21: files.FilesService.RemoveDir:output_type -> google.protobuf.Empty
+	11, // 22: files.FilesService.RemoveFile:output_type -> google.protobuf.Empty
+	11, // 23: files.FilesService.ReplaceDir:output_type -> google.protobuf.Empty
+	11, // 24: files.FilesService.ReplaceFile:output_type -> google.protobuf.Empty
+	15, // [15:25] is the sub-list for method output_type
+	5,  // [5:15] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_files_files_proto_init() }
@@ -682,10 +725,9 @@ func file_files_files_proto_init() {
 	if File_files_files_proto != nil {
 		return
 	}
-	file_files_files_proto_msgTypes[1].OneofWrappers = []any{}
-	file_files_files_proto_msgTypes[3].OneofWrappers = []any{
-		(*SaveFileChunk_Meta)(nil),
-		(*SaveFileChunk_Chunk)(nil),
+	file_files_files_proto_msgTypes[4].OneofWrappers = []any{
+		(*SaveFileRequest_Meta)(nil),
+		(*SaveFileRequest_Chunk)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -693,7 +735,7 @@ func file_files_files_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_files_files_proto_rawDesc), len(file_files_files_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
