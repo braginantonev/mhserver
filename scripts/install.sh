@@ -145,10 +145,12 @@ simple_update() {
         fi
     done
 
+    read -e -s -p "Enter database password: " DB_PASSWORD
+
     # update database tables
-    #if [ -d "/var/lib/mysql" ] || systemctl list-unit-files | grep -q "mariadb.service"; then
-    #    create_database_tables
-    #fi
+    if [ -d "/var/lib/mysql" ] || systemctl list-unit-files | grep -q "mariadb.service"; then
+        create_database_tables
+    fi
 
     # update executable
     sudo install -o mhserver -g mhserver mhserver $INSTALL_PATH
