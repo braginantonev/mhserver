@@ -29,6 +29,10 @@ var (
 	ErrFileNotExist  error = status.Error(codes.NotFound, "file not exist")
 	ErrReadOutOfFile error = status.Error(codes.OutOfRange, "reading outside of file")
 
+	// Remove rpc's errors
+	ErrTargetIsDir  error = status.Error(codes.InvalidArgument, "target is dir")
+	ErrTargetIsFile error = status.Error(codes.InvalidArgument, "target is file")
+
 	ErrModifyProtectedDir  error = status.Error(codes.PermissionDenied, "attempt to modify protected dir")
 	ErrTargetAlreadyExists error = status.Error(codes.AlreadyExists, "target already exists")
 )

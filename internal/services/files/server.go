@@ -61,7 +61,7 @@ func (s *FilesServer) ensureUserDir(ctx context.Context, username string) error 
 	}
 
 	for _, usp := range needPreparingUspace {
-		if err := os.Mkdir(filepath.Join(s.cfg.WorkspacePath, usp, username), 0770); err != nil && !errors.Is(err, os.ErrExist) {
+		if err := os.Mkdir(filepath.Join(s.cfg.WorkspacePath, usp, username), 0750); err != nil && !errors.Is(err, os.ErrExist) {
 			slog.ErrorContext(ctx, "failed create user dir", slog.Any("error", err))
 			return ErrInternal
 		}
@@ -349,7 +349,7 @@ func (s *FilesServer) GetFiles(ctx context.Context, dir *pb.Directory) (*pb.File
 		return nil, err
 	}
 
-	user_dir, err := CompileUserDirectory(username, dir.GetValue())
+	user_dir, err := CompileUserDirectory(username, dir.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -408,7 +408,7 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		return nil, ErrInternal
 	}
 
-	target_dir := dir.GetValue()
+	target_dir := dir.Value
 
 	if !s.acceptModifyDir(ctx, target_dir) {
 		return nil, ErrModifyProtectedDir
@@ -423,10 +423,8 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		return nil, err
 	}
 
-	// We use Stat() to check exist dir or not. Of course os.MkdirAll also use Stat() which we use pass already existed dir, but he don't check if this existed dir is not dir.
-	// If we try to MkdirAll on existed `test.json` (for example), we get error: `syscall.ENOTDIR`. Yea, we can use errors.Is() and check that, but if this error
-	// we get in 2 uspace e.g.? We create dirs in 0 and 1 uspace's, but get error in 2. It's a break a rule: dir in every uspace.
-	// Mb it's wrong. I don't like that double Stat() usage
+	// if we create dirs in e.g. uspaces: 0 and 1, and in 2 we have existed file with same name, we get error
+	// so, we check for this file before of mkdir
 	for _, usp := range s.cfg.UserSpaces {
 		fi, err := os.Stat(filepath.Join(s.cfg.WorkspacePath, usp, user_dir))
 		if err != nil {
@@ -444,7 +442,7 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.Directory) (*emptyp
 	}
 
 	for _, usp := range s.cfg.UserSpaces {
-		if err := os.MkdirAll(filepath.Join(s.cfg.WorkspacePath, usp, user_dir), 0770); err != nil {
+		if err := mkdirAllTrust(filepath.Join(s.cfg.WorkspacePath, usp), user_dir, 0770); err != nil {
 			slog.ErrorContext(ctx, "failed create user directory", slog.Any("err", err))
 			return nil, ErrInternal
 		}
@@ -463,7 +461,7 @@ func (s *FilesServer) RemoveDir(ctx context.Context, dir *pb.Directory) (*emptyp
 		return nil, ErrInternal
 	}
 
-	target_dir := dir.GetValue()
+	target_dir := dir.Value
 
 	if !s.acceptModifyDir(ctx, target_dir) {
 		return nil, ErrModifyProtectedDir
@@ -508,24 +506,26 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.RequiredFile) (*em
 		return nil, err
 	}
 
-	user_file, err := CompileUserFilepath(username, req.GetDir().Value, req.GetName())
+	user_file, err := CompileUserFilepath(username, target_dir, req.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	var removed bool
 	for _, usp := range s.cfg.UserSpaces {
-		err := os.Remove(filepath.Join(s.cfg.WorkspacePath, usp, user_file))
+		err := removeFile(filepath.Join(s.cfg.WorkspacePath, usp, user_file))
 		if err == nil {
 			removed = true
-			break // one uspace - one file
+			break
 		}
 
-		if os.IsNotExist(err) {
+		if err == syscall.ENOENT {
 			continue
 		}
 
-		slog.ErrorContext(ctx, "failed remove user direction", slog.Any("err", err))
+		// we don't check syscall.EISDIR, because server not agree creating file and dir with same name twice
+
+		slog.ErrorContext(ctx, "failed remove user directory", slog.Any("err", err))
 		return nil, ErrInternal
 	}
 
@@ -598,7 +598,7 @@ func (s *FilesServer) ReplaceFile(ctx context.Context, req *pb.ReplaceFileReques
 		return nil, ErrInternal
 	}
 
-	target_dir := req.Target.GetDir().GetValue()
+	target_dir := req.Target.GetDir().GetValue() // todo: test get dir with getter
 	if !s.acceptModifyDir(ctx, target_dir) {
 		return nil, ErrModifyProtectedDir
 	}
