@@ -194,8 +194,6 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 	}
 	defer func() { _ = file.Close() }()
 
-	chunk := make([]byte, 0, s.cfg.ChunkSize)
-
 	var saved uint64
 	for {
 		req, err := stream.Recv()
@@ -207,7 +205,7 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 			return stream.SendAndClose(&emptypb.Empty{})
 		}
 
-		chunk = req.GetChunk()
+		chunk := req.GetChunk()
 		if len(chunk) == 0 {
 			continue
 		}
@@ -620,10 +618,10 @@ func (s *FilesServer) ReplaceFile(ctx context.Context, req *pb.ReplaceFileReques
 		return nil, err
 	}
 
-	var renamed bool
+	var replaced bool
 	for _, usp := range s.cfg.UserSpaces {
 		if err = os.Rename(filepath.Join(s.cfg.WorkspacePath, usp, target), filepath.Join(s.cfg.WorkspacePath, usp, new)); err == nil {
-			renamed = true
+			replaced = true
 			break // one file - one uspace
 		} else {
 			if os.IsNotExist(err) {
@@ -639,7 +637,7 @@ func (s *FilesServer) ReplaceFile(ctx context.Context, req *pb.ReplaceFileReques
 		}
 	}
 
-	if !renamed {
+	if !replaced {
 		return nil, ErrFileNotExist
 	}
 

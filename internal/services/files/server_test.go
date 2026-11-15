@@ -1399,7 +1399,7 @@ func TestRemoveFile(t *testing.T) {
 			},
 			metadata: nil,
 			req: &pb.TargetFile{
-				Directory: config.UserSpaces[0],
+				Directory: config.ServiceDirs[0],
 				Name:      "in_protected_dir_without_token",
 			},
 			expected_err: files.ErrModifyProtectedDir,
@@ -1416,7 +1416,7 @@ func TestRemoveFile(t *testing.T) {
 			},
 			metadata: metadata.Pairs("internal-token", TEST_SERVER_TOKEN, string(contextkeys.SenderService), config.ServiceDirs[0]),
 			req: &pb.TargetFile{
-				Directory: config.UserSpaces[0],
+				Directory: config.ServiceDirs[0],
 				Name:      "in_protected_dir_with_token",
 			},
 			expected_err: nil,
