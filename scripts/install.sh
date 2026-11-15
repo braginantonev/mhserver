@@ -118,6 +118,7 @@ Type=simple
 User=mhserver
 Group=mhserver
 
+WorkingDirectory=/opt/mhserver
 ExecStart=/opt/mhserver/mhserver
 ExecReload=/opt/mhserver/mhserver
 
