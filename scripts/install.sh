@@ -142,11 +142,17 @@ simple_update() {
     local current_dir=$(pwd)
     mapfile -t files <<< "$row"
 
-    # install new files
+    echo "Install new files..."
     for f in ${files[@]}; do
         if [[ !(-e $f) ]]; then
             sudo install -o mhserver -g mhserver $current_dir/$f $INSTALL_PATH
         fi
+    done
+
+    echo "Update scripts..."
+    local scripts=$(ls | grep .sh)
+    for s in ${scripts[@]}; do
+        sudo install -o mhserver -g mhserver $s $INSTALL_PATH
     done
 
     read -e -s -p "Enter database password: " DB_PASSWORD

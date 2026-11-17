@@ -15,7 +15,7 @@ fi
 
 TARGET_USPACE=$TARGET/.mhserver
 
-mkdir $TARGET_USPACE
+sudo mkdir $TARGET_USPACE
 sudo chown mhserver:mhserver $TARGET_USPACE
 sudo chmod 770 $TARGET_USPACE
 
