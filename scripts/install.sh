@@ -95,7 +95,7 @@ EOF
     sudo chown -R mhserver:mhserver $INSTALL_PATH
     sudo chmod 666 $INSTALL_PATH/server.conf
 
-    sudo install -o mhserver -g mhserver -m 0660 .env $INSTALL_PATH
+    sudo install -o mhserver -g mhserver -m 0600 .env $INSTALL_PATH
     rm .env 
 
     if [[ $(yn_input "Do you want to create server database here?") == "y" ]]; then
@@ -130,6 +130,9 @@ WantedBy=multi-user.target
 EOF
 
     sudo systemctl daemon-reload
+
+    sudo mkdir /srv/mhserver
+    sudo chown mhserver:mhserver /srv/mhserver
 
     echo -e "\nMHServer installed. Now you can configure and use them"
 }
