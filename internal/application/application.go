@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"sync"
+	"path/filepath"
 
 	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -63,8 +63,15 @@ func (app *Application) Run(ctx context.Context) error {
 	internalTokenInterceptor := app.getInternalTokenInterceptor()
 	ratelimitInterceptor := app.getRateLimitInterceptor(ctx)
 
+	creds, err := credentials.NewServerTLSFromFile(filepath.Join(app.cfg.WorkspacePath, "ssl/org.crt"), filepath.Join(app.cfg.WorkspacePath, "ssl/rootCA.key"))
+	if err != nil {
+		slog.ErrorContext(ctx, "failed create server credentials", slog.Any("error", err))
+		return fmt.Errorf("failed init server")
+	}
+
 	grpc_server := grpc.NewServer(
-		grpc.MaxRecvMsgSize(int(10*1024*1024)), // additional bytes to avoid memory leak, when max chunk size is very small
+		grpc.Creds(creds),
+		grpc.MaxRecvMsgSize(int(1024*1024+5*1024)),
 		grpc.ChainUnaryInterceptor(
 			ratelimitInterceptor.Unary,
 			internalTokenInterceptor.Unary,
@@ -83,9 +90,11 @@ func (app *Application) Run(ctx context.Context) error {
 	conns := make(map[config.Socket]*grpc.ClientConn)
 	dependencies := make(map[config.ServiceName]*grpc.ClientConn)
 
-	deps_warn := sync.OnceFunc(func() {
-		slog.WarnContext(ctx, "Dependencies init found!\nPlease ensure your all dependency servers placed in one local net.\nIt's dangerous to place dependencies servers in global net, because clients for him does not provide TLS")
-	})
+	dependency_creds, err := credentials.NewClientTLSFromFile(filepath.Join(app.cfg.WorkspacePath, "ssl/rootCA.pem"), "")
+	if err != nil {
+		slog.ErrorContext(ctx, "failed create dependency credentials", slog.Any("error", err))
+		return fmt.Errorf("failed init dependencies")
+	}
 
 	for name, s := range services {
 		if !s.Enabled {
@@ -96,8 +105,6 @@ func (app *Application) Run(ctx context.Context) error {
 		enabled = append(enabled, name)
 
 		for dep, socket := range s.Dependencies {
-			deps_warn()
-
 			if _, ok := dependencies[dep]; ok {
 				continue // dependency connection already initialized
 			}
@@ -105,7 +112,7 @@ func (app *Application) Run(ctx context.Context) error {
 			if c, ok := conns[socket]; ok {
 				dependencies[dep] = c
 			} else {
-				client, err := grpc.NewClient(socket.Compile(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+				client, err := grpc.NewClient(socket.Compile(), grpc.WithTransportCredentials(dependency_creds))
 				if err != nil {
 					slog.ErrorContext(ctx, "Failed create client for dependency", slog.String("dependency", string(dep)), slog.Any("error", err))
 					return fmt.Errorf("failed init dependencies")
