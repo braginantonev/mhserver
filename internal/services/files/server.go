@@ -30,7 +30,6 @@ type FilesServer struct {
 
 	cfg    DataServiceConfig
 	reqSem repository.Semaphore
-	IOSem  repository.Semaphore
 
 	// Ensured users - it's users, whish user dir create in every uspace.
 	// To avoid checking every rpc, we keep them in array.
@@ -43,7 +42,6 @@ func NewFilesServer(ctx context.Context, cfg DataServiceConfig) *FilesServer {
 	return &FilesServer{
 		cfg:          cfg,
 		reqSem:       repository.NewSemaphore(MAIN_SEMAPHORE_SIZE),
-		IOSem:        repository.NewSemaphore(LOAD_SEMAPHORE_SIZE),
 		ensuredUsers: make([]string, 0, 10),
 	}
 }
@@ -198,9 +196,6 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 
 	var saved uint64
 	for {
-		s.IOSem.Acquire()
-		defer s.IOSem.Release()
-
 		req, err := stream.Recv()
 		if err == io.EOF {
 			if err = file.Sync(); err != nil {
@@ -265,9 +260,6 @@ func (s *FilesServer) ReadFile(req *pb.TargetFile, stream pb.FilesService_ReadFi
 
 readLoop:
 	for i := range chunks_count {
-		s.IOSem.Acquire()
-		defer s.IOSem.Release()
-
 		select {
 		case <-stream.Context().Done():
 			break readLoop
