@@ -4,7 +4,7 @@
 // - protoc             v7.36.1
 // source: files/files.proto
 
-package files
+package v3
 
 import (
 	context "context"
@@ -20,16 +20,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FilesService_SaveFile_FullMethodName              = "/files.FilesService/SaveFile"
-	FilesService_ReadFile_FullMethodName              = "/files.FilesService/ReadFile"
-	FilesService_GetSum_FullMethodName                = "/files.FilesService/GetSum"
-	FilesService_GetFiles_FullMethodName              = "/files.FilesService/GetFiles"
-	FilesService_GetAvailableDiskSpace_FullMethodName = "/files.FilesService/GetAvailableDiskSpace"
-	FilesService_CreateDir_FullMethodName             = "/files.FilesService/CreateDir"
-	FilesService_RemoveDir_FullMethodName             = "/files.FilesService/RemoveDir"
-	FilesService_RemoveFile_FullMethodName            = "/files.FilesService/RemoveFile"
-	FilesService_ReplaceDir_FullMethodName            = "/files.FilesService/ReplaceDir"
-	FilesService_ReplaceFile_FullMethodName           = "/files.FilesService/ReplaceFile"
+	FilesService_SaveFile_FullMethodName              = "/files.v3.FilesService/SaveFile"
+	FilesService_ReadFile_FullMethodName              = "/files.v3.FilesService/ReadFile"
+	FilesService_GetSum_FullMethodName                = "/files.v3.FilesService/GetSum"
+	FilesService_GetFiles_FullMethodName              = "/files.v3.FilesService/GetFiles"
+	FilesService_GetAvailableDiskSpace_FullMethodName = "/files.v3.FilesService/GetAvailableDiskSpace"
+	FilesService_CreateDir_FullMethodName             = "/files.v3.FilesService/CreateDir"
+	FilesService_RemoveDir_FullMethodName             = "/files.v3.FilesService/RemoveDir"
+	FilesService_RemoveFile_FullMethodName            = "/files.v3.FilesService/RemoveFile"
+	FilesService_ReplaceDir_FullMethodName            = "/files.v3.FilesService/ReplaceDir"
+	FilesService_ReplaceFile_FullMethodName           = "/files.v3.FilesService/ReplaceFile"
 )
 
 // FilesServiceClient is the client API for FilesService service.
@@ -409,7 +409,7 @@ func _FilesService_ReplaceFile_Handler(srv interface{}, ctx context.Context, dec
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var FilesService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "files.FilesService",
+	ServiceName: "files.v3.FilesService",
 	HandlerType: (*FilesServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

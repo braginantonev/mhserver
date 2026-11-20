@@ -4,7 +4,7 @@
 // 	protoc        v7.36.1
 // source: files/files.proto
 
-package files
+package v3
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -612,21 +612,21 @@ var File_files_files_proto protoreflect.FileDescriptor
 
 const file_files_files_proto_rawDesc = "" +
 	"\n" +
-	"\x11files/files.proto\x12\x05files\x1a\x1bgoogle/protobuf/empty.proto\"'\n" +
+	"\x11files/files.proto\x12\bfiles.v3\x1a\x1bgoogle/protobuf/empty.proto\"'\n" +
 	"\x0fTargetDirectory\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\">\n" +
 	"\n" +
 	"TargetFile\x12\x1c\n" +
 	"\tdirectory\x18\x01 \x01(\tR\tdirectory\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"H\n" +
-	"\aNewFile\x12)\n" +
-	"\x06target\x18\x01 \x01(\v2\x11.files.TargetFileR\x06target\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"K\n" +
+	"\aNewFile\x12,\n" +
+	"\x06target\x18\x01 \x01(\v2\x14.files.v3.TargetFileR\x06target\x12\x12\n" +
 	"\x04size\x18\x02 \x01(\x04R\x04size\":\n" +
 	"\fLocatedChunk\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x04R\x06offset\"W\n" +
-	"\x0fSaveFileRequest\x12$\n" +
-	"\x04meta\x18\x01 \x01(\v2\x0e.files.NewFileH\x00R\x04meta\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\x04R\x06offset\"Z\n" +
+	"\x0fSaveFileRequest\x12'\n" +
+	"\x04meta\x18\x01 \x01(\v2\x11.files.v3.NewFileH\x00R\x04meta\x12\x16\n" +
 	"\x05chunk\x18\x02 \x01(\fH\x00R\x05chunkB\x06\n" +
 	"\x04Info\"\x1e\n" +
 	"\x06SHASum\x12\x14\n" +
@@ -635,30 +635,30 @@ const file_files_files_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05isDir\x18\x02 \x01(\bR\x05isDir\x12\x12\n" +
 	"\x04size\x18\x03 \x01(\x04R\x04size\x12\x18\n" +
-	"\amodTime\x18\x04 \x01(\x04R\amodTime\"2\n" +
-	"\tFilesList\x12%\n" +
-	"\x05value\x18\x01 \x03(\v2\x0f.files.FileInfoR\x05value\"\x1c\n" +
+	"\amodTime\x18\x04 \x01(\x04R\amodTime\"5\n" +
+	"\tFilesList\x12(\n" +
+	"\x05value\x18\x01 \x03(\v2\x12.files.v3.FileInfoR\x05value\"\x1c\n" +
 	"\x04Size\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\x04R\x05value\";\n" +
 	"\x11ReplaceDirRequest\x12\x16\n" +
 	"\x06target\x18\x01 \x01(\tR\x06target\x12\x0e\n" +
-	"\x02to\x18\x02 \x01(\tR\x02to\"b\n" +
-	"\x12ReplaceFileRequest\x12)\n" +
-	"\x06target\x18\x01 \x01(\v2\x11.files.TargetFileR\x06target\x12!\n" +
-	"\x02to\x18\x02 \x01(\v2\x11.files.TargetFileR\x02to2\xd7\x04\n" +
-	"\fFilesService\x12<\n" +
-	"\bSaveFile\x12\x16.files.SaveFileRequest\x1a\x16.google.protobuf.Empty(\x01\x124\n" +
-	"\bReadFile\x12\x11.files.TargetFile\x1a\x13.files.LocatedChunk0\x01\x12*\n" +
-	"\x06GetSum\x12\x11.files.TargetFile\x1a\r.files.SHASum\x124\n" +
-	"\bGetFiles\x12\x16.files.TargetDirectory\x1a\x10.files.FilesList\x12<\n" +
-	"\x15GetAvailableDiskSpace\x12\x16.google.protobuf.Empty\x1a\v.files.Size\x12;\n" +
-	"\tCreateDir\x12\x16.files.TargetDirectory\x1a\x16.google.protobuf.Empty\x12;\n" +
-	"\tRemoveDir\x12\x16.files.TargetDirectory\x1a\x16.google.protobuf.Empty\x127\n" +
+	"\x02to\x18\x02 \x01(\tR\x02to\"h\n" +
+	"\x12ReplaceFileRequest\x12,\n" +
+	"\x06target\x18\x01 \x01(\v2\x14.files.v3.TargetFileR\x06target\x12$\n" +
+	"\x02to\x18\x02 \x01(\v2\x14.files.v3.TargetFileR\x02to2\xfe\x04\n" +
+	"\fFilesService\x12?\n" +
+	"\bSaveFile\x12\x19.files.v3.SaveFileRequest\x1a\x16.google.protobuf.Empty(\x01\x12:\n" +
+	"\bReadFile\x12\x14.files.v3.TargetFile\x1a\x16.files.v3.LocatedChunk0\x01\x120\n" +
+	"\x06GetSum\x12\x14.files.v3.TargetFile\x1a\x10.files.v3.SHASum\x12:\n" +
+	"\bGetFiles\x12\x19.files.v3.TargetDirectory\x1a\x13.files.v3.FilesList\x12?\n" +
+	"\x15GetAvailableDiskSpace\x12\x16.google.protobuf.Empty\x1a\x0e.files.v3.Size\x12>\n" +
+	"\tCreateDir\x12\x19.files.v3.TargetDirectory\x1a\x16.google.protobuf.Empty\x12>\n" +
+	"\tRemoveDir\x12\x19.files.v3.TargetDirectory\x1a\x16.google.protobuf.Empty\x12:\n" +
 	"\n" +
-	"RemoveFile\x12\x11.files.TargetFile\x1a\x16.google.protobuf.Empty\x12>\n" +
+	"RemoveFile\x12\x14.files.v3.TargetFile\x1a\x16.google.protobuf.Empty\x12A\n" +
 	"\n" +
-	"ReplaceDir\x12\x18.files.ReplaceDirRequest\x1a\x16.google.protobuf.Empty\x12@\n" +
-	"\vReplaceFile\x12\x19.files.ReplaceFileRequest\x1a\x16.google.protobuf.EmptyB/Z-github.com/braginantonev/mhserver/proto/filesb\x06proto3"
+	"ReplaceDir\x12\x1b.files.v3.ReplaceDirRequest\x1a\x16.google.protobuf.Empty\x12C\n" +
+	"\vReplaceFile\x12\x1c.files.v3.ReplaceFileRequest\x1a\x16.google.protobuf.EmptyB2Z0github.com/braginantonev/mhserver/proto/files/v3b\x06proto3"
 
 var (
 	file_files_files_proto_rawDescOnce sync.Once
@@ -674,45 +674,45 @@ func file_files_files_proto_rawDescGZIP() []byte {
 
 var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_files_files_proto_goTypes = []any{
-	(*TargetDirectory)(nil),    // 0: files.TargetDirectory
-	(*TargetFile)(nil),         // 1: files.TargetFile
-	(*NewFile)(nil),            // 2: files.NewFile
-	(*LocatedChunk)(nil),       // 3: files.LocatedChunk
-	(*SaveFileRequest)(nil),    // 4: files.SaveFileRequest
-	(*SHASum)(nil),             // 5: files.SHASum
-	(*FileInfo)(nil),           // 6: files.FileInfo
-	(*FilesList)(nil),          // 7: files.FilesList
-	(*Size)(nil),               // 8: files.Size
-	(*ReplaceDirRequest)(nil),  // 9: files.ReplaceDirRequest
-	(*ReplaceFileRequest)(nil), // 10: files.ReplaceFileRequest
+	(*TargetDirectory)(nil),    // 0: files.v3.TargetDirectory
+	(*TargetFile)(nil),         // 1: files.v3.TargetFile
+	(*NewFile)(nil),            // 2: files.v3.NewFile
+	(*LocatedChunk)(nil),       // 3: files.v3.LocatedChunk
+	(*SaveFileRequest)(nil),    // 4: files.v3.SaveFileRequest
+	(*SHASum)(nil),             // 5: files.v3.SHASum
+	(*FileInfo)(nil),           // 6: files.v3.FileInfo
+	(*FilesList)(nil),          // 7: files.v3.FilesList
+	(*Size)(nil),               // 8: files.v3.Size
+	(*ReplaceDirRequest)(nil),  // 9: files.v3.ReplaceDirRequest
+	(*ReplaceFileRequest)(nil), // 10: files.v3.ReplaceFileRequest
 	(*emptypb.Empty)(nil),      // 11: google.protobuf.Empty
 }
 var file_files_files_proto_depIdxs = []int32{
-	1,  // 0: files.NewFile.target:type_name -> files.TargetFile
-	2,  // 1: files.SaveFileRequest.meta:type_name -> files.NewFile
-	6,  // 2: files.FilesList.value:type_name -> files.FileInfo
-	1,  // 3: files.ReplaceFileRequest.target:type_name -> files.TargetFile
-	1,  // 4: files.ReplaceFileRequest.to:type_name -> files.TargetFile
-	4,  // 5: files.FilesService.SaveFile:input_type -> files.SaveFileRequest
-	1,  // 6: files.FilesService.ReadFile:input_type -> files.TargetFile
-	1,  // 7: files.FilesService.GetSum:input_type -> files.TargetFile
-	0,  // 8: files.FilesService.GetFiles:input_type -> files.TargetDirectory
-	11, // 9: files.FilesService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
-	0,  // 10: files.FilesService.CreateDir:input_type -> files.TargetDirectory
-	0,  // 11: files.FilesService.RemoveDir:input_type -> files.TargetDirectory
-	1,  // 12: files.FilesService.RemoveFile:input_type -> files.TargetFile
-	9,  // 13: files.FilesService.ReplaceDir:input_type -> files.ReplaceDirRequest
-	10, // 14: files.FilesService.ReplaceFile:input_type -> files.ReplaceFileRequest
-	11, // 15: files.FilesService.SaveFile:output_type -> google.protobuf.Empty
-	3,  // 16: files.FilesService.ReadFile:output_type -> files.LocatedChunk
-	5,  // 17: files.FilesService.GetSum:output_type -> files.SHASum
-	7,  // 18: files.FilesService.GetFiles:output_type -> files.FilesList
-	8,  // 19: files.FilesService.GetAvailableDiskSpace:output_type -> files.Size
-	11, // 20: files.FilesService.CreateDir:output_type -> google.protobuf.Empty
-	11, // 21: files.FilesService.RemoveDir:output_type -> google.protobuf.Empty
-	11, // 22: files.FilesService.RemoveFile:output_type -> google.protobuf.Empty
-	11, // 23: files.FilesService.ReplaceDir:output_type -> google.protobuf.Empty
-	11, // 24: files.FilesService.ReplaceFile:output_type -> google.protobuf.Empty
+	1,  // 0: files.v3.NewFile.target:type_name -> files.v3.TargetFile
+	2,  // 1: files.v3.SaveFileRequest.meta:type_name -> files.v3.NewFile
+	6,  // 2: files.v3.FilesList.value:type_name -> files.v3.FileInfo
+	1,  // 3: files.v3.ReplaceFileRequest.target:type_name -> files.v3.TargetFile
+	1,  // 4: files.v3.ReplaceFileRequest.to:type_name -> files.v3.TargetFile
+	4,  // 5: files.v3.FilesService.SaveFile:input_type -> files.v3.SaveFileRequest
+	1,  // 6: files.v3.FilesService.ReadFile:input_type -> files.v3.TargetFile
+	1,  // 7: files.v3.FilesService.GetSum:input_type -> files.v3.TargetFile
+	0,  // 8: files.v3.FilesService.GetFiles:input_type -> files.v3.TargetDirectory
+	11, // 9: files.v3.FilesService.GetAvailableDiskSpace:input_type -> google.protobuf.Empty
+	0,  // 10: files.v3.FilesService.CreateDir:input_type -> files.v3.TargetDirectory
+	0,  // 11: files.v3.FilesService.RemoveDir:input_type -> files.v3.TargetDirectory
+	1,  // 12: files.v3.FilesService.RemoveFile:input_type -> files.v3.TargetFile
+	9,  // 13: files.v3.FilesService.ReplaceDir:input_type -> files.v3.ReplaceDirRequest
+	10, // 14: files.v3.FilesService.ReplaceFile:input_type -> files.v3.ReplaceFileRequest
+	11, // 15: files.v3.FilesService.SaveFile:output_type -> google.protobuf.Empty
+	3,  // 16: files.v3.FilesService.ReadFile:output_type -> files.v3.LocatedChunk
+	5,  // 17: files.v3.FilesService.GetSum:output_type -> files.v3.SHASum
+	7,  // 18: files.v3.FilesService.GetFiles:output_type -> files.v3.FilesList
+	8,  // 19: files.v3.FilesService.GetAvailableDiskSpace:output_type -> files.v3.Size
+	11, // 20: files.v3.FilesService.CreateDir:output_type -> google.protobuf.Empty
+	11, // 21: files.v3.FilesService.RemoveDir:output_type -> google.protobuf.Empty
+	11, // 22: files.v3.FilesService.RemoveFile:output_type -> google.protobuf.Empty
+	11, // 23: files.v3.FilesService.ReplaceDir:output_type -> google.protobuf.Empty
+	11, // 24: files.v3.FilesService.ReplaceFile:output_type -> google.protobuf.Empty
 	15, // [15:25] is the sub-list for method output_type
 	5,  // [5:15] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name

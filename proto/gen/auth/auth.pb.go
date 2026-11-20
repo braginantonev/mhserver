@@ -4,7 +4,7 @@
 // 	protoc        v7.36.1
 // source: auth/auth.proto
 
-package auth
+package v3
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -174,21 +174,19 @@ var File_auth_auth_proto protoreflect.FileDescriptor
 
 const file_auth_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x0fauth/auth.proto\x12\x04auth\x1a\x1bgoogle/protobuf/empty.proto\"6\n" +
+	"\x0fauth/auth.proto\x12\aauth.v3\x1a\x1bgoogle/protobuf/empty.proto\"6\n" +
 	"\x04User\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"%\n" +
 	"\rLoginResponse\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"P\n" +
-	"\x0fRegisterRequest\x12\x1e\n" +
-	"\x04user\x18\x01 \x01(\v2\n" +
-	".auth.UserR\x04user\x12\x1d\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"S\n" +
+	"\x0fRegisterRequest\x12!\n" +
+	"\x04user\x18\x01 \x01(\v2\r.auth.v3.UserR\x04user\x12\x1d\n" +
 	"\n" +
-	"secret_key\x18\x02 \x01(\tR\tsecretKey2r\n" +
-	"\vAuthService\x12(\n" +
-	"\x05Login\x12\n" +
-	".auth.User\x1a\x13.auth.LoginResponse\x129\n" +
-	"\bRegister\x12\x15.auth.RegisterRequest\x1a\x16.google.protobuf.EmptyB2Z0github.com/braginantonev/mhserver/proto/gen/authb\x06proto3"
+	"secret_key\x18\x02 \x01(\tR\tsecretKey2{\n" +
+	"\vAuthService\x12.\n" +
+	"\x05Login\x12\r.auth.v3.User\x1a\x16.auth.v3.LoginResponse\x12<\n" +
+	"\bRegister\x12\x18.auth.v3.RegisterRequest\x1a\x16.google.protobuf.EmptyB5Z3github.com/braginantonev/mhserver/proto/gen/auth/v3b\x06proto3"
 
 var (
 	file_auth_auth_proto_rawDescOnce sync.Once
@@ -204,17 +202,17 @@ func file_auth_auth_proto_rawDescGZIP() []byte {
 
 var file_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_auth_auth_proto_goTypes = []any{
-	(*User)(nil),            // 0: auth.User
-	(*LoginResponse)(nil),   // 1: auth.LoginResponse
-	(*RegisterRequest)(nil), // 2: auth.RegisterRequest
+	(*User)(nil),            // 0: auth.v3.User
+	(*LoginResponse)(nil),   // 1: auth.v3.LoginResponse
+	(*RegisterRequest)(nil), // 2: auth.v3.RegisterRequest
 	(*emptypb.Empty)(nil),   // 3: google.protobuf.Empty
 }
 var file_auth_auth_proto_depIdxs = []int32{
-	0, // 0: auth.RegisterRequest.user:type_name -> auth.User
-	0, // 1: auth.AuthService.Login:input_type -> auth.User
-	2, // 2: auth.AuthService.Register:input_type -> auth.RegisterRequest
-	1, // 3: auth.AuthService.Login:output_type -> auth.LoginResponse
-	3, // 4: auth.AuthService.Register:output_type -> google.protobuf.Empty
+	0, // 0: auth.v3.RegisterRequest.user:type_name -> auth.v3.User
+	0, // 1: auth.v3.AuthService.Login:input_type -> auth.v3.User
+	2, // 2: auth.v3.AuthService.Register:input_type -> auth.v3.RegisterRequest
+	1, // 3: auth.v3.AuthService.Login:output_type -> auth.v3.LoginResponse
+	3, // 4: auth.v3.AuthService.Register:output_type -> google.protobuf.Empty
 	3, // [3:5] is the sub-list for method output_type
 	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
