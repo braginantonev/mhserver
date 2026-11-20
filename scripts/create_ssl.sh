@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SAN=""
+
 write_org_info() {
     echo -e "\nWrite organization info\n"
     sudo openssl req -new -key rootCA.key -out org.csr
@@ -11,7 +13,9 @@ create_root_cert() {
 }
 
 create_TLS_cert() {
-    sudo openssl x509 -req -in org.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out org.crt -days 365 -sha256
+    sudo openssl x509 -req -in org.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out org.crt -days 365 -sha256 \
+        -subj "/CN=$SAN" \
+        -extfile v3.ext
 }
 
 # Функция, которая показывает, сколько дней осталось до конца действия сертификата
@@ -33,6 +37,7 @@ fi
 
 echo "SSL Certificate generation..."
 
+
 cd $SERVER_PATH
 
 if [[ !(-e ssl) ]]; then
@@ -40,6 +45,20 @@ if [[ !(-e ssl) ]]; then
 fi
 
 cd ssl
+
+read -e -p "Enter Subject Alternative Name (SAN): " SAN
+
+sudo touch v3.ext
+sudo tee v3.ext >/dev/null <<-EOF
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = $SAN
+DNS.2 = *.$SAN
+EOF
 
 if [[ !(-e rootCA.key) ]]; then
     sudo openssl genrsa -out rootCA.key
