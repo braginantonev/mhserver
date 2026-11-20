@@ -6,48 +6,49 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"sync"
+	"path/filepath"
 
-	appconfig "github.com/braginantonev/mhserver/internal/config/application"
-	"github.com/braginantonev/mhserver/internal/di"
-	"github.com/braginantonev/mhserver/internal/repository/database"
-	"github.com/braginantonev/mhserver/internal/server"
+	"github.com/braginantonev/mhserver/internal/config"
 	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
-type ApplicationMode int
-
 const (
-	AppMode_MainServerOnly ApplicationMode = iota
-	AppMode_SubServersOnly
-	AppMode_AllServers
-
-	DATABASE_NAME    string = "mhserver"
-	CONFIG_DIRECTORY string = "/usr/share/mhserver/"
+	DATABASE_USER string = "mhserver"
+	DATABASE_NAME string = "mhs_main"
 )
 
 type Application struct {
-	cfg appconfig.ApplicationConfig
+	cfg ApplicationConfig
 	db  *sql.DB
 }
 
 func NewApplication() (*Application, error) {
-	cfg := appconfig.NewApplicationConfig(true)
-	if err := cfg.Init(CONFIG_DIRECTORY, DATABASE_NAME); err != nil {
+	cfg, err := NewApplicationConfig()
+	if err != nil {
 		return nil, err
 	}
 
-	db, err := database.OpenDB(mysql.Config{
-		User:                 "mhserver",
-		Passwd:               cfg.DB_Pass,
+	slog.Info("Configuration loaded.")
+	slog.Info(fmt.Sprintf("Server will be serve at %s on %d port", cfg.Server.Address, cfg.Server.Port))
+	slog.Info(fmt.Sprintf("Server configured to use \"%s/%s\" database", DATABASE_USER, DATABASE_NAME))
+
+	db_cfg := mysql.Config{
+		User:                 DATABASE_USER,
+		Passwd:               cfg.Database.Password,
 		Net:                  "tcp",
-		Addr:                 "127.0.0.1:3306",
-		DBName:               "mhs_main",
+		Addr:                 cfg.Database.Compile(),
+		DBName:               DATABASE_NAME,
 		AllowNativePasswords: true,
-	})
+	}
+
+	db, err := sql.Open("mysql", db_cfg.FormatDSN())
 	if err != nil {
+		return nil, err
+	}
+
+	if err = db.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -57,112 +58,86 @@ func NewApplication() (*Application, error) {
 	}, nil
 }
 
-func (app *Application) runMain(ctx context.Context) error {
-	if !app.cfg.SubServers["main"].Enabled {
-		slog.Warn("main server is disabled. Use -S to use subservers only!")
-		return nil
+func (app *Application) Run(ctx context.Context) error {
+	authInterceptor := app.getAuthInterceptor()
+	internalTokenInterceptor := app.getInternalTokenInterceptor()
+	ratelimitInterceptor := app.getRateLimitInterceptor(ctx)
+
+	creds, err := credentials.NewServerTLSFromFile(filepath.Join(app.cfg.WorkspacePath, "ssl/org.crt"), filepath.Join(app.cfg.WorkspacePath, "ssl/rootCA.key"))
+	if err != nil {
+		slog.ErrorContext(ctx, "failed create server credentials", slog.Any("error", err))
+		return fmt.Errorf("failed init server")
 	}
 
-	connections := make(map[string]*grpc.ClientConn)
+	grpc_server := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.MaxRecvMsgSize(int(1024*1024+5*1024)),
+		grpc.ChainUnaryInterceptor(
+			ratelimitInterceptor.Unary,
+			internalTokenInterceptor.Unary,
+			authInterceptor.Unary,
+		),
+		grpc.ChainStreamInterceptor(
+			ratelimitInterceptor.Stream,
+			internalTokenInterceptor.Stream,
+			authInterceptor.Stream,
+		),
+	)
+	defer grpc_server.GracefulStop()
 
-	//* Sub servers connections
-	for name, subserver := range app.cfg.SubServers {
-		if !subserver.Enabled || name == "main" {
-			if name != "main" {
-				slog.Warn("Subserver not enabled. Skip connection.", slog.String("subserver", name))
+	services := app.cfg.Services.IntoServiceMap()
+	enabled := make([]config.ServiceName, 0, len(services))
+	conns := make(map[config.Socket]*grpc.ClientConn)
+	dependencies := make(map[config.ServiceName]*grpc.ClientConn)
+
+	dependency_creds, err := credentials.NewClientTLSFromFile(filepath.Join(app.cfg.WorkspacePath, "ssl/rootCA.pem"), "")
+	if err != nil {
+		slog.ErrorContext(ctx, "failed create dependency credentials", slog.Any("error", err))
+		return fmt.Errorf("failed init dependencies")
+	}
+
+	for name, s := range services {
+		if !s.Enabled {
+			slog.WarnContext(ctx, "Service not enabled. Skip initialization", slog.String("service", string(name)))
+			continue
+		}
+
+		enabled = append(enabled, name)
+
+		for dep, socket := range s.Dependencies {
+			if _, ok := dependencies[dep]; ok {
+				continue // dependency connection already initialized
 			}
-			continue
-		}
 
-		address := fmt.Sprintf("%s:%d", subserver.Address, subserver.Port)
+			if c, ok := conns[socket]; ok {
+				dependencies[dep] = c
+			} else {
+				client, err := grpc.NewClient(socket.Compile(), grpc.WithTransportCredentials(dependency_creds))
+				if err != nil {
+					slog.ErrorContext(ctx, "Failed create client for dependency", slog.String("dependency", string(dep)), slog.Any("error", err))
+					return fmt.Errorf("failed init dependencies")
+				}
 
-		conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			return err
-		}
-
-		slog.Info("Create subserver client", slog.String("subserver_name", name), slog.String("address", address))
-		connections[name] = conn
-	}
-
-	srv := server.NewServer(app.cfg.Memory.WithAllocated(app.cfg.SubServers["main"].Extra.AllocatedMemory))
-	srv.AuthTransport = di.SetupAuthTransport(ctx, di.SetupAuthService(app.cfg, app.db))
-	srv.DataTransport = di.SetupDataTransport(ctx, di.GetDataServerClient(connections["files"]))
-
-	return srv.Serve(fmt.Sprintf("%s:%d", app.cfg.SubServers["main"].Address, app.cfg.SubServers["main"].Port), CONFIG_DIRECTORY+"ssl/org.crt", CONFIG_DIRECTORY+"ssl/rootCA.key")
-}
-
-func (app *Application) runSubserver(ctx context.Context, wait bool) error {
-	grpc_server := grpc.NewServer(grpc.MaxRecvMsgSize(int(app.cfg.Memory.MaxChunkSize + 1024))) // additional bytes to avoid panic (out of memory), when max chunk size is very small
-	var grpc_address string
-	var grpc_port int
-
-	for name, subserver := range app.cfg.SubServers {
-		if !subserver.Enabled {
-			slog.Warn("Subserver not enabled. Skip initialization.", slog.String("subserver", name))
-			continue
-		}
-
-		if name == "main" {
-			continue
-		}
-
-		// Use the last subserver addr and port, for grpc
-		grpc_address = subserver.Address
-		grpc_port = subserver.Port
-
-		if !di.RegisterGrpcServer(ctx, name, grpc_server, app.cfg) {
-			slog.Warn("Subserver enabled, but not realized. Please watch for mhserver updates, to use this service.", slog.String("subserver", name))
-			continue
-		}
-
-		slog.InfoContext(ctx, "Register grpc service", slog.String("service_name", name))
-	}
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func(address string, port int) {
-		defer wg.Done()
-
-		addr := fmt.Sprintf("%s:%d", address, port)
-		lis, err := net.Listen("tcp", addr)
-		if err != nil {
-			slog.Error("error listen grpc", slog.String("err", err.Error()))
-			return
-		}
-
-		slog.Info("Serve grpc server", slog.String("address", addr))
-
-		if err := grpc_server.Serve(lis); err != nil {
-			slog.Error("error serve grpc server", slog.String("err", err.Error()))
-		}
-	}(grpc_address, grpc_port)
-
-	if wait {
-		wg.Wait()
-	}
-
-	return nil
-}
-
-func (app *Application) Run(mode ApplicationMode) error {
-	slog.Info("Run application with", slog.Int("mode", int(mode)))
-
-	ctx := context.Background()
-
-	if mode != AppMode_MainServerOnly {
-		err := app.runSubserver(ctx, mode == AppMode_SubServersOnly)
-		if err != nil {
-			return err
+				conns[socket] = client
+				dependencies[dep] = client
+			}
 		}
 	}
 
-	if mode != AppMode_SubServersOnly {
-		err := app.runMain(ctx)
-		if err != nil {
-			return err
+	for _, s := range enabled {
+		if err := app.registerGrpcServer(ctx, grpc_server, s, dependencies); err != nil {
+			slog.ErrorContext(ctx, "Failed register service in server", slog.String("service", string(s)), slog.Any("error", err))
+			return fmt.Errorf("failed init services")
 		}
 	}
 
-	return nil
+	addr := app.cfg.Server.Compile()
+
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	slog.Info("Serve grpc server", slog.String("address", addr))
+
+	return grpc_server.Serve(lis)
 }

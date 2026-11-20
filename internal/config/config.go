@@ -1,24 +1,62 @@
 // Пакет с общими структурами, необходимыми для прочих конфигов.
 package config
 
-import "time"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
-type ServiceName string
+	"github.com/pelletier/go-toml/v2"
+)
+
+const (
+	USER_SPACE_DIRECTORY string = "uspace"
+	LOGS_DIRECTORY       string = "logs"
+)
+
+type Socket struct {
+	Address string
+	Port    int16
+}
+
+// Return compiled socket: address + port
+func (s *Socket) Compile() string {
+	// IPv6
+	if strings.ContainsRune(s.Address, ':') {
+		return fmt.Sprintf("[%s]:%d", s.Address, s.Port)
+	}
+
+	return fmt.Sprintf("%s:%d", s.Address, s.Port)
+}
 
 type LimiterConfig struct {
 	Limit    int
 	Interval time.Duration
 }
 
-type MemoryConfig struct {
-	// Total memory which service can be use
-	Allocated uint64 `toml:"available_ram"`
+type ServiceName string
 
-	MaxChunkSize uint64 `toml:"max_chunk_size"`
-	MinChunkSize uint64 `toml:"min_chunk_size"`
+func loadConfigFromFile[T any](file string, dest *T) error {
+	from_file, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	// override by user config
+	if err := toml.Unmarshal(from_file, dest); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (m MemoryConfig) WithAllocated(value uint64) MemoryConfig {
-	m.Allocated = value
-	return m
+func LoadConfig[T any](workspace_path, file string, dest *T) error {
+	// init user-override values
+	if err := loadConfigFromFile(filepath.Join(workspace_path, file), dest); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
 }

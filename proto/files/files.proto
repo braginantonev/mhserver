@@ -1,0 +1,73 @@
+syntax = "proto3";
+package files.v3;
+option go_package = "github.com/braginantonev/mhserver/proto/files/v3";
+
+import "google/protobuf/empty.proto";
+
+service FilesService {
+    rpc SaveFile (stream SaveFileRequest) returns (google.protobuf.Empty);
+    rpc ReadFile (TargetFile) returns (stream LocatedChunk);
+    rpc GetSum (TargetFile) returns (SHASum);
+    rpc GetFiles (TargetDirectory) returns (FilesList);
+	rpc GetAvailableDiskSpace (google.protobuf.Empty) returns (Size);
+	rpc CreateDir (TargetDirectory) returns (google.protobuf.Empty);
+	rpc RemoveDir (TargetDirectory) returns (google.protobuf.Empty);
+    rpc RemoveFile (TargetFile) returns (google.protobuf.Empty);
+    rpc ReplaceDir(ReplaceDirRequest) returns (google.protobuf.Empty);
+    rpc ReplaceFile(ReplaceFileRequest) returns (google.protobuf.Empty);
+}
+
+message TargetDirectory {
+    string value = 1;
+}
+
+message TargetFile {
+    string directory = 1;
+    string name = 2;
+}
+
+message NewFile {
+    TargetFile target = 1;
+    uint64 size = 2;
+}
+
+message LocatedChunk {
+    bytes data = 1;
+    uint64 offset = 2;
+}
+
+message SaveFileRequest {
+    oneof Info {
+        NewFile meta = 1;
+        bytes chunk = 2;
+    }
+}
+
+message SHASum {
+    bytes value = 1;
+}
+
+message FileInfo {
+    string name = 1;
+    bool isDir = 2;
+    uint64 size = 3;
+    uint64 modTime = 4;
+}
+
+message FilesList {
+    repeated FileInfo value = 1;
+}
+
+message Size {
+    uint64 value = 1;
+}
+
+message ReplaceDirRequest {
+    string target = 1;
+    string to = 2;
+}
+
+message ReplaceFileRequest {
+    TargetFile target = 1;
+    TargetFile to = 2;
+}
