@@ -16,6 +16,7 @@ var (
 	// Directory errors
 	ErrDirNotFound  error = status.Error(codes.NotFound, "directory not found")
 	ErrBadDirSyntax error = status.Error(codes.InvalidArgument, "directory have bad syntax")
+	ErrNameIsToLong error = status.Error(codes.InvalidArgument, "target name is to long")
 
 	// Filename errors
 	ErrEmptyFilename     error = status.Error(codes.InvalidArgument, "file name is empty")

@@ -173,6 +173,10 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 		if _, err := os.Stat(filepath.Join(s.cfg.WorkspacePath, usp, target)); err == nil {
 			return ErrTargetAlreadyExists
 		} else if !os.IsNotExist(err) {
+			if errors.Is(err, syscall.ENAMETOOLONG) {
+				return ErrNameIsToLong
+			}
+
 			slog.ErrorContext(stream.Context(), "failed get stat for check existed file", slog.Any("error", err))
 			return ErrInternal
 		}
@@ -188,6 +192,8 @@ func (s *FilesServer) SaveFile(stream pb.FilesService_SaveFileServer) error {
 		if os.IsNotExist(err) {
 			return ErrDirNotFound
 		}
+
+		// we check file `syscall.ENAMETOOLONG` in stat
 
 		slog.ErrorContext(stream.Context(), "failed create new file", slog.Any("error", err))
 		return ErrInternal
@@ -428,6 +434,10 @@ func (s *FilesServer) CreateDir(ctx context.Context, dir *pb.TargetDirectory) (*
 	for _, usp := range s.cfg.UserSpaces {
 		fi, err := os.Stat(filepath.Join(s.cfg.WorkspacePath, usp, user_dir))
 		if err != nil {
+			if errors.Is(err, syscall.ENAMETOOLONG) {
+				return nil, ErrNameIsToLong
+			}
+
 			if !os.IsNotExist(err) {
 				slog.ErrorContext(ctx, "failed get dir stat", slog.Any("error", err))
 				return nil, ErrInternal
@@ -517,7 +527,7 @@ func (s *FilesServer) RemoveFile(ctx context.Context, req *pb.TargetFile) (*empt
 			break
 		}
 
-		if err == syscall.ENOENT {
+		if errors.Is(err, syscall.ENOENT) {
 			continue
 		}
 
@@ -576,6 +586,10 @@ func (s *FilesServer) ReplaceDir(ctx context.Context, req *pb.ReplaceDirRequest)
 				return nil, ErrDirNotFound
 			}
 
+			if errors.Is(err, syscall.ENAMETOOLONG) {
+				return nil, ErrNameIsToLong
+			}
+
 			slog.ErrorContext(ctx, "failed rename dir", slog.Any("error", err))
 			return nil, ErrInternal
 		}
@@ -630,6 +644,10 @@ func (s *FilesServer) ReplaceFile(ctx context.Context, req *pb.ReplaceFileReques
 
 			if os.IsExist(err) {
 				return nil, ErrTargetAlreadyExists
+			}
+
+			if errors.Is(err, syscall.ENAMETOOLONG) {
+				return nil, ErrNameIsToLong
 			}
 
 			slog.ErrorContext(ctx, "failed rename file", slog.Any("error", err))

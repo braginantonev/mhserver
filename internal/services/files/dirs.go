@@ -38,9 +38,9 @@ func CompileUserFilepath(username, dir, file string) (string, error) {
 }
 
 func DirIsCorrect(path string) bool {
-	return len(path) != 0 && len(path) < 75 && !strings.Contains(path, "..")
+	return len(path) != 0 && !strings.Contains(path, "..")
 }
 
 func FileIsCorrect(filename string) bool {
-	return len(filename) != 0 && len(filename) < 75 && !strings.ContainsRune(filename, '/')
+	return len(filename) != 0 && !strings.ContainsRune(filename, '/')
 }

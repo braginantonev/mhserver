@@ -92,6 +92,11 @@ func TestSaveFile(t *testing.T) {
 		t.Fatalf("failed create service client: %v", err)
 	}
 
+	var long_name strings.Builder
+	for range 256 {
+		long_name.WriteRune('a')
+	}
+
 	// streaming save
 	emulate_saving := func(ctx context.Context, req_file *pb.NewFile, reader io.Reader) error {
 		stream, err := client.SaveFile(ctx)
@@ -162,6 +167,18 @@ func TestSaveFile(t *testing.T) {
 				Size: uint64(len(TEST_FILE_BODY)),
 			},
 			expected_err: files.ErrBadFilenameSyntax,
+		},
+		{
+			name:  "long name",
+			setup: func() error { return nil },
+			req_file: &pb.NewFile{
+				Target: &pb.TargetFile{
+					Directory: "/",
+					Name:      long_name.String(),
+				},
+				Size: uint64(len(TEST_FILE_BODY)),
+			},
+			expected_err: files.ErrNameIsToLong,
 		},
 		{
 			name:  "empty dir",
@@ -747,6 +764,11 @@ func TestCreateDir(t *testing.T) {
 		t.Fatalf("failed create service client: %v", err)
 	}
 
+	var long_name strings.Builder
+	for range 256 {
+		long_name.WriteRune('a')
+	}
+
 	cases := [...]struct {
 		name         string
 		setup        func() error
@@ -767,6 +789,14 @@ func TestCreateDir(t *testing.T) {
 				Value: "",
 			},
 			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name:  "long name",
+			setup: func() error { return nil },
+			dir: &pb.TargetDirectory{
+				Value: long_name.String(),
+			},
+			expected_err: files.ErrNameIsToLong,
 		},
 		{
 			name:  "with double point",
@@ -1053,6 +1083,11 @@ func TestReplaceDir(t *testing.T) {
 		t.Fatalf("failed create service client: %v", err)
 	}
 
+	var long_name strings.Builder
+	for range 256 {
+		long_name.WriteRune('a')
+	}
+
 	cases := [...]struct {
 		name         string
 		setup        func() error
@@ -1096,6 +1131,23 @@ func TestReplaceDir(t *testing.T) {
 				To:     "some dir",
 			},
 			expected_err: files.ErrBadDirSyntax,
+		},
+		{
+			name: "long name",
+			setup: func() error {
+				for _, usp := range config.UserSpaces {
+					if err := os.MkdirAll(filepath.Join(config.WorkspacePath, usp, TEST_USER, "long_name"), 0777); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			metadata: nil,
+			req: &pb.ReplaceDirRequest{
+				Target: "long_name",
+				To:     long_name.String(),
+			},
+			expected_err: files.ErrNameIsToLong,
 		},
 		{
 			name:     "out of uspace",
